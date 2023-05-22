@@ -20,9 +20,9 @@ package org.apache.bookkeeper.stream.storage.impl.sc;
 
 import java.util.Set;
 import org.apache.bookkeeper.net.BookieId;
-import org.apache.bookkeeper.stream.proto.cluster.ClusterAssignmentData;
+/*import org.apache.bookkeeper.stream.proto.cluster.ClusterAssignmentData;
 import org.apache.bookkeeper.stream.proto.cluster.ClusterMetadata;
-
+*/
 /**
  * Storage container controller is used for assigning containers to servers.
  */
@@ -36,8 +36,8 @@ public interface StorageContainerController {
      * @param currentCluster current servers alive in the cluster
      * @return the compute ideal assignment state
      */
-    ClusterAssignmentData computeIdealState(ClusterMetadata clusterMetadata,
-                                            ClusterAssignmentData currentState,
+    Object computeIdealState(Object clusterMetadata,
+                                            Object currentState,
                                             Set<BookieId> currentCluster);
 
 }

@@ -1,4 +1,4 @@
-/*
+/**
  * Licensed to the Apache Software Foundation (ASF) under one
  * or more contributor license agreements.  See the NOTICE file
  * distributed with this work for additional information
@@ -35,7 +35,7 @@ import java.util.Optional;
 import java.util.concurrent.ThreadFactory;
 import java.util.concurrent.TimeUnit;
 import java.util.concurrent.atomic.AtomicBoolean;
-import org.apache.bookkeeper.common.util.OrderedScheduler;
+//import org.apache.bookkeeper.common.util.OrderedScheduler;
 import org.apache.bookkeeper.feature.FeatureProvider;
 import org.apache.bookkeeper.stats.StatsLogger;
 import org.apache.bookkeeper.zookeeper.BoundExponentialBackoffRetryPolicy;
@@ -79,7 +79,7 @@ import org.slf4j.LoggerFactory;
 /**
  * Manager for ZooKeeper/BookKeeper based namespace.
  */
-public class BKNamespaceDriver implements NamespaceDriver {
+public abstract class BKNamespaceDriver implements NamespaceDriver {
 
     private static Logger LOG = LoggerFactory.getLogger(BKNamespaceDriver.class);
 
@@ -102,7 +102,7 @@ public class BKNamespaceDriver implements NamespaceDriver {
     private DistributedLogConfiguration conf;
     private DynamicDistributedLogConfiguration dynConf;
     private URI namespace;
-    private OrderedScheduler scheduler;
+    private Object scheduler;
     private FeatureProvider featureProvider;
     private AsyncFailureInjector failureInjector;
     private StatsLogger statsLogger;
@@ -168,11 +168,11 @@ public class BKNamespaceDriver implements NamespaceDriver {
     public BKNamespaceDriver() {
     }
 
-    @Override
+    //@Override
     public synchronized NamespaceDriver initialize(DistributedLogConfiguration conf,
                                                    DynamicDistributedLogConfiguration dynConf,
                                                    URI namespace,
-                                                   OrderedScheduler scheduler,
+                                                   Object scheduler,
                                                    FeatureProvider featureProvider,
                                                    AsyncFailureInjector failureInjector,
                                                    StatsLogger statsLogger,
@@ -304,7 +304,7 @@ public class BKNamespaceDriver implements NamespaceDriver {
         if (bkdlConfig.isFederatedNamespace() || conf.isFederatedNamespaceEnabled()) {
             this.metadataStore = new FederatedZKLogMetadataStore(conf, namespace, readerZKC, scheduler);
         } else {
-            this.metadataStore = new ZKLogMetadataStore(conf, namespace, readerZKC, scheduler);
+            this.metadataStore = new ZKLogMetadataStore(conf, namespace, readerZKC, null);
         }
 
         // create log stream metadata store
@@ -313,14 +313,14 @@ public class BKNamespaceDriver implements NamespaceDriver {
                         clientId,
                         conf,
                         writerZKC,
-                        scheduler,
+                        null,
                         statsLogger);
         this.readerStreamMetadataStore =
                 new ZKLogStreamMetadataStore(
                         clientId,
                         conf,
                         readerZKC,
-                        scheduler,
+                        null,
                         statsLogger);
     }
 
@@ -358,7 +358,7 @@ public class BKNamespaceDriver implements NamespaceDriver {
                     conf,
                     writerZKC,
                     writerBKC,
-                    scheduler);
+                    null);
             if (null != allocator) {
                 allocator.start();
             }
@@ -491,7 +491,7 @@ public class BKNamespaceDriver implements NamespaceDriver {
                 LOG.info("Creating zk based access control manager @ {} for {}",
                         zkRootPath, namespace);
                 accessControlManager = new ZKAccessControlManager(conf, readerZKC,
-                        zkRootPath, scheduler);
+                        zkRootPath, null);
                 LOG.info("Created zk based access control manager @ {} for {}",
                         zkRootPath, namespace);
             }

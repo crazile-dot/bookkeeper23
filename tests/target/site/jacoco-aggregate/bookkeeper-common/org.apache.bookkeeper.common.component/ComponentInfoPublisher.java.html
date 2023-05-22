@@ -1,0 +1,147 @@
+<?xml version="1.0" encoding="UTF-8"?><!DOCTYPE html PUBLIC "-//W3C//DTD XHTML 1.0 Strict//EN" "http://www.w3.org/TR/xhtml1/DTD/xhtml1-strict.dtd"><html xmlns="http://www.w3.org/1999/xhtml" lang="it"><head><meta http-equiv="Content-Type" content="text/html;charset=UTF-8"/><link rel="stylesheet" href="../../jacoco-resources/report.css" type="text/css"/><link rel="shortcut icon" href="../../jacoco-resources/report.gif" type="image/gif"/><title>ComponentInfoPublisher.java</title><link rel="stylesheet" href="../../jacoco-resources/prettify.css" type="text/css"/><script type="text/javascript" src="../../jacoco-resources/prettify.js"></script></head><body onload="window['PR_TAB_WIDTH']=4;prettyPrint()"><div class="breadcrumb" id="breadcrumb"><span class="info"><a href="../../jacoco-sessions.html" class="el_session">Sessions</a></span><a href="../../index.html" class="el_report">Tests</a> &gt; <a href="../index.html" class="el_bundle">bookkeeper-common</a> &gt; <a href="index.source.html" class="el_package">org.apache.bookkeeper.common.component</a> &gt; <span class="el_source">ComponentInfoPublisher.java</span></div><h1>ComponentInfoPublisher.java</h1><pre class="source lang-java linenums">/*
+ * Licensed to the Apache Software Foundation (ASF) under one
+ * or more contributor license agreements.  See the NOTICE file
+ * distributed with this work for additional information
+ * regarding copyright ownership.  The ASF licenses this file
+ * to you under the Apache License, Version 2.0 (the
+ * &quot;License&quot;); you may not use this file except in compliance
+ * with the License.  You may obtain a copy of the License at
+ *
+ *      http://www.apache.org/licenses/LICENSE-2.0
+ *
+ * Unless required by applicable law or agreed to in writing, software
+ * distributed under the License is distributed on an &quot;AS IS&quot; BASIS,
+ * WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+ * See the License for the specific language governing permissions and
+ * limitations under the License.
+ */
+package org.apache.bookkeeper.common.component;
+
+import java.util.Collections;
+import java.util.List;
+import java.util.Map;
+import java.util.Objects;
+import java.util.concurrent.ConcurrentHashMap;
+import lombok.extern.slf4j.Slf4j;
+
+/**
+ * Allows a component to publish information about
+ * the services it implements, the endpoints it exposes
+ * and other useful information for management tools and client.
+ */
+<span class="nc" id="L32">@Slf4j</span>
+<span class="nc" id="L33">public class ComponentInfoPublisher {</span>
+
+<span class="nc" id="L35">    private final Map&lt;String, String&gt; properties = new ConcurrentHashMap&lt;&gt;();</span>
+<span class="nc" id="L36">    private final Map&lt;String, EndpointInfo&gt; endpoints = new ConcurrentHashMap&lt;&gt;();</span>
+
+    /**
+     * Endpoint information.
+     */
+    public static final class EndpointInfo {
+
+        private final String id;
+        private final int port;
+        private final String host;
+        private final String protocol;
+        private final List&lt;String&gt; auth;
+        private final List&lt;String&gt; extensions;
+
+        public EndpointInfo(String id, int port, String host, String protocol,
+<span class="nc" id="L51">                            List&lt;String&gt; auth, List&lt;String&gt; extensions) {</span>
+<span class="nc" id="L52">            this.id = id;</span>
+<span class="nc" id="L53">            this.port = port;</span>
+<span class="nc" id="L54">            this.host = host;</span>
+<span class="nc" id="L55">            this.protocol = protocol;</span>
+<span class="nc bnc" id="L56" title="All 2 branches missed.">            this.auth = auth == null ? Collections.emptyList() : Collections.unmodifiableList(auth);</span>
+<span class="nc bnc" id="L57" title="All 2 branches missed.">            this.extensions = extensions == null ? Collections.emptyList() : Collections.unmodifiableList(extensions);</span>
+<span class="nc" id="L58">        }</span>
+
+        public String getId() {
+<span class="nc" id="L61">            return id;</span>
+        }
+
+        public int getPort() {
+<span class="nc" id="L65">            return port;</span>
+        }
+
+        public String getHost() {
+<span class="nc" id="L69">            return host;</span>
+        }
+
+        public String getProtocol() {
+<span class="nc" id="L73">            return protocol;</span>
+        }
+
+        public List&lt;String&gt; getAuth() {
+<span class="nc" id="L77">            return auth;</span>
+        }
+
+        public List&lt;String&gt; getExtensions() {
+<span class="nc" id="L81">            return extensions;</span>
+        }
+
+        @Override
+        public String toString() {
+<span class="nc" id="L86">            return &quot;EndpointInfo{&quot; + &quot;id=&quot; + id + &quot;, port=&quot; + port + &quot;, host=&quot; + host + &quot;, protocol=&quot; + protocol + &quot;, &quot;</span>
+                    + &quot;auth=&quot; + auth + &quot;, extensions=&quot; + extensions + '}';
+        }
+
+    }
+
+    private volatile boolean startupFinished;
+
+    /**
+     * Publish an information about the system, like an endpoint address.
+     *
+     * @param key the key
+     * @param value the value, null values are not allowed.
+     */
+    public void publishProperty(String key, String value) {
+<span class="nc bnc" id="L101" title="All 2 branches missed.">        if (log.isDebugEnabled()) {</span>
+<span class="nc" id="L102">            log.debug(&quot;publish {}={}&quot;, key, value);</span>
+        }
+<span class="nc bnc" id="L104" title="All 2 branches missed.">        if (startupFinished) {</span>
+<span class="nc" id="L105">            throw new IllegalStateException(&quot;Server already started, cannot publish &quot; + key);</span>
+        }
+<span class="nc" id="L107">        Objects.requireNonNull(key);</span>
+<span class="nc" id="L108">        Objects.requireNonNull(value, &quot;Value for &quot; + key + &quot; cannot be null&quot;);</span>
+
+<span class="nc" id="L110">        properties.put(key, value);</span>
+<span class="nc" id="L111">    }</span>
+
+    public void publishEndpoint(EndpointInfo endpoint) {
+<span class="nc bnc" id="L114" title="All 2 branches missed.">        if (log.isDebugEnabled()) {</span>
+<span class="nc" id="L115">            log.debug(&quot;publishEndpoint {} on {}&quot;, endpoint, this);</span>
+        }
+<span class="nc" id="L117">        EndpointInfo exists = endpoints.put(endpoint.id, endpoint);</span>
+<span class="nc bnc" id="L118" title="All 2 branches missed.">        if (exists != null) {</span>
+<span class="nc" id="L119">            throw new IllegalStateException(&quot;An endpoint with id &quot; + endpoint.id</span>
+                    + &quot; has already been published: &quot; + exists);
+        }
+<span class="nc" id="L122">    }</span>
+
+    public Map&lt;String, String&gt; getProperties() {
+<span class="nc bnc" id="L125" title="All 2 branches missed.">        if (!startupFinished) {</span>
+<span class="nc" id="L126">            throw new IllegalStateException(&quot;Startup not yet finished&quot;);</span>
+        }
+<span class="nc" id="L128">        return Collections.unmodifiableMap(properties);</span>
+    }
+
+    public Map&lt;String, EndpointInfo&gt; getEndpoints() {
+<span class="nc bnc" id="L132" title="All 2 branches missed.">        if (!startupFinished) {</span>
+<span class="nc" id="L133">            throw new IllegalStateException(&quot;Startup not yet finished&quot;);</span>
+        }
+<span class="nc" id="L135">        return Collections.unmodifiableMap(endpoints);</span>
+    }
+
+    /**
+     * Called by the framework to signal that preparation of startup is done,
+     * so we have gathered all of the available information.
+     */
+    public void startupFinished() {
+<span class="nc" id="L143">        startupFinished = true;</span>
+<span class="nc" id="L144">    }</span>
+
+}
+</pre><div class="footer"><span class="right">Created with <a href="http://www.jacoco.org/jacoco">JaCoCo</a> 0.8.2.201808211720</span></div></body></html>

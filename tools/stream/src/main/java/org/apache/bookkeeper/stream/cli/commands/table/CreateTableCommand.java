@@ -28,9 +28,9 @@ import org.apache.bookkeeper.clients.exceptions.NamespaceNotFoundException;
 import org.apache.bookkeeper.clients.exceptions.StreamExistsException;
 import org.apache.bookkeeper.stream.cli.commands.AdminCommand;
 import org.apache.bookkeeper.stream.cli.commands.table.CreateTableCommand.Flags;
-import org.apache.bookkeeper.stream.proto.StorageType;
+/*import org.apache.bookkeeper.stream.proto.StorageType;
 import org.apache.bookkeeper.stream.proto.StreamConfiguration;
-import org.apache.bookkeeper.stream.proto.StreamProperties;
+import org.apache.bookkeeper.stream.proto.StreamProperties;*/
 import org.apache.bookkeeper.tools.common.BKFlags;
 import org.apache.bookkeeper.tools.framework.CliFlags;
 import org.apache.bookkeeper.tools.framework.CliSpec;
@@ -79,22 +79,11 @@ public class CreateTableCommand extends AdminCommand<Flags> {
         String streamName = flags.arguments.get(0);
 
         try {
-            StreamConfiguration conf = StreamConfiguration.newBuilder(DEFAULT_STREAM_CONF)
-                .setMinNumRanges(flags.numRanges)
-                .setInitialNumRanges(flags.numRanges)
-                .build();
-            StreamProperties nsProps = result(
-                admin.createStream(
-                    globalFlags.namespace,
-                    streamName,
-                    StreamConfiguration.newBuilder(conf)
-                        .setStorageType(StorageType.TABLE)
-                        .build()));
+            Object conf = null;
+            Object nsProps = null;
             spec.console().println("Successfully created table '" + streamName + "':");
             spec.console().println(nsProps);
-        } catch (NamespaceNotFoundException nfe) {
-            spec.console().println("Namespace '" + globalFlags.namespace + "' does not exist");
-        } catch (StreamExistsException see) {
+        }  catch (Exception see) {
             spec.console().println("Table '" + globalFlags.namespace + "' already exists");
         }
     }

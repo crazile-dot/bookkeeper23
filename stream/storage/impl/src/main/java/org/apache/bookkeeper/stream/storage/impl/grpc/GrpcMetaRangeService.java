@@ -19,10 +19,10 @@ package org.apache.bookkeeper.stream.storage.impl.grpc;
 
 import io.grpc.stub.StreamObserver;
 import lombok.extern.slf4j.Slf4j;
-import org.apache.bookkeeper.stream.proto.storage.GetActiveRangesRequest;
+/*import org.apache.bookkeeper.stream.proto.storage.GetActiveRangesRequest;
 import org.apache.bookkeeper.stream.proto.storage.GetActiveRangesResponse;
 import org.apache.bookkeeper.stream.proto.storage.MetaRangeServiceGrpc.MetaRangeServiceImplBase;
-import org.apache.bookkeeper.stream.proto.storage.StatusCode;
+import org.apache.bookkeeper.stream.proto.storage.StatusCode;*/
 import org.apache.bookkeeper.stream.storage.api.metadata.RangeStoreService;
 import org.apache.bookkeeper.stream.storage.impl.grpc.handler.ResponseHandler;
 
@@ -30,7 +30,7 @@ import org.apache.bookkeeper.stream.storage.impl.grpc.handler.ResponseHandler;
  * The gRPC protocol based range service.
  */
 @Slf4j
-public class GrpcMetaRangeService extends MetaRangeServiceImplBase {
+public class GrpcMetaRangeService  {
 
     private final RangeStoreService rangeStore;
 
@@ -43,10 +43,10 @@ public class GrpcMetaRangeService extends MetaRangeServiceImplBase {
     // Meta KeyRange Server Requests
     //
 
-    @Override
-    public void getActiveRanges(GetActiveRangesRequest request,
-                                StreamObserver<GetActiveRangesResponse> responseObserver) {
-        rangeStore.getActiveRanges(request).whenComplete(
+   // @Override
+    public void getActiveRanges(Object request,
+                                StreamObserver<Object> responseObserver) {
+        /*rangeStore.getActiveRanges(request).whenComplete(
             new ResponseHandler<GetActiveRangesResponse>(responseObserver) {
                 @Override
                 protected GetActiveRangesResponse createErrorResp(Throwable cause) {
@@ -54,7 +54,8 @@ public class GrpcMetaRangeService extends MetaRangeServiceImplBase {
                         .setCode(StatusCode.INTERNAL_SERVER_ERROR)
                         .build();
                 }
-            });
+            });*/
+
     }
 
 }

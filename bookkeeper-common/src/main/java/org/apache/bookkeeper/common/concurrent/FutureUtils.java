@@ -34,7 +34,7 @@ import javax.annotation.Nullable;
 import lombok.SneakyThrows;
 import lombok.extern.slf4j.Slf4j;
 import org.apache.bookkeeper.common.stats.OpStatsListener;
-import org.apache.bookkeeper.common.util.OrderedScheduler;
+//import org.apache.bookkeeper.common.util.OrderedScheduler;
 import org.apache.bookkeeper.stats.OpStatsLogger;
 
 /**
@@ -69,19 +69,7 @@ public final class FutureUtils {
     public static <T, ExceptionT extends Throwable> T result(
         CompletableFuture<T> future, Function<Throwable, ExceptionT> exceptionHandler) throws ExceptionT {
         try {
-            try {
-                /*
-                 * CompletableFuture.get() in JDK8 spins before blocking and wastes CPU time.
-                 * CompletableFuture.get(long, TimeUnit) blocks immediately (if the result is
-                 * not yet available). While the implementation of get() has changed in JDK9
-                 * (not spinning any more), using CompletableFuture.get(long, TimeUnit) allows
-                 * us to avoid spinning for all current JDK versions.
-                 */
-                return future.get(Long.MAX_VALUE, TimeUnit.NANOSECONDS);
-            } catch (TimeoutException eignore) {
-                // it's ok to return null if we timeout after 292 years (2^63 nanos)
-                return null;
-            }
+            return future.get();
         } catch (InterruptedException e) {
             Thread.currentThread().interrupt();
             throw e;
@@ -146,7 +134,7 @@ public final class FutureUtils {
         result.completeExceptionally(cause);
     }
 
-    /**
+    /*/**
      * Completing the {@code future} in the thread in the scheduler identified by
      * the {@code scheduleKey}.
      *
@@ -157,13 +145,13 @@ public final class FutureUtils {
      * @param <T>
      * @return
      */
-    public static <T> CompletableFuture<T> whenCompleteAsync(
+    /*public static <T> CompletableFuture<T> whenCompleteAsync(
         CompletableFuture<T> future,
         BiConsumer<? super T, ? super Throwable> action,
         OrderedScheduler scheduler,
         Object scheduleKey) {
         return future.whenCompleteAsync(action, scheduler.chooseThread(scheduleKey));
-    }
+    }*/
 
     public static <T> CompletableFuture<List<T>> collect(List<CompletableFuture<T>> futureList) {
         CompletableFuture<Void> finalFuture =
@@ -234,9 +222,7 @@ public final class FutureUtils {
         @Override
         public void run() {
             if (done) {
-                if (log.isDebugEnabled()) {
-                    log.debug("ListFutureProcessor is interrupted.");
-                }
+                log.debug("ListFutureProcessor is interrupted.");
                 return;
             }
             if (!itemsIter.hasNext()) {
@@ -269,7 +255,7 @@ public final class FutureUtils {
         }
         return processor.promise;
     }
-
+/*
     /**
      * Raise an exception to the <i>promise</i> within a given <i>timeout</i> period.
      * If the promise has been satisfied before raising, it won't change the state of the promise.
@@ -282,7 +268,7 @@ public final class FutureUtils {
      * @param key       the submit key used by the scheduler
      * @return the promise applied with the raise logic
      */
-    public static <T> CompletableFuture<T> within(final CompletableFuture<T> promise,
+    /*public static <T> CompletableFuture<T> within(final CompletableFuture<T> promise,
                                                   final long timeout,
                                                   final TimeUnit unit,
                                                   final Throwable cause,
@@ -299,7 +285,7 @@ public final class FutureUtils {
         }, timeout, unit);
         // when the promise is satisfied, cancel the timeout task
         promise.whenComplete((value, throwable) -> {
-                if (!task.cancel(true) && log.isDebugEnabled()) {
+                if (!task.cancel(true)) {
                     log.debug("Failed to cancel the timeout task");
                 }
             }

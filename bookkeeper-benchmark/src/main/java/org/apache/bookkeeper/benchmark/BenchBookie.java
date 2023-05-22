@@ -30,15 +30,15 @@ import java.io.IOException;
 import java.util.concurrent.Executors;
 import java.util.concurrent.ScheduledExecutorService;
 import org.apache.bookkeeper.client.BKException;
-import org.apache.bookkeeper.client.BookKeeper;
+//import org.apache.bookkeeper.client.BookKeeper;
 import org.apache.bookkeeper.client.LedgerHandle;
 import org.apache.bookkeeper.client.api.WriteFlag;
-import org.apache.bookkeeper.common.util.OrderedExecutor;
+//import org.apache.bookkeeper.common.util.OrderedExecutor;
 import org.apache.bookkeeper.conf.ClientConfiguration;
 import org.apache.bookkeeper.net.BookieId;
 import org.apache.bookkeeper.net.BookieSocketAddress;
 import org.apache.bookkeeper.proto.BookieClient;
-import org.apache.bookkeeper.proto.BookieClientImpl;
+//import org.apache.bookkeeper.proto.BookieClientImpl;
 import org.apache.bookkeeper.proto.BookieProtocol;
 import org.apache.bookkeeper.proto.BookkeeperInternalCallbacks.WriteCallback;
 import org.apache.bookkeeper.stats.NullStatsLogger;
@@ -106,7 +106,7 @@ public class BenchBookie {
 
     private static long getValidLedgerId(String zkServers)
             throws IOException, BKException, KeeperException, InterruptedException {
-        BookKeeper bkc = null;
+       /* BookKeeper bkc = null;
         LedgerHandle lh = null;
         long id = 0;
         try {
@@ -122,7 +122,8 @@ public class BenchBookie {
             if (bkc != null) {
                 bkc.close();
             }
-        }
+        }*/
+        return 0;
     }
     /**
      * @param args
@@ -170,16 +171,16 @@ public class BenchBookie {
             eventLoop = new NioEventLoopGroup();
         }
 
-        OrderedExecutor executor = OrderedExecutor.newBuilder()
+        /*OrderedExecutor executor = OrderedExecutor.newBuilder()
                 .name("BenchBookieClientScheduler")
                 .numThreads(1)
-                .build();
+                .build();*/
         ScheduledExecutorService scheduler = Executors.newSingleThreadScheduledExecutor(
                 new DefaultThreadFactory("BookKeeperClientScheduler"));
 
         ClientConfiguration conf = new ClientConfiguration();
-        BookieClient bc = new BookieClientImpl(conf, eventLoop, PooledByteBufAllocator.DEFAULT, executor, scheduler,
-                NullStatsLogger.INSTANCE, BookieSocketAddress.LEGACY_BOOKIEID_RESOLVER);
+        /*BookieClient bc = new BookieClientImpl(conf, eventLoop, PooledByteBufAllocator.DEFAULT, executor, scheduler,
+                NullStatsLogger.INSTANCE, BookieSocketAddress.LEGACY_BOOKIEID_RESOLVER);*/
         LatencyCallback lc = new LatencyCallback();
 
         ThroughputCallback tc = new ThroughputCallback();
@@ -192,9 +193,9 @@ public class BenchBookie {
             toSend.writeLong(ledger);
             toSend.writeLong(entry);
             toSend.writerIndex(toSend.capacity());
-            bc.addEntry(new BookieSocketAddress(addr, port).toBookieId(), ledger, new byte[20],
+           /* bc.addEntry(new BookieSocketAddress(addr, port).toBookieId(), ledger, new byte[20],
                     entry, ByteBufList.get(toSend), tc, null, BookieProtocol.FLAG_NONE,
-                    false, WriteFlag.NONE);
+                    false, WriteFlag.NONE);*/
         }
         LOG.info("Waiting for warmup");
         tc.waitFor(warmUpCount);
@@ -210,9 +211,9 @@ public class BenchBookie {
             toSend.writeLong(entry);
             toSend.writerIndex(toSend.capacity());
             lc.resetComplete();
-            bc.addEntry(new BookieSocketAddress(addr, port).toBookieId(), ledger, new byte[20],
+            /*bc.addEntry(new BookieSocketAddress(addr, port).toBookieId(), ledger, new byte[20],
                         entry, ByteBufList.get(toSend), lc, null,
-                        BookieProtocol.FLAG_NONE, false, WriteFlag.NONE);
+                        BookieProtocol.FLAG_NONE, false, WriteFlag.NONE);*/
             lc.waitForComplete();
         }
         long endTime = System.nanoTime();
@@ -229,18 +230,18 @@ public class BenchBookie {
             toSend.writeLong(ledger);
             toSend.writeLong(entry);
             toSend.writerIndex(toSend.capacity());
-            bc.addEntry(new BookieSocketAddress(addr, port).toBookieId(), ledger, new byte[20],
+            /*bc.addEntry(new BookieSocketAddress(addr, port).toBookieId(), ledger, new byte[20],
                     entry, ByteBufList.get(toSend), tc, null, BookieProtocol.FLAG_NONE,
-                    false, WriteFlag.NONE);
+                    false, WriteFlag.NONE);*/
         }
         tc.waitFor(throughputCount);
         endTime = System.currentTimeMillis();
         LOG.info("Throughput: " + ((long) throughputCount) * 1000 / (endTime - startTime));
 
-        bc.close();
+       // bc.close();
         scheduler.shutdown();
         eventLoop.shutdownGracefully();
-        executor.shutdown();
+       // executor.shutdown();
     }
 
 }

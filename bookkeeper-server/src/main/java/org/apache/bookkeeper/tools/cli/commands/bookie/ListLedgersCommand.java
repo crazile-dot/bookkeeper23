@@ -22,7 +22,6 @@ import static org.apache.bookkeeper.meta.MetadataDrivers.runFunctionWithLedgerMa
 
 import com.beust.jcommander.Parameter;
 import com.google.common.util.concurrent.UncheckedExecutionException;
-import edu.umd.cs.findbugs.annotations.SuppressFBWarnings;
 import java.net.UnknownHostException;
 import java.util.concurrent.CountDownLatch;
 import java.util.concurrent.ExecutionException;
@@ -30,7 +29,7 @@ import java.util.concurrent.atomic.AtomicInteger;
 import lombok.Setter;
 import lombok.experimental.Accessors;
 import org.apache.bookkeeper.client.BKException;
-import org.apache.bookkeeper.client.BookKeeperAdmin;
+//import org.apache.bookkeeper.client.BookKeeperAdmin;
 import org.apache.bookkeeper.client.api.LedgerMetadata;
 import org.apache.bookkeeper.conf.ServerConfiguration;
 import org.apache.bookkeeper.meta.LedgerManager;
@@ -49,7 +48,6 @@ import org.slf4j.LoggerFactory;
 /**
  * Command for list all ledgers on the cluster.
  */
-@SuppressFBWarnings("RCN_REDUNDANT_NULLCHECK_WOULD_HAVE_BEEN_A_NPE")
 public class ListLedgersCommand extends BookieCommand<ListLedgersFlags> {
 
     private static final Logger LOG = LoggerFactory.getLogger(ListLedgersCommand.class);
@@ -139,9 +137,7 @@ public class ListLedgersCommand extends BookieCommand<ListLedgersFlags> {
                     } else {
                         ledgerManager.readLedgerMetadata(ledgerId).whenComplete((metadata, exception) -> {
                             if (exception == null) {
-                                if ((bookieAddress == null)
-                                        || BookKeeperAdmin.areEntriesOfLedgerStoredInTheBookie
-                                               (ledgerId, bookieAddress, metadata.getValue())) {
+                                if (bookieAddress == null) {
                                     /*
                                      * the print method has to be in
                                      * synchronized scope, otherwise
@@ -157,9 +153,7 @@ public class ListLedgersCommand extends BookieCommand<ListLedgersFlags> {
                                 }
                                 cb.processResult(BKException.Code.OK, null, null);
                             } else if (BKException.getExceptionCode(exception)
-                                        == BKException.Code.NoSuchLedgerExistsException
-                                    || BKException.getExceptionCode(exception)
-                                        == BKException.Code.NoSuchLedgerExistsOnMetadataServerException) {
+                                      == BKException.Code.NoSuchLedgerExistsException) {
                                 cb.processResult(BKException.Code.OK, null, null);
                             } else {
                                 LOG.error("Unable to read the ledger: {} information", ledgerId);
@@ -191,9 +185,9 @@ public class ListLedgersCommand extends BookieCommand<ListLedgersFlags> {
     }
 
     private void printLedgerMetadata(long ledgerId, LedgerMetadata md, boolean printMeta) {
-        LOG.info("ledgerID: {}", ledgerIdFormatter.formatLedgerId(ledgerId));
+        LOG.info("ledgerID: " + ledgerIdFormatter.formatLedgerId(ledgerId));
         if (printMeta) {
-            LOG.info("{}", md.toString());
+            LOG.info(md.toString());
         }
     }
 }

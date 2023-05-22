@@ -1,0 +1,112 @@
+<?xml version="1.0" encoding="UTF-8"?><!DOCTYPE html PUBLIC "-//W3C//DTD XHTML 1.0 Strict//EN" "http://www.w3.org/TR/xhtml1/DTD/xhtml1-strict.dtd"><html xmlns="http://www.w3.org/1999/xhtml" lang="it"><head><meta http-equiv="Content-Type" content="text/html;charset=UTF-8"/><link rel="stylesheet" href="../../jacoco-resources/report.css" type="text/css"/><link rel="shortcut icon" href="../../jacoco-resources/report.gif" type="image/gif"/><title>ConfigKeyGroup.java</title><link rel="stylesheet" href="../../jacoco-resources/prettify.css" type="text/css"/><script type="text/javascript" src="../../jacoco-resources/prettify.js"></script></head><body onload="window['PR_TAB_WIDTH']=4;prettyPrint()"><div class="breadcrumb" id="breadcrumb"><span class="info"><a href="../../jacoco-sessions.html" class="el_session">Sessions</a></span><a href="../../index.html" class="el_report">Tests</a> &gt; <a href="../index.html" class="el_bundle">bookkeeper-common</a> &gt; <a href="index.source.html" class="el_package">org.apache.bookkeeper.common.conf</a> &gt; <span class="el_source">ConfigKeyGroup.java</span></div><h1>ConfigKeyGroup.java</h1><pre class="source lang-java linenums">/*
+ * Licensed to the Apache Software Foundation (ASF) under one
+ * or more contributor license agreements.  See the NOTICE file
+ * distributed with this work for additional information
+ * regarding copyright ownership.  The ASF licenses this file
+ * to you under the Apache License, Version 2.0 (the
+ * &quot;License&quot;); you may not use this file except in compliance
+ * with the License.  You may obtain a copy of the License at
+ *
+ *   http://www.apache.org/licenses/LICENSE-2.0
+ *
+ * Unless required by applicable law or agreed to in writing,
+ * software distributed under the License is distributed on an
+ * &quot;AS IS&quot; BASIS, WITHOUT WARRANTIES OR CONDITIONS OF ANY
+ * KIND, either express or implied.  See the License for the
+ * specific language governing permissions and limitations
+ * under the License.
+ */
+
+package org.apache.bookkeeper.common.conf;
+
+import java.util.Collections;
+import java.util.Comparator;
+import java.util.List;
+import java.util.Objects;
+import lombok.Builder;
+import lombok.Builder.Default;
+import lombok.Data;
+import lombok.experimental.Accessors;
+import org.apache.bookkeeper.common.annotation.InterfaceAudience.Public;
+
+/**
+ * Define a group of configuration settings.
+ */
+<span class="nc" id="L35">@Data</span>
+@Accessors(fluent = true)
+<span class="nc bnc" id="L37" title="All 6 branches missed.">@Builder(builderMethodName = &quot;internalBuilder&quot;)</span>
+@Public
+public class ConfigKeyGroup {
+
+    /**
+     * Ordering the key groups in a configuration.
+     */
+<span class="nc" id="L44">    public static final Comparator&lt;ConfigKeyGroup&gt; ORDERING = (o1, o2) -&gt; {</span>
+<span class="nc" id="L45">        int ret = Integer.compare(o1.order, o2.order);</span>
+<span class="nc bnc" id="L46" title="All 2 branches missed.">        if (0 == ret) {</span>
+<span class="nc" id="L47">            return o1.name().compareTo(o2.name());</span>
+        } else {
+<span class="nc" id="L49">            return ret;</span>
+        }
+    };
+
+    /**
+     * Create a config key group of &lt;tt&gt;name&lt;/tt&gt;.
+     *
+     * @param name key group name
+     * @return key group builder
+     */
+    public static ConfigKeyGroupBuilder builder(String name) {
+<span class="nc" id="L60">        return internalBuilder().name(name);</span>
+    }
+
+    /**
+     * The default key group.
+     */
+<span class="nc" id="L66">    public static final ConfigKeyGroup DEFAULT = builder(&quot;&quot;).build();</span>
+
+    /**
+     * Name of the key group.
+     */
+<span class="nc" id="L71">    private String name;</span>
+
+    /**
+     * Description of the key group.
+     */
+    @Default
+<span class="nc" id="L77">    private String description = &quot;&quot;;</span>
+
+    /**
+     * The list of sub key-groups of this key group.
+     */
+    @Default
+<span class="nc" id="L83">    private List&lt;String&gt; children = Collections.emptyList();</span>
+
+    /**
+     * The order of the key-group in a configuration.
+     */
+    @Default
+<span class="nc" id="L89">    private int order = Integer.MIN_VALUE;</span>
+
+    /**
+     * {@inheritDoc}
+     */
+    @Override
+    public boolean equals(Object o) {
+<span class="nc bnc" id="L96" title="All 2 branches missed.">        if (!(o instanceof ConfigKeyGroup)) {</span>
+<span class="nc" id="L97">            return false;</span>
+        }
+<span class="nc" id="L99">        ConfigKeyGroup other = (ConfigKeyGroup) o;</span>
+<span class="nc" id="L100">        return Objects.equals(name, other.name);</span>
+    }
+
+    /**
+     * {@inheritDoc}
+     */
+    @Override
+    public int hashCode() {
+<span class="nc" id="L108">        return name.hashCode();</span>
+    }
+
+}
+</pre><div class="footer"><span class="right">Created with <a href="http://www.jacoco.org/jacoco">JaCoCo</a> 0.8.2.201808211720</span></div></body></html>

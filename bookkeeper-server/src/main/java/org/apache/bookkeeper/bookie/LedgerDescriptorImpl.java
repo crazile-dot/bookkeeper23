@@ -74,7 +74,7 @@ public class LedgerDescriptorImpl extends LedgerDescriptor {
     }
 
     @Override
-    boolean isFenced() throws IOException, BookieException {
+    boolean isFenced() throws IOException {
         return ledgerStorage.isFenced(ledgerId);
     }
 
@@ -84,7 +84,7 @@ public class LedgerDescriptorImpl extends LedgerDescriptor {
     }
 
     @Override
-    ByteBuf getExplicitLac() throws IOException, BookieException {
+    ByteBuf getExplicitLac() throws IOException {
         return ledgerStorage.getExplicitLac(ledgerId);
     }
 
@@ -157,12 +157,12 @@ public class LedgerDescriptorImpl extends LedgerDescriptor {
     }
 
     @Override
-    ByteBuf readEntry(long entryId) throws IOException, BookieException {
+    ByteBuf readEntry(long entryId) throws IOException {
         return ledgerStorage.getEntry(ledgerId, entryId);
     }
 
     @Override
-    long getLastAddConfirmed() throws IOException, BookieException {
+    long getLastAddConfirmed() throws IOException {
         return ledgerStorage.getLastAddConfirmed(ledgerId);
     }
 

@@ -1,0 +1,132 @@
+<?xml version="1.0" encoding="UTF-8"?><!DOCTYPE html PUBLIC "-//W3C//DTD XHTML 1.0 Strict//EN" "http://www.w3.org/TR/xhtml1/DTD/xhtml1-strict.dtd"><html xmlns="http://www.w3.org/1999/xhtml" lang="it"><head><meta http-equiv="Content-Type" content="text/html;charset=UTF-8"/><link rel="stylesheet" href="../../jacoco-resources/report.css" type="text/css"/><link rel="shortcut icon" href="../../jacoco-resources/report.gif" type="image/gif"/><title>ReadLacProcessorV3.java</title><link rel="stylesheet" href="../../jacoco-resources/prettify.css" type="text/css"/><script type="text/javascript" src="../../jacoco-resources/prettify.js"></script></head><body onload="window['PR_TAB_WIDTH']=4;prettyPrint()"><div class="breadcrumb" id="breadcrumb"><span class="info"><a href="../../jacoco-sessions.html" class="el_session">Sessions</a></span><a href="../../index.html" class="el_report">Tests</a> &gt; <a href="../index.html" class="el_bundle">bookkeeper-server</a> &gt; <a href="index.source.html" class="el_package">org.apache.bookkeeper.proto</a> &gt; <span class="el_source">ReadLacProcessorV3.java</span></div><h1>ReadLacProcessorV3.java</h1><pre class="source lang-java linenums">/**
+ *
+ * Licensed to the Apache Software Foundation (ASF) under one
+ * or more contributor license agreements.  See the NOTICE file
+ * distributed with this work for additional information
+ * regarding copyright ownership.  The ASF licenses this file
+ * to you under the Apache License, Version 2.0 (the
+ * &quot;License&quot;); you may not use this file except in compliance
+ * with the License.  You may obtain a copy of the License at
+ *
+ *   http://www.apache.org/licenses/LICENSE-2.0
+ *
+ * Unless required by applicable law or agreed to in writing,
+ * software distributed under the License is distributed on an
+ * &quot;AS IS&quot; BASIS, WITHOUT WARRANTIES OR CONDITIONS OF ANY
+ * KIND, either express or implied.  See the License for the
+ * specific language governing permissions and limitations
+ * under the License.
+ *
+ */
+package org.apache.bookkeeper.proto;
+
+import com.google.protobuf.ByteString;
+
+import io.netty.buffer.ByteBuf;
+import io.netty.channel.Channel;
+import io.netty.util.ReferenceCountUtil;
+
+import java.io.IOException;
+import java.util.concurrent.TimeUnit;
+
+import org.apache.bookkeeper.bookie.Bookie;
+/*import org.apache.bookkeeper.proto.BookkeeperProtocol.ReadLacRequest;
+import org.apache.bookkeeper.proto.BookkeeperProtocol.ReadLacResponse;
+import org.apache.bookkeeper.proto.BookkeeperProtocol.Request;
+import org.apache.bookkeeper.proto.BookkeeperProtocol.Response;
+import org.apache.bookkeeper.proto.BookkeeperProtocol.StatusCode;*/
+import org.apache.bookkeeper.util.MathUtils;
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
+
+/**
+ * A read processor for v3 last add confirmed messages.
+ */
+class ReadLacProcessorV3 extends PacketProcessorBaseV3 implements Runnable {
+<span class="nc" id="L46">    private static final Logger logger = LoggerFactory.getLogger(ReadLacProcessorV3.class);</span>
+
+    public ReadLacProcessorV3(Object request, Channel channel,
+                             Object requestProcessor) {
+<span class="nc" id="L50">        super(request, channel, requestProcessor);</span>
+<span class="nc" id="L51">    }</span>
+
+    // Returns null if there is no exception thrown
+    private Object getReadLacResponse() {
+        /*final long startTimeNanos = MathUtils.nowInNano();
+        ReadLacRequest readLacRequest = request.getReadLacRequest();
+        long ledgerId = readLacRequest.getLedgerId();
+
+        final ReadLacResponse.Builder readLacResponse = ReadLacResponse.newBuilder().setLedgerId(ledgerId);
+
+        if (!isVersionCompatible()) {
+            readLacResponse.setStatus(StatusCode.EBADVERSION);
+            return readLacResponse.build();
+        }
+
+        logger.debug(&quot;Received ReadLac request: {}&quot;, request);
+        StatusCode status = StatusCode.EOK;
+        ByteBuf lastEntry = null;
+        ByteBuf lac = null;
+        try {
+            lac = requestProcessor.bookie.getExplicitLac(ledgerId);
+            if (lac != null) {
+                readLacResponse.setLacBody(ByteString.copyFrom(lac.nioBuffer()));
+            }
+        } catch (Bookie.NoLedgerException e) {
+            status = StatusCode.ENOLEDGER;
+            logger.error(&quot;No ledger found while performing readLac from ledger: {}&quot;, ledgerId, e);
+        } catch (IOException e) {
+            status = StatusCode.EIO;
+            logger.error(&quot;IOException while performing readLac from ledger: {}&quot;, ledgerId);
+        } finally {
+            ReferenceCountUtil.release(lac);
+        }
+
+        try {
+            lastEntry = requestProcessor.bookie.readEntry(ledgerId, BookieProtocol.LAST_ADD_CONFIRMED);
+            if (lastEntry != null) {
+                readLacResponse.setLastEntryBody(ByteString.copyFrom(lastEntry.nioBuffer()));
+            }
+        } catch (Bookie.NoLedgerException e) {
+            status = StatusCode.ENOLEDGER;
+            logger.error(&quot;No ledger found while trying to read last entry: {}&quot;, ledgerId, e);
+        } catch (IOException e) {
+            status = StatusCode.EIO;
+            logger.error(&quot;IOException while trying to read last entry: {}&quot;, ledgerId, e);
+        } finally {
+            ReferenceCountUtil.release(lastEntry);
+        }
+
+        if ((lac == null) &amp;&amp; (lastEntry == null)) {
+            status = StatusCode.ENOENTRY;
+        }
+
+        if (status == StatusCode.EOK) {
+            requestProcessor.getRequestStats().getReadLacStats()
+                .registerSuccessfulEvent(MathUtils.elapsedNanos(startTimeNanos), TimeUnit.NANOSECONDS);
+        } else {
+            requestProcessor.getRequestStats().getReadLacStats()
+                .registerFailedEvent(MathUtils.elapsedNanos(startTimeNanos), TimeUnit.NANOSECONDS);
+        }
+        // Finally set the status and return
+        readLacResponse.setStatus(status);*/
+<span class="nc" id="L113">        return 1;</span>
+    }
+
+    @Override
+    public void safeRun() {
+        /*ReadLacResponse readLacResponse = getReadLacResponse();
+        sendResponse(readLacResponse);*/
+<span class="nc" id="L120">    }</span>
+
+    private void sendResponse(Object readLacResponse) {
+        /*Response.Builder response = Response.newBuilder()
+            .setHeader(getHeader())
+            .setStatus(readLacResponse.getStatus())
+            .setReadLacResponse(readLacResponse);
+        sendResponse(response.getStatus(),
+                response.build(),
+                requestProcessor.getRequestStats().getReadLacRequestStats());
+    }*/
+<span class="nc" id="L131">}}</span>
+</pre><div class="footer"><span class="right">Created with <a href="http://www.jacoco.org/jacoco">JaCoCo</a> 0.8.2.201808211720</span></div></body></html>

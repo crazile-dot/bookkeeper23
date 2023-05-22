@@ -27,11 +27,12 @@ import org.apache.bookkeeper.clients.exceptions.NamespaceNotFoundException;
 import org.apache.bookkeeper.clients.exceptions.StreamNotFoundException;
 import org.apache.bookkeeper.stream.cli.commands.AdminCommand;
 import org.apache.bookkeeper.stream.cli.commands.table.GetTableCommand.Flags;
-import org.apache.bookkeeper.stream.proto.StorageType;
-import org.apache.bookkeeper.stream.proto.StreamProperties;
+//import org.apache.bookkeeper.stream.proto.StorageType;
+//import org.apache.bookkeeper.stream.proto.StreamProperties;
 import org.apache.bookkeeper.tools.common.BKFlags;
 import org.apache.bookkeeper.tools.framework.CliFlags;
 import org.apache.bookkeeper.tools.framework.CliSpec;
+import sun.nio.cs.ext.IBM037;
 
 /**
  * Command to create a namespace.
@@ -66,16 +67,16 @@ public class GetTableCommand extends AdminCommand<Flags> {
         String streamName = flags.arguments.get(0);
 
         try {
-            StreamProperties streamProps = result(
+            Object streamProps = result(
                 admin.getStream(
                     globalFlags.namespace,
                     streamName));
-            if (streamProps.getStreamConf().getStorageType() != StorageType.TABLE) {
+            /*if (streamProps.getStreamConf().getStorageType() != StorageType.TABLE) {
                 spec.console().println("'" + streamName + "' is not a table storage entity, its storage type is "
                     + streamProps.getStreamConf().getStorageType());
             } else {
                 spec.console().println("Table '" + streamName + "' :");
-            }
+            }*/
             spec.console().println(streamProps);
         } catch (NamespaceNotFoundException nfe) {
             spec.console().println("Namespace '" + globalFlags.namespace + "' does not exist");

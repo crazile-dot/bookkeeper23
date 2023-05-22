@@ -1,4 +1,4 @@
-/*
+/**
  * Licensed to the Apache Software Foundation (ASF) under one
  * or more contributor license agreements.  See the NOTICE file
  * distributed with this work for additional information
@@ -21,7 +21,7 @@ import java.io.IOException;
 import java.util.concurrent.CompletableFuture;
 import java.util.concurrent.TimeUnit;
 import org.apache.bookkeeper.common.concurrent.FutureUtils;
-import org.apache.bookkeeper.common.util.OrderedScheduler;
+//import org.apache.bookkeeper.common.util.OrderedScheduler;
 import org.apache.distributedlog.exceptions.DLInterruptedException;
 import org.apache.distributedlog.util.Utils;
 import org.slf4j.Logger;
@@ -68,7 +68,7 @@ public class LockWaiter {
      * Return the future representing the waiting result.
      *
      * <p>If the future is interrupted
-     * (e.g. {@link FutureUtils#within(CompletableFuture, long, TimeUnit, Throwable, OrderedScheduler, Object)}),
+     * (e.g. {@link }),
      * the waiter will automatically clean up its waiting state.
      *
      * @return the future representing the acquire result.

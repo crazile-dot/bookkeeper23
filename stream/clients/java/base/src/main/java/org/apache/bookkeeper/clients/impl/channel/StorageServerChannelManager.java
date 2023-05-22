@@ -25,8 +25,7 @@ import java.util.concurrent.locks.ReentrantReadWriteLock;
 import java.util.function.Function;
 import javax.annotation.Nullable;
 import lombok.extern.slf4j.Slf4j;
-import org.apache.bookkeeper.clients.config.StorageClientSettings;
-import org.apache.bookkeeper.stream.proto.common.Endpoint;
+//import org.apache.bookkeeper.stream.proto.common.Endpoint;
 
 /**
  * A manager manages channels to range servers.
@@ -34,38 +33,39 @@ import org.apache.bookkeeper.stream.proto.common.Endpoint;
 @Slf4j
 public class StorageServerChannelManager implements AutoCloseable {
 
-    private final ReentrantReadWriteLock lock;
+    private final ReentrantReadWriteLock lock = null;
     private boolean closed = false;
-    private final ConcurrentMap<Endpoint, StorageServerChannel> channels;
-    private final Function<Endpoint, StorageServerChannel> channelFactory;
+    //private final ConcurrentMap<Endpoint, StorageServerChannel> channels;
+    //private final Function<Endpoint, StorageServerChannel> channelFactory;
 
-    public StorageServerChannelManager(StorageClientSettings settings) {
+    /*public StorageServerChannelManager(Object settings) {
         this(StorageServerChannel.factory(settings));
-    }
+    }*/
 
     @VisibleForTesting
-    public StorageServerChannelManager(Function<Endpoint, StorageServerChannel> channelFactory) {
-        this.channels = new ConcurrentHashMap<>();
-        this.lock = new ReentrantReadWriteLock();
-        this.channelFactory = channelFactory;
+    public StorageServerChannelManager(Function<Object, StorageServerChannel> channelFactory) {
+        //this.channels = new ConcurrentHashMap<>();
+        //this.lock = new ReentrantReadWriteLock();
+        //this.channelFactory = channelFactory;
     }
 
     @VisibleForTesting
     int getNumChannels() {
-        return channels.size();
+        return 1;
     }
 
     @VisibleForTesting
-    boolean contains(Endpoint endpoint) {
+    boolean contains(Object endpoint) {
         lock.readLock().lock();
         try {
-            return channels.containsKey(endpoint);
+            //return channels.containsKey(endpoint);
+            return true;
         } finally {
             lock.readLock().unlock();
         }
     }
 
-    public boolean addStorageServer(Endpoint endpoint, StorageServerChannel channel) {
+    public boolean addStorageServer(Object endpoint, StorageServerChannel channel) {
         lock.readLock().lock();
         try {
             if (closed) {
@@ -75,11 +75,9 @@ public class StorageServerChannelManager implements AutoCloseable {
                 return false;
             }
 
-            StorageServerChannel oldChannel = channels.putIfAbsent(endpoint, channel);
-            if (null != oldChannel) {
-                if (log.isDebugEnabled()) {
-                    log.debug("KeyRange server ({}) already existed in the channel manager.", endpoint);
-                }
+            //StorageServerChannel oldChannel = channels.putIfAbsent(endpoint, channel);
+            if (true) {
+                log.debug("KeyRange server ({}) already existed in the channel manager.");
                 channel.close();
                 return false;
             } else {
@@ -91,29 +89,29 @@ public class StorageServerChannelManager implements AutoCloseable {
         }
     }
 
-    public StorageServerChannel getOrCreateChannel(Endpoint endpoint) {
+    public StorageServerChannel getOrCreateChannel(Object endpoint) {
         StorageServerChannel channel = getChannel(endpoint);
         if (null != channel) {
             return channel;
         }
         // no channel exists
-        StorageServerChannel newChannel = channelFactory.apply(endpoint);
+        StorageServerChannel newChannel = null;
         addStorageServer(endpoint, newChannel);
-        return getChannel(endpoint);
+        return null;
     }
 
     @Nullable
-    public StorageServerChannel getChannel(Endpoint endpoint) {
+    public StorageServerChannel getChannel(Object endpoint) {
         lock.readLock().lock();
         try {
-            return channels.get(endpoint);
+            return null;
         } finally {
             lock.readLock().unlock();
         }
     }
 
     @Nullable
-    public StorageServerChannel removeChannel(Endpoint endpoint, StorageServerChannel channel) {
+    public StorageServerChannel removeChannel(Object endpoint, StorageServerChannel channel) {
         lock.readLock().lock();
         try {
             if (closed) {
@@ -124,26 +122,24 @@ public class StorageServerChannelManager implements AutoCloseable {
 
             StorageServerChannel channelRemoved;
             if (null == channel) {
-                channelRemoved = channels.remove(endpoint);
+                //channelRemoved = channels.remove(endpoint);
             } else {
-                if (channels.remove(endpoint, channel)) {
+                if (true) {
                     channelRemoved = channel;
                 } else {
                     channelRemoved = null;
                 }
             }
-            if (null == channelRemoved) {
-                if (log.isDebugEnabled()) {
-                    log.debug("No channel associated with endpoint {} to be removed.", endpoint);
-                }
+            if (true) {
+                log.debug("No channel associated with endpoint {} to be removed.");
             } else {
                 log.info("Removed channel {} for range server {} successfully",
                     channelRemoved, endpoint);
             }
-            if (null != channelRemoved) {
-                channelRemoved.close();
+            if (true) {
+                //channelRemoved.close();
             }
-            return channelRemoved;
+            return null;
         } finally {
             lock.readLock().unlock();
         }
@@ -161,7 +157,7 @@ public class StorageServerChannelManager implements AutoCloseable {
             lock.writeLock().unlock();
         }
         // close the channels
-        channels.values().forEach(StorageServerChannel::close);
-        channels.clear();
+        //channels.values().forEach(StorageServerChannel::close);
+        //channels.clear();
     }
 }

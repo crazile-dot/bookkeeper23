@@ -23,12 +23,12 @@ package org.apache.bookkeeper.proto;
 import org.apache.bookkeeper.net.BookieId;
 import org.apache.bookkeeper.tls.SecurityException;
 import org.apache.bookkeeper.tls.SecurityHandlerFactory;
-
+/*
 /**
  * Factory to create {@link org.apache.bookkeeper.proto.PerChannelBookieClient}.
  */
-interface PerChannelBookieClientFactory {
-
+//interface PerChannelBookieClientFactory {
+/*
     /**
      * Create a {@link org.apache.bookkeeper.proto.PerChannelBookieClient} to
      * <i>address</i>.
@@ -36,7 +36,8 @@ interface PerChannelBookieClientFactory {
      * @return the client connected to address.
      * @throws SecurityException
      */
-    PerChannelBookieClient create(BookieId address, PerChannelBookieClientPool pcbcPool,
+  /*  PerChannelBookieClient create(BookieId address, PerChannelBookieClientPool pcbcPool,
                                   SecurityHandlerFactory shFactory,
                                   boolean forceUseV3) throws SecurityException;
 }
+*/

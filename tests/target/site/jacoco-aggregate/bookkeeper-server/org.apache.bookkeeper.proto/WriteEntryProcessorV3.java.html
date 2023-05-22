@@ -1,0 +1,194 @@
+<?xml version="1.0" encoding="UTF-8"?><!DOCTYPE html PUBLIC "-//W3C//DTD XHTML 1.0 Strict//EN" "http://www.w3.org/TR/xhtml1/DTD/xhtml1-strict.dtd"><html xmlns="http://www.w3.org/1999/xhtml" lang="it"><head><meta http-equiv="Content-Type" content="text/html;charset=UTF-8"/><link rel="stylesheet" href="../../jacoco-resources/report.css" type="text/css"/><link rel="shortcut icon" href="../../jacoco-resources/report.gif" type="image/gif"/><title>WriteEntryProcessorV3.java</title><link rel="stylesheet" href="../../jacoco-resources/prettify.css" type="text/css"/><script type="text/javascript" src="../../jacoco-resources/prettify.js"></script></head><body onload="window['PR_TAB_WIDTH']=4;prettyPrint()"><div class="breadcrumb" id="breadcrumb"><span class="info"><a href="../../jacoco-sessions.html" class="el_session">Sessions</a></span><a href="../../index.html" class="el_report">Tests</a> &gt; <a href="../index.html" class="el_bundle">bookkeeper-server</a> &gt; <a href="index.source.html" class="el_package">org.apache.bookkeeper.proto</a> &gt; <span class="el_source">WriteEntryProcessorV3.java</span></div><h1>WriteEntryProcessorV3.java</h1><pre class="source lang-java linenums">/**
+ *
+ * Licensed to the Apache Software Foundation (ASF) under one
+ * or more contributor license agreements.  See the NOTICE file
+ * distributed with this work for additional information
+ * regarding copyright ownership.  The ASF licenses this file
+ * to you under the Apache License, Version 2.0 (the
+ * &quot;License&quot;); you may not use this file except in compliance
+ * with the License.  You may obtain a copy of the License at
+ *
+ *   http://www.apache.org/licenses/LICENSE-2.0
+ *
+ * Unless required by applicable law or agreed to in writing,
+ * software distributed under the License is distributed on an
+ * &quot;AS IS&quot; BASIS, WITHOUT WARRANTIES OR CONDITIONS OF ANY
+ * KIND, either express or implied.  See the License for the
+ * specific language governing permissions and limitations
+ * under the License.
+ *
+ */
+package org.apache.bookkeeper.proto;
+
+import io.netty.buffer.ByteBuf;
+import io.netty.buffer.Unpooled;
+import io.netty.channel.Channel;
+
+import java.io.IOException;
+import java.util.EnumSet;
+import java.util.concurrent.TimeUnit;
+
+import org.apache.bookkeeper.bookie.BookieException;
+import org.apache.bookkeeper.bookie.BookieException.OperationRejectedException;
+import org.apache.bookkeeper.client.api.WriteFlag;
+import org.apache.bookkeeper.net.BookieId;
+/*import org.apache.bookkeeper.proto.BookkeeperProtocol.AddRequest;
+import org.apache.bookkeeper.proto.BookkeeperProtocol.AddResponse;
+import org.apache.bookkeeper.proto.BookkeeperProtocol.Request;
+import org.apache.bookkeeper.proto.BookkeeperProtocol.Response;
+import org.apache.bookkeeper.proto.BookkeeperProtocol.StatusCode;*/
+import org.apache.bookkeeper.stats.OpStatsLogger;
+import org.apache.bookkeeper.util.MathUtils;
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
+
+class WriteEntryProcessorV3 extends PacketProcessorBaseV3 {
+<span class="nc" id="L46">    private static final Logger logger = LoggerFactory.getLogger(WriteEntryProcessorV3.class);</span>
+
+    public WriteEntryProcessorV3(Object request, Channel channel,
+                                 Object requestProcessor) {
+<span class="nc" id="L50">        super(request, channel, requestProcessor);</span>
+       // requestProcessor.onAddRequestStart(channel);
+<span class="nc" id="L52">    }</span>
+
+    // Returns null if there is no exception thrown
+    private void getAddResponse() {
+       /* final long startTimeNanos = MathUtils.nowInNano();
+        AddRequest addRequest = request.getAddRequest();
+        long ledgerId = addRequest.getLedgerId();
+        long entryId = addRequest.getEntryId();
+
+        final AddResponse.Builder addResponse = AddResponse.newBuilder()
+                .setLedgerId(ledgerId)
+                .setEntryId(entryId);
+
+        if (!isVersionCompatible()) {
+            addResponse.setStatus(StatusCode.EBADVERSION);
+            return addResponse.build();
+        }
+
+        if (requestProcessor.getBookie().isReadOnly()
+            &amp;&amp; !(RequestUtils.isHighPriority(request)
+                    &amp;&amp; requestProcessor.getBookie().isAvailableForHighPriorityWrites())) {
+            logger.warn(&quot;BookieServer is running as readonly mode, so rejecting the request from the client!&quot;);
+            addResponse.setStatus(StatusCode.EREADONLY);
+            return addResponse.build();
+        }
+
+        BookkeeperInternalCallbacks.WriteCallback wcb = new BookkeeperInternalCallbacks.WriteCallback() {
+            @Override
+            public void writeComplete(int rc, long ledgerId, long entryId,
+                                      BookieId addr, Object ctx) {
+                if (BookieProtocol.EOK == rc) {
+                    requestProcessor.getRequestStats().getAddEntryStats()
+                        .registerSuccessfulEvent(MathUtils.elapsedNanos(startTimeNanos), TimeUnit.NANOSECONDS);
+                } else {
+                    requestProcessor.getRequestStats().getAddEntryStats()
+                        .registerFailedEvent(MathUtils.elapsedNanos(startTimeNanos), TimeUnit.NANOSECONDS);
+                }
+
+                StatusCode status;
+                switch (rc) {
+                    case BookieProtocol.EOK:
+                        status = StatusCode.EOK;
+                        break;
+                    case BookieProtocol.EIO:
+                        status = StatusCode.EIO;
+                        break;
+                    default:
+                        status = StatusCode.EUA;
+                        break;
+                }
+                addResponse.setStatus(status);
+                Response.Builder response = Response.newBuilder()
+                        .setHeader(getHeader())
+                        .setStatus(addResponse.getStatus())
+                        .setAddResponse(addResponse);
+                Response resp = response.build();
+                sendResponse(status, resp, requestProcessor.getRequestStats().getAddRequestStats());
+            }
+        };
+        final EnumSet&lt;WriteFlag&gt; writeFlags;
+        if (addRequest.hasWriteFlags()) {
+            writeFlags = WriteFlag.getWriteFlags(addRequest.getWriteFlags());
+        } else {
+            writeFlags = WriteFlag.NONE;
+        }
+        final boolean ackBeforeSync = writeFlags.contains(WriteFlag.DEFERRED_SYNC);
+        StatusCode status = null;
+        byte[] masterKey = addRequest.getMasterKey().toByteArray();
+        ByteBuf entryToAdd = Unpooled.wrappedBuffer(addRequest.getBody().asReadOnlyByteBuffer());
+        try {
+            if (RequestUtils.hasFlag(addRequest, AddRequest.Flag.RECOVERY_ADD)) {
+                requestProcessor.getBookie().recoveryAddEntry(entryToAdd, wcb, channel, masterKey);
+            } else {
+                requestProcessor.getBookie().addEntry(entryToAdd, ackBeforeSync, wcb, channel, masterKey);
+            }
+            status = StatusCode.EOK;
+        } catch (OperationRejectedException e) {
+            // Avoid to log each occurence of this exception as this can happen when the ledger storage is
+            // unable to keep up with the write rate.
+            if (logger.isDebugEnabled()) {
+                logger.debug(&quot;Operation rejected while writing {}&quot;, request, e);
+            }
+            status = StatusCode.EIO;
+        } catch (IOException e) {
+            logger.error(&quot;Error writing entry:{} to ledger:{}&quot;,
+                    entryId, ledgerId, e);
+            status = StatusCode.EIO;
+        } catch (BookieException.LedgerFencedException e) {
+            logger.error(&quot;Ledger fenced while writing entry:{} to ledger:{}&quot;,
+                    entryId, ledgerId, e);
+            status = StatusCode.EFENCED;
+        } catch (BookieException e) {
+            logger.error(&quot;Unauthorized access to ledger:{} while writing entry:{}&quot;,
+                    ledgerId, entryId, e);
+            status = StatusCode.EUA;
+        } catch (Throwable t) {
+            logger.error(&quot;Unexpected exception while writing {}@{} : &quot;,
+                    entryId, ledgerId, t);
+            // some bad request which cause unexpected exception
+            status = StatusCode.EBADREQ;
+        }
+
+        // If everything is okay, we return null so that the calling function
+        // doesn't return a response back to the caller.
+        if (!status.equals(StatusCode.EOK)) {
+            addResponse.setStatus(status);
+            return addResponse.build();
+        }
+        return null;*/
+<span class="nc" id="L161">    }</span>
+
+    @Override
+    public void safeRun() {
+        /*AddResponse addResponse = getAddResponse();
+        if (null != addResponse) {
+            // This means there was an error and we should send this back.
+            Response.Builder response = Response.newBuilder()
+                    .setHeader(getHeader())
+                    .setStatus(addResponse.getStatus())
+                    .setAddResponse(addResponse);
+            Response resp = response.build();
+            sendResponse(addResponse.getStatus(), resp,
+                         requestProcessor.getRequestStats().getAddRequestStats());
+        }*/
+<span class="nc" id="L176">    }</span>
+
+    @Override
+    protected void sendResponse(Object code, Object response, OpStatsLogger statsLogger) {
+<span class="nc" id="L180">        super.sendResponse(code, response, statsLogger);</span>
+        //requestProcessor.onAddRequestFinish();
+<span class="nc" id="L182">    }</span>
+
+    /**
+     * this toString method filters out body and masterKey from the output.
+     * masterKey contains the password of the ledger and body is customer data,
+     * so it is not appropriate to have these in logs or system output.
+     */
+    @Override
+    public String toString() {
+<span class="nc" id="L191">        return &quot;&quot;;</span>
+    }
+}
+</pre><div class="footer"><span class="right">Created with <a href="http://www.jacoco.org/jacoco">JaCoCo</a> 0.8.2.201808211720</span></div></body></html>

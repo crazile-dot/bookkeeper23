@@ -40,55 +40,58 @@ import org.apache.bookkeeper.clients.impl.channel.StorageServerChannel;
 import org.apache.bookkeeper.clients.impl.container.StorageContainerChannel;
 import org.apache.bookkeeper.clients.utils.ListenableFutureRpcProcessor;
 import org.apache.bookkeeper.common.util.Backoff.Policy;
-import org.apache.bookkeeper.stream.proto.kv.rpc.RangeRequest;
+/*import org.apache.bookkeeper.stream.proto.kv.rpc.RangeRequest;
 import org.apache.bookkeeper.stream.proto.kv.rpc.RangeResponse;
 import org.apache.bookkeeper.stream.proto.storage.StatusCode;
-
+*/
 /**
  * Request Processor processing table request.
  */
-class RangeRequestProcessor<RespT>
-    extends ListenableFutureRpcProcessor<RangeRequest, RangeResponse, RespT> {
+class RangeRequestProcessor<RespT> {
+    //extends ListenableFutureRpcProcessor<RangeRequest, RangeResponse, RespT> {
 
     public static <T> RangeRequestProcessor<T> of(
-        RangeRequest request,
-        Function<RangeResponse, T> responseFunc,
+        Object request,
+        Function<Object, T> responseFunc,
         StorageContainerChannel channel,
         ScheduledExecutorService executor,
         Policy backoffPolicy) {
-        return new RangeRequestProcessor<>(request, responseFunc, channel, executor, backoffPolicy);
+        //return new RangeRequestProcessor<>(request, responseFunc, channel, executor, backoffPolicy);
+        return null;
     }
 
-    private final RangeRequest request;
-    private final Function<RangeResponse, RespT> responseFunc;
+    private final Object request;
+    private final Function<Object, RespT> responseFunc;
 
-    private RangeRequestProcessor(RangeRequest request,
-                                  Function<RangeResponse, RespT> respFunc,
+    private RangeRequestProcessor(Object request,
+                                  Function<Object, RespT> respFunc,
                                   StorageContainerChannel channel,
                                   ScheduledExecutorService executor,
                                   Policy backoffPolicy) {
-        super(channel, executor, backoffPolicy);
+        //super(channel, executor, backoffPolicy);
         this.request = request;
         this.responseFunc = respFunc;
     }
 
-    @Override
-    protected RangeRequest createRequest() {
+    //@Override
+    protected Object createRequest() {
         return request;
     }
 
-    @Override
-    protected ListenableFuture<RangeResponse> sendRPC(StorageServerChannel rsChannel,
-                                                      RangeRequest request) {
-        return rsChannel.getTableService().range(request);
+    //@Override
+    protected ListenableFuture<Object> sendRPC(StorageServerChannel rsChannel,
+                                                      Object request) {
+        //return rsChannel.getTableService().range(request);
+        return null;
     }
 
-    @Override
-    protected RespT processResponse(RangeResponse response) throws Exception {
-        if (StatusCode.SUCCESS == response.getHeader().getCode()) {
+    //@Override
+    protected RespT processResponse(Object response) throws Exception {
+        /*if (StatusCode.SUCCESS == response.getHeader().getCode()) {
             return responseFunc.apply(response);
         }
         throw new InternalServerException("Encountered internal server exception : code = "
-            + response.getHeader().getCode());
+            + response.getHeader().getCode());*/
+        return null;
     }
 }

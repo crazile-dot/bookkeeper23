@@ -28,25 +28,25 @@ import java.util.function.Supplier;
 import lombok.extern.slf4j.Slf4j;
 import org.apache.bookkeeper.clients.impl.internal.api.RootRangeClient;
 import org.apache.bookkeeper.common.util.Backoff;
-import org.apache.bookkeeper.common.util.OrderedScheduler;
+//import org.apache.bookkeeper.common.util.OrderedScheduler;
 import org.apache.bookkeeper.common.util.Retries;
-import org.apache.bookkeeper.stream.proto.NamespaceConfiguration;
-import org.apache.bookkeeper.stream.proto.NamespaceProperties;
-import org.apache.bookkeeper.stream.proto.StreamConfiguration;
-import org.apache.bookkeeper.stream.proto.StreamProperties;
+//import org.apache.bookkeeper.stream.proto.NamespaceConfiguration;
+//import org.apache.bookkeeper.stream.proto.NamespaceProperties;
+//import org.apache.bookkeeper.stream.proto.StreamConfiguration;
+//import org.apache.bookkeeper.stream.proto.StreamProperties;
 
 /**
  * A root range client wrapper with retries.
  */
 @Slf4j
-class RootRangeClientImplWithRetries implements RootRangeClient {
+abstract class RootRangeClientImplWithRetries implements RootRangeClient {
 
     @VisibleForTesting
     static final Predicate<Throwable> ROOT_RANGE_CLIENT_RETRY_PREDICATE =
         cause -> shouldRetryOnException(cause);
 
     private static boolean shouldRetryOnException(Throwable cause) {
-        log.error("Reason for the failure ", cause);
+        log.error("Reason for the failure {}", cause);
         if (cause instanceof StatusRuntimeException || cause instanceof StatusException) {
             Status status;
             if (cause instanceof StatusException) {
@@ -73,29 +73,24 @@ class RootRangeClientImplWithRetries implements RootRangeClient {
 
     private final RootRangeClient client;
     private final Backoff.Policy backoffPolicy;
-    private final OrderedScheduler scheduler;
+    //private final OrderedScheduler scheduler;
 
     RootRangeClientImplWithRetries(RootRangeClient client,
                                    Backoff.Policy backoffPolicy,
-                                   OrderedScheduler scheduler) {
+                                   Object scheduler) {
         this.client = client;
         this.backoffPolicy = backoffPolicy;
-        this.scheduler = scheduler;
+        //this.scheduler = scheduler;
     }
 
     private <T> CompletableFuture<T> runRpcWithRetries(
             Supplier<CompletableFuture<T>> futureSupplier) {
-        return Retries.run(
+        /*return Retries.run(
             backoffPolicy.toBackoffs(),
             ROOT_RANGE_CLIENT_RETRY_PREDICATE,
             futureSupplier,
-            scheduler);
-    }
-
-    @Override
-    public CompletableFuture<NamespaceProperties> createNamespace(String namespace,
-                                                                  NamespaceConfiguration nsConf) {
-        return runRpcWithRetries(() -> client.createNamespace(namespace, nsConf));
+            scheduler);*/
+        return null;
     }
 
     @Override
@@ -103,18 +98,6 @@ class RootRangeClientImplWithRetries implements RootRangeClient {
         return runRpcWithRetries(() -> client.deleteNamespace(namespace));
     }
 
-    @Override
-    public CompletableFuture<NamespaceProperties> getNamespace(String namespace) {
-        return runRpcWithRetries(() -> client.getNamespace(namespace));
-    }
-
-    @Override
-    public CompletableFuture<StreamProperties> createStream(String nsName,
-                                                            String streamName,
-                                                            StreamConfiguration streamConf) {
-        return runRpcWithRetries(() ->
-            client.createStream(nsName, streamName, streamConf));
-    }
 
     @Override
     public CompletableFuture<Boolean> deleteStream(String nsName, String streamName) {
@@ -122,15 +105,4 @@ class RootRangeClientImplWithRetries implements RootRangeClient {
             client.deleteStream(nsName, streamName));
     }
 
-    @Override
-    public CompletableFuture<StreamProperties> getStream(String nsName, String streamName) {
-        return runRpcWithRetries(() ->
-            client.getStream(nsName, streamName));
-    }
-
-    @Override
-    public CompletableFuture<StreamProperties> getStream(long streamId) {
-        return runRpcWithRetries(() ->
-            client.getStream(streamId));
-    }
 }

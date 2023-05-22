@@ -28,26 +28,21 @@ import java.util.concurrent.ExecutionException;
 import java.util.function.Supplier;
 import java.util.stream.Collectors;
 import lombok.extern.slf4j.Slf4j;
-import org.apache.bookkeeper.bookie.BookieResources;
-import org.apache.bookkeeper.clients.config.StorageClientSettings;
 import org.apache.bookkeeper.clients.impl.channel.StorageServerChannel;
 import org.apache.bookkeeper.clients.impl.internal.StorageServerClientManagerImpl;
-import org.apache.bookkeeper.common.component.AutoCloseableLifecycleComponent;
 import org.apache.bookkeeper.common.component.ComponentInfoPublisher;
 import org.apache.bookkeeper.common.component.ComponentStarter;
 import org.apache.bookkeeper.common.component.LifecycleComponent;
 import org.apache.bookkeeper.common.component.LifecycleComponentStack;
 import org.apache.bookkeeper.conf.ServerConfiguration;
 import org.apache.bookkeeper.discover.BookieServiceInfo;
-import org.apache.bookkeeper.meta.LedgerManagerFactory;
-import org.apache.bookkeeper.meta.MetadataBookieDriver;
 import org.apache.bookkeeper.meta.zk.ZKMetadataDriverBase;
 import org.apache.bookkeeper.server.http.BKHttpServiceProvider;
 import org.apache.bookkeeper.server.service.HttpService;
 import org.apache.bookkeeper.statelib.impl.rocksdb.checkpoint.dlog.DLCheckpointStore;
 import org.apache.bookkeeper.stats.NullStatsLogger;
 import org.apache.bookkeeper.stats.StatsLogger;
-import org.apache.bookkeeper.stream.proto.common.Endpoint;
+//import org.apache.bookkeeper.stream.proto.common.Endpoint;
 import org.apache.bookkeeper.stream.server.conf.BookieConfiguration;
 import org.apache.bookkeeper.stream.server.conf.DLConfiguration;
 import org.apache.bookkeeper.stream.server.conf.StorageServerConfiguration;
@@ -117,7 +112,7 @@ public class StorageServer {
         log.info("Loaded configuration file {}", confFile);
     }
 
-    public static Endpoint createLocalEndpoint(int port, boolean useHostname) throws UnknownHostException {
+    public static Object createLocalEndpoint(int port, boolean useHostname) throws UnknownHostException {
         String hostname;
         log.warn("Determining hostname for stream storage");
         if (useHostname) {
@@ -127,10 +122,11 @@ public class StorageServer {
         }
 
         log.warn("Decided to use hostname {}", hostname);
-        return Endpoint.newBuilder()
+        /*return Endpoint.newBuilder()
             .setHostname(hostname)
             .setPort(port)
-            .build();
+            .build();*/
+        return null;
     }
 
     public static void main(String[] args) {
@@ -228,7 +224,7 @@ public class StorageServer {
         storageConf.validate();
 
         // Get my local endpoint
-        Endpoint myEndpoint = createLocalEndpoint(grpcPort, useHostname);
+        Object myEndpoint = createLocalEndpoint(grpcPort, useHostname);
 
         // Create shared resources
         StorageResources storageResources = StorageResources.create();
@@ -260,19 +256,10 @@ public class StorageServer {
 
             // Build http service
             if (bkServerConf.isHttpServerEnabled()) {
-                MetadataBookieDriver metadataDriver = BookieResources.createMetadataDriver(bkServerConf,
-                        rootStatsLogger);
-                serverBuilder.addComponent(new AutoCloseableLifecycleComponent("metadataDriver",
-                        metadataDriver));
-                LedgerManagerFactory ledgerManagerFactory = metadataDriver.getLedgerManagerFactory();
-                serverBuilder.addComponent(new AutoCloseableLifecycleComponent("lmFactory",
-                        ledgerManagerFactory));
-
                 BKHttpServiceProvider provider = new BKHttpServiceProvider.Builder()
                         .setBookieServer(bookieService.getServer())
                         .setServerConfiguration(bkServerConf)
                         .setStatsProvider(statsProviderService.getStatsProvider())
-                        .setLedgerManagerFactory(ledgerManagerFactory)
                         .build();
                 HttpService httpService =
                         new HttpService(provider,
@@ -309,11 +296,9 @@ public class StorageServer {
             rootStatsLogger.scope("dlog"));
 
         // client settings for the proxy channels
-        StorageClientSettings proxyClientSettings = StorageClientSettings.newBuilder()
-            .serviceUri("bk://localhost:" + grpcPort)
-            .build();
+        Object proxyClientSettings =null;
         // Create range (stream) store
-        StorageContainerStoreBuilder storageContainerStoreBuilder = StorageContainerStoreBuilder.newBuilder()
+        /*StorageContainerStoreBuilder storageContainerStoreBuilder = StorageContainerStoreBuilder.newBuilder()
             .withStatsLogger(rootStatsLogger.scope("storage"))
             .withStorageConfiguration(storageConf)
             // the storage resources shared across multiple components
@@ -321,13 +306,8 @@ public class StorageServer {
             // the placement policy
             .withStorageContainerPlacementPolicyFactory(() -> {
                 long numStorageContainers;
-                try (ZkClusterMetadataStore store = new ZkClusterMetadataStore(
-                    curatorProviderService.get(),
-                    ZKMetadataDriverBase.resolveZkServers(bkServerConf),
-                    ZK_METADATA_ROOT_PATH)) {
-                    numStorageContainers = store.getClusterMetadata().getNumStorageContainers();
-                }
-                return StorageContainerPlacementPolicyImpl.of((int) numStorageContainers);
+
+                return null;
             })
             // the default log backend uri
             .withDefaultBackendUri(dlNamespaceProvider.getDlogUri())
@@ -336,10 +316,7 @@ public class StorageServer {
                 new ZkStorageContainerManager(
                     myEndpoint,
                     storageConf,
-                    new ZkClusterMetadataStore(
-                        curatorProviderService.get(),
-                        ZKMetadataDriverBase.resolveZkServers(bkServerConf),
-                        ZK_METADATA_ROOT_PATH),
+                    null,
                     registry,
                     rootStatsLogger.scope("sc").scope("manager")))
             // with the inter storage container client manager
@@ -357,20 +334,20 @@ public class StorageServer {
                 StorageServerChannel.factory(proxyClientSettings)
                     // intercept the channel to attach routing header
                     .andThen(channel -> channel.intercept(new RoutingHeaderProxyInterceptor()))
-            ));
-        StorageService storageService = new StorageService(
+            ));*/
+        /*StorageService storageService = new StorageService(
             storageConf, storageContainerStoreBuilder, rootStatsLogger.scope("storage"));
-
+*/
         // Create gRPC server
         StatsLogger rpcStatsLogger = rootStatsLogger.scope("grpc");
-        GrpcServerSpec serverSpec = GrpcServerSpec.builder()
+        /*GrpcServerSpec serverSpec = GrpcServerSpec.builder()
             .storeSupplier(storageService)
             .storeServerConf(serverConf)
             .endpoint(myEndpoint)
             .statsLogger(rpcStatsLogger)
-            .build();
-        GrpcService grpcService = new GrpcService(
-            serverConf, serverSpec, rpcStatsLogger);
+            .build();*/
+        /*GrpcService grpcService = new GrpcService(
+            serverConf, serverSpec, rpcStatsLogger);*/
 
         // Create a registration service provider
         RegistrationServiceProvider regService = new RegistrationServiceProvider(
@@ -380,14 +357,14 @@ public class StorageServer {
 
         // Create a registration state service only when service is ready.
         RegistrationStateService regStateService = new RegistrationStateService(
-            myEndpoint,
+            null,
             bkServerConf,
             bkConf,
             regService,
             rootStatsLogger.scope("registration"));
 
         // Create a cluster controller service
-        ClusterControllerService clusterControllerService = new ClusterControllerService(
+        /*ClusterControllerService clusterControllerService = new ClusterControllerService(
             storageConf,
             () -> new ClusterControllerImpl(
                 new ZkClusterMetadataStore(
@@ -398,10 +375,10 @@ public class StorageServer {
                 new DefaultStorageContainerController(),
                 new ZkClusterControllerLeaderSelector(curatorProviderService.get(), ZK_METADATA_ROOT_PATH),
                 storageConf),
-            rootStatsLogger.scope("cluster_controller"));
+            rootStatsLogger.scope("cluster_controller"));*/
 
         // Create all the service stack
-        return serverBuilder
+        /*return serverBuilder
             .addComponent(bkWatchService)           // service that watches bookies
             .addComponent(curatorProviderService)   // service that provides curator client
             .addComponent(dlNamespaceProvider)      // service that provides dl namespace
@@ -410,7 +387,8 @@ public class StorageServer {
             .addComponent(regService)               // service that provides registration client
             .addComponent(regStateService)          // service that manages server state
             .addComponent(clusterControllerService) // service that run cluster controller service
-            .build();
+            .build();*/
+        return null;
     }
 
     /**

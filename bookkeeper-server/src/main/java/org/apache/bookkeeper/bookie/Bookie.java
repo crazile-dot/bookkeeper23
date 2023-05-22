@@ -23,6 +23,7 @@ import java.io.IOException;
 import java.util.PrimitiveIterator;
 import java.util.concurrent.CompletableFuture;
 import org.apache.bookkeeper.common.util.Watcher;
+import org.apache.bookkeeper.meta.LedgerManagerFactory;
 import org.apache.bookkeeper.proto.BookkeeperInternalCallbacks.WriteCallback;
 
 /**
@@ -48,7 +49,7 @@ public interface Bookie {
     void forceLedger(long ledgerId, WriteCallback cb, Object ctx);
     void setExplicitLac(ByteBuf entry, WriteCallback writeCallback, Object ctx, byte[] masterKey)
             throws IOException, InterruptedException, BookieException;
-    ByteBuf getExplicitLac(long ledgerId) throws IOException, NoLedgerException, BookieException;
+    ByteBuf getExplicitLac(long ledgerId) throws IOException, NoLedgerException;
 
     // these can probably be moved out and called directly on ledgerdirmanager
     long getTotalDiskSpace() throws IOException;
@@ -56,8 +57,8 @@ public interface Bookie {
 
     // TODO: Shouldn't this be async?
     ByteBuf readEntry(long ledgerId, long entryId)
-            throws IOException, NoLedgerException, BookieException;
-    long readLastAddConfirmed(long ledgerId) throws IOException, BookieException;
+            throws IOException, NoLedgerException;
+    long readLastAddConfirmed(long ledgerId) throws IOException;
     PrimitiveIterator.OfLong getListOfEntriesOfLedger(long ledgerId) throws IOException, NoLedgerException;
 
     /**
@@ -85,6 +86,9 @@ public interface Bookie {
 
     // TODO: Should be constructed and passed in as a parameter
     LedgerStorage getLedgerStorage();
+
+    // TODO: LedgerManagerFactory, should be constructed elsewhere, passed in as parameter
+    LedgerManagerFactory getLedgerManagerFactory();
 
     // TODO: Move this exceptions somewhere else
     /**

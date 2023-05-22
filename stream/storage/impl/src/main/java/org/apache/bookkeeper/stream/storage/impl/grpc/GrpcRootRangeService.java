@@ -18,7 +18,7 @@
 package org.apache.bookkeeper.stream.storage.impl.grpc;
 
 import io.grpc.stub.StreamObserver;
-import org.apache.bookkeeper.stream.proto.storage.CreateNamespaceRequest;
+/*import org.apache.bookkeeper.stream.proto.storage.CreateNamespaceRequest;
 import org.apache.bookkeeper.stream.proto.storage.CreateNamespaceResponse;
 import org.apache.bookkeeper.stream.proto.storage.CreateStreamRequest;
 import org.apache.bookkeeper.stream.proto.storage.CreateStreamResponse;
@@ -31,14 +31,14 @@ import org.apache.bookkeeper.stream.proto.storage.GetNamespaceResponse;
 import org.apache.bookkeeper.stream.proto.storage.GetStreamRequest;
 import org.apache.bookkeeper.stream.proto.storage.GetStreamResponse;
 import org.apache.bookkeeper.stream.proto.storage.RootRangeServiceGrpc.RootRangeServiceImplBase;
-import org.apache.bookkeeper.stream.proto.storage.StatusCode;
+import org.apache.bookkeeper.stream.proto.storage.StatusCode;*/
 import org.apache.bookkeeper.stream.storage.api.metadata.RangeStoreService;
 import org.apache.bookkeeper.stream.storage.impl.grpc.handler.ResponseHandler;
 
 /**
  * Grpc based root range service.
  */
-public class GrpcRootRangeService extends RootRangeServiceImplBase {
+public class GrpcRootRangeService  {
 
     private final RangeStoreService rs;
 
@@ -50,10 +50,10 @@ public class GrpcRootRangeService extends RootRangeServiceImplBase {
     // Namespace API
     //
 
-    @Override
-    public void createNamespace(CreateNamespaceRequest request,
-                                StreamObserver<CreateNamespaceResponse> responseObserver) {
-        rs.createNamespace(request).whenComplete(
+    //@Override
+    public void createNamespace(Object request,
+                                StreamObserver<Object> responseObserver) {
+        /*rs.createNamespace(request).whenComplete(
             new ResponseHandler<CreateNamespaceResponse>(responseObserver) {
                 @Override
                 protected CreateNamespaceResponse createErrorResp(Throwable cause) {
@@ -61,13 +61,13 @@ public class GrpcRootRangeService extends RootRangeServiceImplBase {
                         .setCode(StatusCode.INTERNAL_SERVER_ERROR)
                         .build();
                 }
-            });
+            });*/
     }
 
-    @Override
-    public void deleteNamespace(DeleteNamespaceRequest request,
-                                StreamObserver<DeleteNamespaceResponse> responseObserver) {
-        rs.deleteNamespace(request).whenComplete(
+   // @Override
+    public void deleteNamespace(Object request,
+                                StreamObserver<Object> responseObserver) {
+       /* rs.deleteNamespace(request).whenComplete(
             new ResponseHandler<DeleteNamespaceResponse>(responseObserver) {
                 @Override
                 protected DeleteNamespaceResponse createErrorResp(Throwable cause) {
@@ -75,13 +75,13 @@ public class GrpcRootRangeService extends RootRangeServiceImplBase {
                         .setCode(StatusCode.INTERNAL_SERVER_ERROR)
                         .build();
                 }
-            });
+            });*/
     }
 
-    @Override
-    public void getNamespace(GetNamespaceRequest request,
-                             StreamObserver<GetNamespaceResponse> responseObserver) {
-        rs.getNamespace(request).whenComplete(
+    //@Override
+    public void getNamespace(Object request,
+                             StreamObserver<Object> responseObserver) {
+       /* rs.getNamespace(request).whenComplete(
             new ResponseHandler<GetNamespaceResponse>(responseObserver) {
                 @Override
                 protected GetNamespaceResponse createErrorResp(Throwable cause) {
@@ -89,17 +89,17 @@ public class GrpcRootRangeService extends RootRangeServiceImplBase {
                         .setCode(StatusCode.INTERNAL_SERVER_ERROR)
                         .build();
                 }
-            });
+            });*/
     }
 
     //
     // Stream API
     //
 
-    @Override
-    public void createStream(CreateStreamRequest request,
-                             StreamObserver<CreateStreamResponse> responseObserver) {
-        rs.createStream(request).whenComplete(
+    //@Override
+    public void createStream(Object request,
+                             StreamObserver<Object> responseObserver) {
+        /*rs.createStream(request).whenComplete(
             new ResponseHandler<CreateStreamResponse>(responseObserver) {
                 @Override
                 protected CreateStreamResponse createErrorResp(Throwable cause) {
@@ -107,13 +107,13 @@ public class GrpcRootRangeService extends RootRangeServiceImplBase {
                         .setCode(StatusCode.INTERNAL_SERVER_ERROR)
                         .build();
                 }
-            });
+            });*/
     }
 
-    @Override
-    public void deleteStream(DeleteStreamRequest request,
-                             StreamObserver<DeleteStreamResponse> responseObserver) {
-        rs.deleteStream(request).whenComplete(
+    //@Override
+    public void deleteStream(Object request,
+                             StreamObserver<Object> responseObserver) {
+        /*rs.deleteStream(request).whenComplete(
             new ResponseHandler<DeleteStreamResponse>(responseObserver) {
                 @Override
                 protected DeleteStreamResponse createErrorResp(Throwable cause) {
@@ -121,13 +121,13 @@ public class GrpcRootRangeService extends RootRangeServiceImplBase {
                         .setCode(StatusCode.INTERNAL_SERVER_ERROR)
                         .build();
                 }
-            });
+            });*/
     }
 
-    @Override
-    public void getStream(GetStreamRequest request,
-                          StreamObserver<GetStreamResponse> responseObserver) {
-        rs.getStream(request).whenComplete(
+    //@Override
+    public void getStream(Object request,
+                          StreamObserver<Object> responseObserver) {
+        /*rs.getStream(request).whenComplete(
             new ResponseHandler<GetStreamResponse>(responseObserver) {
                 @Override
                 protected GetStreamResponse createErrorResp(Throwable cause) {
@@ -135,7 +135,7 @@ public class GrpcRootRangeService extends RootRangeServiceImplBase {
                         .setCode(StatusCode.INTERNAL_SERVER_ERROR)
                         .build();
                 }
-            });
+            });*/
     }
 
 }

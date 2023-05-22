@@ -1,4 +1,4 @@
-/*
+/**
  *
  * Licensed to the Apache Software Foundation (ASF) under one
  * or more contributor license agreements.  See the NOTICE file
@@ -21,7 +21,7 @@
 package org.apache.bookkeeper.client.api;
 
 import java.util.concurrent.CompletableFuture;
-import org.apache.bookkeeper.client.impl.BookKeeperBuilderImpl;
+//import org.apache.bookkeeper.client.impl.BookKeeperBuilderImpl;
 import org.apache.bookkeeper.common.annotation.InterfaceAudience.Public;
 import org.apache.bookkeeper.common.annotation.InterfaceStability.Unstable;
 import org.apache.bookkeeper.conf.ClientConfiguration;
@@ -35,13 +35,13 @@ import org.apache.bookkeeper.conf.ClientConfiguration;
 @Unstable
 public interface BookKeeper extends AutoCloseable {
 
-    /**
+   /* /**
      * Create a new builder which can be used to boot a new BookKeeper client.
      *
      * @param clientConfiguration the configuration for the client
      * @return a builder
      */
-    static BookKeeperBuilder newBuilder(final ClientConfiguration clientConfiguration) {
+    /*static BookKeeperBuilder newBuilder(final ClientConfiguration clientConfiguration) {
         return new BookKeeperBuilderImpl(clientConfiguration);
     }
 

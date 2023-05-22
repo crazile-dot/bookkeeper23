@@ -1,4 +1,4 @@
-/*
+/**
  * Licensed to the Apache Software Foundation (ASF) under one
  * or more contributor license agreements.  See the NOTICE file
  * distributed with this work for additional information
@@ -47,13 +47,13 @@ public interface LogSegmentEntryWriter extends Sizable {
     /**
      * Close the entry writer.
      */
-    void asyncClose(AsyncCallback.CloseCallback callback, Object ctx);
+    void asyncClose(Object callback, Object ctx);
 
     /**
      * Async add entry to the log segment.
      *
      *  <p>The implementation semantic follows
-     * {@link org.apache.bookkeeper.client.LedgerHandle#asyncAddEntry(
+     * {@link org.apache.bookkeeper.client.LedgerHandle(
      * byte[], int, int, AsyncCallback.AddCallback, Object)}
      *
      * @param entry

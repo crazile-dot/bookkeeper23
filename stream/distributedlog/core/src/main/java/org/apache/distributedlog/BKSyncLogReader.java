@@ -1,4 +1,4 @@
-/*
+/**
  * Licensed to the Apache Software Foundation (ASF) under one
  * or more contributor license agreements.  See the NOTICE file
  * distributed with this work for additional information
@@ -96,7 +96,7 @@ class BKSyncLogReader implements LogReader, AsyncNotification {
                     bkdlm.getConf(),
                     readHandler,
                     bkdlm.getReaderEntryStore(),
-                    bkdlm.getScheduler(),
+                    null,
                     Ticker.systemTicker(),
                     bkdlm.alertStatsLogger);
         readHandler.registerListener(readAheadReader);
@@ -257,12 +257,12 @@ class BKSyncLogReader implements LogReader, AsyncNotification {
         }
         readHandler.unregisterListener(readAheadReader);
         readAheadReader.removeStateChangeNotification(this);
-        FutureUtils.proxyTo(
+        /*FutureUtils.proxyTo(
             Utils.closeSequence(bkdlm.getScheduler(), true,
                     readAheadReader,
                     readHandler
             ),
-            closePromise);
+            closePromise);*/
         return closePromise;
     }
 

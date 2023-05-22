@@ -33,8 +33,8 @@ import java.util.Optional;
 import java.util.concurrent.Executor;
 import java.util.function.Consumer;
 import lombok.extern.slf4j.Slf4j;
-import org.apache.bookkeeper.stream.proto.cluster.ClusterAssignmentData;
-import org.apache.bookkeeper.stream.proto.cluster.ClusterMetadata;
+/*import org.apache.bookkeeper.stream.proto.cluster.ClusterAssignmentData;
+import org.apache.bookkeeper.stream.proto.cluster.ClusterMetadata;*/
 import org.apache.bookkeeper.stream.storage.api.cluster.ClusterMetadataStore;
 import org.apache.bookkeeper.stream.storage.exceptions.StorageRuntimeException;
 import org.apache.curator.framework.CuratorFramework;
@@ -48,7 +48,7 @@ import org.apache.zookeeper.KeeperException;
  */
 @Slf4j
 @SuppressWarnings("deprecation")
-public class ZkClusterMetadataStore implements ClusterMetadataStore {
+public abstract class ZkClusterMetadataStore implements ClusterMetadataStore {
 
     private final CuratorFramework client;
 
@@ -95,14 +95,11 @@ public class ZkClusterMetadataStore implements ClusterMetadataStore {
 
     @Override
     public boolean initializeCluster(int numStorageContainers, Optional<String> segmentStorePath) {
-        ClusterMetadata metadata = ClusterMetadata.newBuilder()
-            .setNumStorageContainers(numStorageContainers)
-            .build();
-        ClusterAssignmentData assigmentData = ClusterAssignmentData.newBuilder()
-            .build();
+        Object metadata = null;
+        Object assigmentData = null;
         try {
             // we are using dlog for the storage backend, so we need to initialize the dlog namespace
-            BKDLConfig dlogConfig = new BKDLConfig(
+            /*BKDLConfig dlogConfig = new BKDLConfig(
                 zkServers, segmentStorePath.orElse(getSegmentsRootPath(zkRootPath)));
             DLMetadata dlogMetadata = DLMetadata.create(dlogConfig);
 
@@ -113,7 +110,7 @@ public class ZkClusterMetadataStore implements ClusterMetadataStore {
                     client.transactionOp().create().forPath(zkClusterAssignmentPath, assigmentData.toByteArray()),
                     client.transactionOp().create().forPath(getServersPath(zkRootPath)),
                     client.transactionOp().create().forPath(getWritableServersPath(zkRootPath)),
-                    client.transactionOp().create().forPath(getStoragePath(zkRootPath), dlogMetadata.serialize()));
+                    client.transactionOp().create().forPath(getStoragePath(zkRootPath), dlogMetadata.serialize()));*/
             return true;
         } catch (Exception e) {
             if (e instanceof KeeperException.NodeExistsException) {
@@ -126,25 +123,13 @@ public class ZkClusterMetadataStore implements ClusterMetadataStore {
         }
     }
 
-    @Override
-    public ClusterAssignmentData getClusterAssignmentData() {
-        try {
-            byte[] data = client.getData().forPath(zkClusterAssignmentPath);
-            return ClusterAssignmentData.parseFrom(data);
-        } catch (InvalidProtocolBufferException ie) {
-            throw new StorageRuntimeException("The cluster assignment data from zookeeper @"
-                + zkClusterAssignmentPath + " is corrupted", ie);
-        } catch (Exception e) {
-            throw new StorageRuntimeException("Failed to fetch cluster assignment data from zookeeper @"
-                + zkClusterAssignmentPath, e);
-        }
-    }
 
-    @Override
-    public void updateClusterAssignmentData(ClusterAssignmentData assigmentData) {
-        byte[] data = assigmentData.toByteArray();
+
+   // @Override
+    public void updateClusterAssignmentData(Object assigmentData) {
+        //byte[] data = assigmentData.toByteArray();
         try {
-            client.setData().forPath(zkClusterAssignmentPath, data);
+            //client.setData().forPath(zkClusterAssignmentPath, data);
         } catch (Exception e) {
             throw new StorageRuntimeException("Failed to update cluster assignment data to zookeeper @"
                 + zkClusterAssignmentPath, e);
@@ -189,25 +174,13 @@ public class ZkClusterMetadataStore implements ClusterMetadataStore {
         }
     }
 
-    @Override
-    public ClusterMetadata getClusterMetadata() {
-        try {
-            byte[] data = client.getData().forPath(zkClusterMetadataPath);
-            return ClusterMetadata.parseFrom(data);
-        } catch (InvalidProtocolBufferException ie) {
-            throw new StorageRuntimeException("The cluster metadata from zookeeper @"
-                + zkClusterMetadataPath + " is corrupted", ie);
-        } catch (Exception e) {
-            throw new StorageRuntimeException("Failed to fetch cluster metadata from zookeeper @"
-                + zkClusterMetadataPath, e);
-        }
-    }
 
-    @Override
-    public void updateClusterMetadata(ClusterMetadata metadata) {
-        byte[] data = metadata.toByteArray();
+
+    //@Override
+    public void updateClusterMetadata(Object metadata) {
+        //byte[] data = metadata.toByteArray();
         try {
-            client.setData().forPath(zkClusterMetadataPath, data);
+            //client.setData().forPath(zkClusterMetadataPath, data);
         } catch (Exception e) {
             throw new StorageRuntimeException("Failed to update cluster metadata to zookeeper @"
                 + zkClusterMetadataPath, e);

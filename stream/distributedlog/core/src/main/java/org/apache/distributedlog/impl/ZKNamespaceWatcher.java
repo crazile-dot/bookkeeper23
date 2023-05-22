@@ -1,4 +1,4 @@
-/*
+/**
  * Licensed to the Apache Software Foundation (ASF) under one
  * or more contributor license agreements.  See the NOTICE file
  * distributed with this work for additional information
@@ -25,7 +25,7 @@ import java.util.List;
 import java.util.concurrent.RejectedExecutionException;
 import java.util.concurrent.TimeUnit;
 import java.util.concurrent.atomic.AtomicBoolean;
-import org.apache.bookkeeper.common.util.OrderedScheduler;
+//import org.apache.bookkeeper.common.util.OrderedScheduler;
 import org.apache.distributedlog.DistributedLogConfiguration;
 import org.apache.distributedlog.ZooKeeperClient;
 import org.apache.distributedlog.callback.NamespaceListener;
@@ -51,13 +51,13 @@ public class ZKNamespaceWatcher extends NamespaceWatcher
     private final DistributedLogConfiguration conf;
     private final URI uri;
     private final ZooKeeperClient zkc;
-    private final OrderedScheduler scheduler;
+    private final Object scheduler;
     private final AtomicBoolean namespaceWatcherSet = new AtomicBoolean(false);
 
     public ZKNamespaceWatcher(DistributedLogConfiguration conf,
                               URI uri,
                               ZooKeeperClient zkc,
-                              OrderedScheduler scheduler) {
+                              Object scheduler) {
         this.conf = conf;
         this.uri = uri;
         this.zkc = zkc;
@@ -66,7 +66,7 @@ public class ZKNamespaceWatcher extends NamespaceWatcher
 
     private void scheduleTask(Runnable r, long ms) {
         try {
-            scheduler.schedule(r, ms, TimeUnit.MILLISECONDS);
+            //scheduler.schedule(r, ms, TimeUnit.MILLISECONDS);
         } catch (RejectedExecutionException ree) {
             logger.error("Task {} scheduled in {} ms is rejected : ", r, ms, ree);
         }

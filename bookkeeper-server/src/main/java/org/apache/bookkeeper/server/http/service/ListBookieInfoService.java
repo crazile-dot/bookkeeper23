@@ -17,16 +17,18 @@
  * under the License.
  */
 package org.apache.bookkeeper.server.http.service;
-
+/*
 import static com.google.common.base.Preconditions.checkNotNull;
 
 import com.google.common.collect.Maps;
+
 import java.math.RoundingMode;
 import java.text.DecimalFormat;
 import java.util.LinkedHashMap;
 import java.util.Map;
-import org.apache.bookkeeper.client.BookKeeper;
-import org.apache.bookkeeper.client.BookieInfoReader;
+
+//import org.apache.bookkeeper.client.BookKeeper;
+//import org.apache.bookkeeper.client.BookieInfoReader;
 import org.apache.bookkeeper.common.util.JsonUtil;
 import org.apache.bookkeeper.conf.ClientConfiguration;
 import org.apache.bookkeeper.conf.ServerConfiguration;
@@ -50,7 +52,7 @@ import org.slf4j.LoggerFactory;
  *    "clusterInfo" : {total_free: xxx, total: xxx}"
  *  }
  */
-public class ListBookieInfoService implements HttpEndpointService {
+/*public class ListBookieInfoService implements HttpEndpointService {
 
     static final Logger LOG = LoggerFactory.getLogger(ListBookieInfoService.class);
 
@@ -100,7 +102,7 @@ public class ListBookieInfoService implements HttpEndpointService {
              *    "clusterInfo" : {total_free: xxx, total: xxx}"
              *  }
              */
-            LinkedHashMap<String, String> output = Maps.newLinkedHashMapWithExpectedSize(map.size());
+     /*       LinkedHashMap<String, String> output = Maps.newLinkedHashMapWithExpectedSize(map.size());
             Long totalFree = 0L, total = 0L;
             for (Map.Entry<BookieId, BookieInfoReader.BookieInfo> infoEntry : map.entrySet()) {
                 BookieInfoReader.BookieInfo bInfo = infoEntry.getValue();
@@ -117,9 +119,7 @@ public class ListBookieInfoService implements HttpEndpointService {
             bk.close();
 
             String jsonResponse = JsonUtil.toJson(output);
-            if (LOG.isDebugEnabled()) {
-                LOG.debug("output body:" + jsonResponse);
-            }
+            LOG.debug("output body:" + jsonResponse);
             response.setBody(jsonResponse);
             response.setCode(HttpServer.StatusCode.OK);
             return response;
@@ -129,4 +129,4 @@ public class ListBookieInfoService implements HttpEndpointService {
             return response;
         }
     }
-}
+}*/

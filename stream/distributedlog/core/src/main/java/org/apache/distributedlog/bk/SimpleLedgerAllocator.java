@@ -1,4 +1,4 @@
-/*
+/**
  * Licensed to the Apache Software Foundation (ASF) under one
  * or more contributor license agreements.  See the NOTICE file
  * distributed with this work for additional information
@@ -18,12 +18,14 @@
 package org.apache.distributedlog.bk;
 
 import com.google.common.collect.Lists;
+
 import java.io.IOException;
 import java.util.LinkedList;
 import java.util.List;
 import java.util.concurrent.CompletableFuture;
 import java.util.concurrent.CompletionStage;
 import java.util.function.Function;
+
 import org.apache.bookkeeper.client.LedgerHandle;
 import org.apache.bookkeeper.common.concurrent.FutureEventListener;
 import org.apache.bookkeeper.common.concurrent.FutureUtils;
@@ -420,7 +422,7 @@ public class SimpleLedgerAllocator implements LedgerAllocator, FutureEventListen
     }
 
     private void markAsAllocated(final LedgerHandle lh) {
-        byte[] data = DLUtils.logSegmentId2Bytes(lh.getId());
+        byte[] data = DLUtils.logSegmentId2Bytes(0);
         Utils.zkSetData(zkc, allocatePath, data, getVersion())
             .whenComplete(new FutureEventListener<LongVersion>() {
                 @Override
@@ -437,9 +439,9 @@ public class SimpleLedgerAllocator implements LedgerAllocator, FutureEventListen
                 @Override
                 public void onFailure(Throwable cause) {
                     setPhase(Phase.ERROR);
-                    deleteLedger(lh.getId());
+                    deleteLedger(0);
                     LOG.error("Fail mark ledger {} as allocated under {} : ",
-                        lh.getId(), allocatePath, cause);
+                       0, allocatePath, cause);
                     // fail the allocation since failed to mark it as allocated
                     failAllocation(cause);
                 }
@@ -513,7 +515,7 @@ public class SimpleLedgerAllocator implements LedgerAllocator, FutureEventListen
             public void onSuccess(LedgerHandle lh) {
                 // try obtain succeed
                 // if we could obtain the ledger handle, we have the responsibility to close it
-                deleteLedger(lh.getId());
+                deleteLedger(0);
                 // wait for deletion to be completed
                 List<CompletableFuture<Void>> outstandingDeletions;
                 synchronized (ledgerDeletions) {
@@ -527,10 +529,7 @@ public class SimpleLedgerAllocator implements LedgerAllocator, FutureEventListen
 
                     @Override
                     public void onFailure(Throwable cause) {
-                        if (LOG.isDebugEnabled()) {
-                            LOG.debug("Fail to obtain the allocated ledger handle when closing the allocator : "
-                                    , cause);
-                        }
+                        LOG.debug("Fail to obtain the allocated ledger handle when closing the allocator : ", cause);
                         FutureUtils.complete(closePromise, null);
                     }
                 });
@@ -538,10 +537,7 @@ public class SimpleLedgerAllocator implements LedgerAllocator, FutureEventListen
 
             @Override
             public void onFailure(Throwable cause) {
-                if (LOG.isDebugEnabled()) {
-                    LOG.debug("Fail to obtain the allocated ledger handle when closing the allocator : "
-                            , cause);
-                }
+                LOG.debug("Fail to obtain the allocated ledger handle when closing the allocator : ", cause);
                 FutureUtils.complete(closePromise, null);
             }
         });

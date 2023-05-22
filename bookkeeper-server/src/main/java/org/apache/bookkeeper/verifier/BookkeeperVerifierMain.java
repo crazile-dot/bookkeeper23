@@ -1,4 +1,4 @@
-/*
+/**
  *
  * Licensed to the Apache Software Foundation (ASF) under one
  * or more contributor license agreements.  See the NOTICE file
@@ -21,7 +21,7 @@
 
 package org.apache.bookkeeper.verifier;
 
-import org.apache.bookkeeper.client.BookKeeper;
+//import org.apache.bookkeeper.client.BookKeeper;
 import org.apache.bookkeeper.conf.ClientConfiguration;
 import org.apache.commons.cli.CommandLine;
 import org.apache.commons.cli.CommandLineParser;
@@ -147,9 +147,9 @@ public class BookkeeperVerifierMain {
 
         ClientConfiguration conf = new ClientConfiguration();
         conf.setMetadataServiceUri("zk://" + zkString + ledgerPath);
-        BookKeeper bkclient = new BookKeeper(conf);
+        //BookKeeper bkclient = new BookKeeper(conf);
 
-        BookkeeperVerifier verifier = new BookkeeperVerifier(
+        /*BookkeeperVerifier verifier = new BookkeeperVerifier(
                 new DirectBookkeeperDriver(bkclient),
                 ensembleSize,
                 writeQuorum,
@@ -172,6 +172,6 @@ public class BookkeeperVerifierMain {
             System.exit(1);
         } finally {
             bkclient.close();
-        }
+        }*/
     }
 }

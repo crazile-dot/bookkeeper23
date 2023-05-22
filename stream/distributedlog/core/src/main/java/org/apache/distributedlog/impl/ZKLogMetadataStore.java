@@ -1,4 +1,4 @@
-/*
+/**
  * Licensed to the Apache Software Foundation (ASF) under one
  * or more contributor license agreements.  See the NOTICE file
  * distributed with this work for additional information
@@ -26,7 +26,7 @@ import java.util.List;
 import java.util.Optional;
 import java.util.concurrent.CompletableFuture;
 import org.apache.bookkeeper.common.concurrent.FutureUtils;
-import org.apache.bookkeeper.common.util.OrderedScheduler;
+//import org.apache.bookkeeper.common.util.OrderedScheduler;
 import org.apache.commons.lang.StringUtils;
 import org.apache.distributedlog.DistributedLogConfiguration;
 import org.apache.distributedlog.ZooKeeperClient;
@@ -53,11 +53,11 @@ public class ZKLogMetadataStore implements LogMetadataStore {
             DistributedLogConfiguration conf,
             URI namespace,
             ZooKeeperClient zkc,
-            OrderedScheduler scheduler) {
+            Object scheduler) {
         this.namespace = namespace;
         this.nsOptional = Optional.of(this.namespace);
         this.zkc = zkc;
-        this.nsWatcher = new ZKNamespaceWatcher(conf, namespace, zkc, scheduler);
+        this.nsWatcher = new ZKNamespaceWatcher(conf, namespace, zkc, null);
     }
 
     @Override

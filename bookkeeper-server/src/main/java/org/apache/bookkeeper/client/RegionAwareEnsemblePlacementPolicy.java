@@ -18,8 +18,8 @@
 package org.apache.bookkeeper.client;
 
 import io.netty.util.HashedWheelTimer;
+
 import java.util.ArrayList;
-import java.util.Collections;
 import java.util.HashMap;
 import java.util.HashSet;
 import java.util.List;
@@ -28,6 +28,7 @@ import java.util.Optional;
 import java.util.Set;
 import java.util.concurrent.ConcurrentHashMap;
 import java.util.concurrent.ConcurrentMap;
+
 import org.apache.bookkeeper.conf.ClientConfiguration;
 import org.apache.bookkeeper.feature.Feature;
 import org.apache.bookkeeper.feature.FeatureProvider;
@@ -35,7 +36,6 @@ import org.apache.bookkeeper.net.BookieId;
 import org.apache.bookkeeper.net.BookieNode;
 import org.apache.bookkeeper.net.DNSToSwitchMapping;
 import org.apache.bookkeeper.net.NetworkTopology;
-import org.apache.bookkeeper.net.NetworkTopologyImpl;
 import org.apache.bookkeeper.net.Node;
 import org.apache.bookkeeper.net.NodeBase;
 import org.apache.bookkeeper.proto.BookieAddressResolver;
@@ -50,7 +50,7 @@ import org.slf4j.LoggerFactory;
  *
  * @see EnsemblePlacementPolicy
  */
-public class RegionAwareEnsemblePlacementPolicy extends RackawareEnsemblePlacementPolicy {
+public class RegionAwareEnsemblePlacementPolicy  {
     static final Logger LOG = LoggerFactory.getLogger(RegionAwareEnsemblePlacementPolicy.class);
 
     public static final String REPP_REGIONS_TO_WRITE = "reppRegionsToWrite";
@@ -85,6 +85,25 @@ public class RegionAwareEnsemblePlacementPolicy extends RackawareEnsemblePlaceme
         address2Region = new ConcurrentHashMap<BookieId, String>();
     }
 
+    protected String getRegion(BookieId addr) {
+        String region = address2Region.get(addr);
+        if (null == region) {
+            String networkLocation = "";
+            if (NetworkTopology.DEFAULT_REGION_AND_RACK.equals(networkLocation)) {
+                region = UNKNOWN_REGION;
+            } else {
+                String[] parts = networkLocation.split(NodeBase.PATH_SEPARATOR_STR);
+                if (parts.length <= 1) {
+                    region = UNKNOWN_REGION;
+                } else {
+                    region = parts[1];
+                }
+            }
+            address2Region.putIfAbsent(addr, region);
+        }
+        return region;
+    }
+
     protected String getLocalRegion(BookieNode node) {
         if (null == node || null == node.getAddr()) {
             return UNKNOWN_REGION;
@@ -92,48 +111,24 @@ public class RegionAwareEnsemblePlacementPolicy extends RackawareEnsemblePlaceme
         return getRegion(node.getAddr());
     }
 
-    protected String getRegion(BookieId addr) {
-        String region = address2Region.get(addr);
-        if (null == region) {
-            region = parseBookieRegion(addr);
-            address2Region.putIfAbsent(addr, region);
-        }
-        return region;
-    }
-
-    protected String parseBookieRegion(BookieId addr) {
-        String networkLocation = resolveNetworkLocation(addr);
-        if (NetworkTopology.DEFAULT_REGION_AND_RACK.equals(networkLocation)) {
-            return UNKNOWN_REGION;
-        } else {
-            String[] parts = networkLocation.split(NodeBase.PATH_SEPARATOR_STR);
-            if (parts.length <= 1) {
-                return UNKNOWN_REGION;
-            } else {
-                return parts[1];
-            }
-        }
-    }
-
-    @Override
+    //@Override
     public void handleBookiesThatLeft(Set<BookieId> leftBookies) {
-        super.handleBookiesThatLeft(leftBookies);
+       // super.handleBookiesThatLeft(leftBookies);
 
         for (TopologyAwareEnsemblePlacementPolicy policy: perRegionPlacement.values()) {
             policy.handleBookiesThatLeft(leftBookies);
         }
     }
 
-    @Override
+   // @Override
     public void handleBookiesThatJoined(Set<BookieId> joinedBookies) {
         Map<String, Set<BookieId>> perRegionClusterChange = new HashMap<String, Set<BookieId>>();
 
         // node joined
         for (BookieId addr : joinedBookies) {
-            BookieNode node = createBookieNode(addr);
+           /* BookieNode node = createBookieNode(addr);
             topology.add(node);
             knownBookies.put(addr, node);
-            historyBookies.put(addr, node);
             String region = getLocalRegion(node);
             if (null == perRegionPlacement.get(region)) {
                 perRegionPlacement.put(region, new RackawareEnsemblePlacementPolicy()
@@ -155,7 +150,7 @@ public class RegionAwareEnsemblePlacementPolicy extends RackawareEnsemblePlaceme
 
             if (LOG.isDebugEnabled()) {
                 LOG.debug("Cluster changed : bookie {} joined the cluster.", addr);
-            }
+            }*/
         }
 
         for (Map.Entry<String, TopologyAwareEnsemblePlacementPolicy> regionEntry : perRegionPlacement.entrySet()) {
@@ -167,65 +162,14 @@ public class RegionAwareEnsemblePlacementPolicy extends RackawareEnsemblePlaceme
         }
     }
 
-    @Override
-    public void onBookieRackChange(List<BookieId> bookieAddressList) {
-        rwLock.writeLock().lock();
-        try {
-            bookieAddressList.forEach(bookieAddress -> {
-                try {
-                    BookieNode node = knownBookies.get(bookieAddress);
-                    if (node != null) {
-                        // refresh the rack info if its a known bookie
-                        BookieNode newNode = createBookieNode(bookieAddress);
-                        if (!newNode.getNetworkLocation().equals(node.getNetworkLocation())) {
-                            topology.remove(node);
-                            topology.add(newNode);
-                            knownBookies.put(bookieAddress, newNode);
-                            historyBookies.put(bookieAddress, newNode);
-                        }
-                        //Handle per region placement policy.
-                        String oldRegion = getRegion(bookieAddress);
-                        String newRegion = parseBookieRegion(newNode.getAddr());
-                        if (oldRegion.equals(newRegion)) {
-                            TopologyAwareEnsemblePlacementPolicy regionPlacement = perRegionPlacement.get(oldRegion);
-                            regionPlacement.onBookieRackChange(Collections.singletonList(bookieAddress));
-                        } else {
-                            address2Region.put(bookieAddress, newRegion);
-                            TopologyAwareEnsemblePlacementPolicy oldRegionPlacement = perRegionPlacement.get(oldRegion);
-                            oldRegionPlacement.handleBookiesThatLeft(Collections.singleton(bookieAddress));
-                            TopologyAwareEnsemblePlacementPolicy newRegionPlacement = perRegionPlacement.get(
-                                    newRegion);
-                            if (newRegionPlacement == null) {
-                                newRegionPlacement = new RackawareEnsemblePlacementPolicy()
-                                        .initialize(dnsResolver, timer, this.reorderReadsRandom,
-                                                this.stabilizePeriodSeconds, this.reorderThresholdPendingRequests,
-                                                this.isWeighted, this.maxWeightMultiple,
-                                                this.minNumRacksPerWriteQuorum, this.enforceMinNumRacksPerWriteQuorum,
-                                                this.ignoreLocalNodeInPlacementPolicy, statsLogger,
-                                                bookieAddressResolver)
-                                        .withDefaultRack(NetworkTopology.DEFAULT_REGION_AND_RACK);
-                                perRegionPlacement.put(newRegion, newRegionPlacement);
-                            }
-                            newRegionPlacement.handleBookiesThatJoined(Collections.singleton(bookieAddress));
-                        }
-                    }
-                } catch (IllegalArgumentException | NetworkTopologyImpl.InvalidTopologyException e) {
-                    LOG.error("Failed to update bookie rack info: {} ", bookieAddress, e);
-                }
-            });
-        } finally {
-            rwLock.writeLock().unlock();
-        }
-    }
-
-    @Override
-    public RegionAwareEnsemblePlacementPolicy initialize(ClientConfiguration conf,
+  //  @Override
+    public void initialize(ClientConfiguration conf,
                                                          Optional<DNSToSwitchMapping> optionalDnsResolver,
                                                          HashedWheelTimer timer,
                                                          FeatureProvider featureProvider,
                                                          StatsLogger statsLogger,
                                                          BookieAddressResolver bookieAddressResolver) {
-        super.initialize(conf, optionalDnsResolver, timer, featureProvider, statsLogger, bookieAddressResolver)
+        /*super.initialize(conf, optionalDnsResolver, timer, featureProvider, statsLogger, bookieAddressResolver)
                 .withDefaultRack(NetworkTopology.DEFAULT_REGION_AND_RACK);
         myRegion = getLocalRegion(localNode);
         enableValidation = conf.getBoolean(REPP_ENABLE_VALIDATION, true);
@@ -550,7 +494,7 @@ public class RegionAwareEnsemblePlacementPolicy extends RackawareEnsemblePlaceme
                  * in testing code there are test cases which would pass empty
                  * currentEnsemble
                  */
-                newEnsemble.add(candidateAddr);
+              /*  newEnsemble.add(candidateAddr);
             } else {
                 newEnsemble.set(currentEnsemble.indexOf(bookieToReplace), candidateAddr);
             }
@@ -646,6 +590,7 @@ public class RegionAwareEnsemblePlacementPolicy extends RackawareEnsemblePlaceme
          *
          * - https://github.com/apache/bookkeeper/issues/1898
          */
-        return PlacementPolicyAdherence.MEETS_STRICT;
-    }
+       /* return PlacementPolicyAdherence.MEETS_STRICT;
+    }*/
+}
 }

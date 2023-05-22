@@ -1,0 +1,133 @@
+<?xml version="1.0" encoding="UTF-8"?><!DOCTYPE html PUBLIC "-//W3C//DTD XHTML 1.0 Strict//EN" "http://www.w3.org/TR/xhtml1/DTD/xhtml1-strict.dtd"><html xmlns="http://www.w3.org/1999/xhtml" lang="it"><head><meta http-equiv="Content-Type" content="text/html;charset=UTF-8"/><link rel="stylesheet" href="../../jacoco-resources/report.css" type="text/css"/><link rel="shortcut icon" href="../../jacoco-resources/report.gif" type="image/gif"/><title>AbstractLifecycleComponent.java</title><link rel="stylesheet" href="../../jacoco-resources/prettify.css" type="text/css"/><script type="text/javascript" src="../../jacoco-resources/prettify.js"></script></head><body onload="window['PR_TAB_WIDTH']=4;prettyPrint()"><div class="breadcrumb" id="breadcrumb"><span class="info"><a href="../../jacoco-sessions.html" class="el_session">Sessions</a></span><a href="../../index.html" class="el_report">Tests</a> &gt; <a href="../index.html" class="el_bundle">bookkeeper-common</a> &gt; <a href="index.source.html" class="el_package">org.apache.bookkeeper.common.component</a> &gt; <span class="el_source">AbstractLifecycleComponent.java</span></div><h1>AbstractLifecycleComponent.java</h1><pre class="source lang-java linenums">/*
+ * Licensed to the Apache Software Foundation (ASF) under one
+ * or more contributor license agreements.  See the NOTICE file
+ * distributed with this work for additional information
+ * regarding copyright ownership.  The ASF licenses this file
+ * to you under the Apache License, Version 2.0 (the
+ * &quot;License&quot;); you may not use this file except in compliance
+ * with the License.  You may obtain a copy of the License at
+ *
+ *      http://www.apache.org/licenses/LICENSE-2.0
+ *
+ * Unless required by applicable law or agreed to in writing, software
+ * distributed under the License is distributed on an &quot;AS IS&quot; BASIS,
+ * WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+ * See the License for the specific language governing permissions and
+ * limitations under the License.
+ */
+
+package org.apache.bookkeeper.common.component;
+
+import java.io.IOException;
+import java.lang.Thread.UncaughtExceptionHandler;
+import java.util.Set;
+import java.util.concurrent.CopyOnWriteArraySet;
+import lombok.extern.slf4j.Slf4j;
+import org.apache.bookkeeper.common.conf.ComponentConfiguration;
+import org.apache.bookkeeper.stats.StatsLogger;
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
+
+/**
+ * A mix of {@link AbstractComponent} and {@link LifecycleComponent}.
+ */
+<span class="nc" id="L34">@Slf4j</span>
+public abstract class AbstractLifecycleComponent&lt;ConfT extends ComponentConfiguration&gt;
+    extends AbstractComponent&lt;ConfT&gt; implements LifecycleComponent {
+
+<span class="nc" id="L38">    private static final Logger LOG = LoggerFactory.getLogger(AbstractLifecycleComponent.class);</span>
+
+<span class="nc" id="L40">    protected final Lifecycle lifecycle = new Lifecycle();</span>
+<span class="nc" id="L41">    private final Set&lt;LifecycleListener&gt; listeners = new CopyOnWriteArraySet&lt;&gt;();</span>
+    protected final StatsLogger statsLogger;
+    protected volatile UncaughtExceptionHandler uncaughtExceptionHandler;
+
+    protected AbstractLifecycleComponent(String componentName,
+                                         ConfT conf,
+                                         StatsLogger statsLogger) {
+<span class="nc" id="L48">        super(componentName, conf);</span>
+<span class="nc" id="L49">        this.statsLogger = statsLogger;</span>
+<span class="nc" id="L50">    }</span>
+
+    @Override
+    public void setExceptionHandler(UncaughtExceptionHandler handler) {
+<span class="nc" id="L54">        this.uncaughtExceptionHandler = handler;</span>
+<span class="nc" id="L55">    }</span>
+
+    protected StatsLogger getStatsLogger() {
+<span class="nc" id="L58">        return statsLogger;</span>
+    }
+
+    @Override
+    public Lifecycle.State lifecycleState() {
+<span class="nc" id="L63">        return this.lifecycle.state();</span>
+    }
+
+    @Override
+    public void addLifecycleListener(LifecycleListener listener) {
+<span class="nc" id="L68">        listeners.add(listener);</span>
+<span class="nc" id="L69">    }</span>
+
+    @Override
+    public void removeLifecycleListener(LifecycleListener listener) {
+<span class="nc" id="L73">        listeners.remove(listener);</span>
+<span class="nc" id="L74">    }</span>
+
+    @Override
+    public void start() {
+<span class="nc bnc" id="L78" title="All 2 branches missed.">        if (!lifecycle.canMoveToStarted()) {</span>
+<span class="nc" id="L79">            return;</span>
+        }
+<span class="nc" id="L81">        listeners.forEach(LifecycleListener::beforeStart);</span>
+        try {
+<span class="nc" id="L83">            doStart();</span>
+<span class="nc" id="L84">        } catch (Throwable exc) {</span>
+<span class="nc" id="L85">            LOG.error(&quot;Failed to start Component: {}&quot;, getName(), exc);</span>
+<span class="nc bnc" id="L86" title="All 2 branches missed.">            if (uncaughtExceptionHandler != null) {</span>
+<span class="nc" id="L87">                LOG.error(&quot;Calling uncaughtExceptionHandler&quot;);</span>
+<span class="nc" id="L88">                uncaughtExceptionHandler.uncaughtException(Thread.currentThread(), exc);</span>
+            } else {
+<span class="nc" id="L90">                throw exc;</span>
+            }
+<span class="nc" id="L92">        }</span>
+<span class="nc" id="L93">        lifecycle.moveToStarted();</span>
+<span class="nc" id="L94">        listeners.forEach(LifecycleListener::afterStart);</span>
+<span class="nc" id="L95">    }</span>
+
+    protected abstract void doStart();
+
+    @Override
+    public void stop() {
+<span class="nc bnc" id="L101" title="All 2 branches missed.">        if (!lifecycle.canMoveToStopped()) {</span>
+<span class="nc" id="L102">            return;</span>
+        }
+<span class="nc" id="L104">        listeners.forEach(LifecycleListener::beforeStop);</span>
+<span class="nc" id="L105">        lifecycle.moveToStopped();</span>
+<span class="nc" id="L106">        doStop();</span>
+<span class="nc" id="L107">        listeners.forEach(LifecycleListener::afterStop);</span>
+<span class="nc" id="L108">    }</span>
+
+    protected abstract void doStop();
+
+    @Override
+    public void close() {
+<span class="nc bnc" id="L114" title="All 2 branches missed.">        if (lifecycle.started()) {</span>
+<span class="nc" id="L115">            stop();</span>
+        }
+<span class="nc bnc" id="L117" title="All 2 branches missed.">        if (!lifecycle.canMoveToClosed()) {</span>
+<span class="nc" id="L118">            return;</span>
+        }
+<span class="nc" id="L120">        listeners.forEach(LifecycleListener::beforeClose);</span>
+<span class="nc" id="L121">        lifecycle.moveToClosed();</span>
+        try {
+<span class="nc" id="L123">            doClose();</span>
+<span class="nc" id="L124">        } catch (IOException e) {</span>
+<span class="nc" id="L125">            log.warn(&quot;failed to close {}&quot;, getClass().getName(), e);</span>
+<span class="nc" id="L126">        }</span>
+<span class="nc" id="L127">        listeners.forEach(LifecycleListener::afterClose);</span>
+<span class="nc" id="L128">    }</span>
+
+    protected abstract void doClose() throws IOException;
+
+}
+</pre><div class="footer"><span class="right">Created with <a href="http://www.jacoco.org/jacoco">JaCoCo</a> 0.8.2.201808211720</span></div></body></html>

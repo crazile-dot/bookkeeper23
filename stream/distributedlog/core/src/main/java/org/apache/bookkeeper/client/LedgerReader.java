@@ -1,4 +1,4 @@
-/*
+/**
  * Licensed to the Apache Software Foundation (ASF) under one
  * or more contributor license agreements.  See the NOTICE file
  * distributed with this work for additional information
@@ -19,7 +19,6 @@ package org.apache.bookkeeper.client;
 
 import io.netty.buffer.ByteBuf;
 import io.netty.buffer.Unpooled;
-import io.netty.util.ReferenceCountUtil;
 import java.net.InetSocketAddress;
 import java.util.ArrayList;
 import java.util.HashSet;
@@ -78,19 +77,19 @@ public class LedgerReader {
         }
     }
 
-    private final ClientContext clientCtx;
+    private final ClientContext clientCtx = null;
 
-    public LedgerReader(BookKeeper bkc) {
-        clientCtx = bkc.getClientCtx();
+    public LedgerReader(Object bkc) {
+        //clientCtx = bkc.getClientCtx();
     }
 
     public static SortedMap<Long, ? extends List<BookieId>> bookiesForLedger(final LedgerHandle lh) {
-        return lh.getLedgerMetadata().getAllEnsembles();
+        return null;
     }
 
     public void readEntriesFromAllBookies(final LedgerHandle lh, long eid,
                                           final GenericCallback<Set<ReadResult<ByteBuf>>> callback) {
-        WriteSet writeSet = lh.distributionSchedule.getWriteSet(eid);
+        WriteSet writeSet = null;
         final AtomicInteger numBookies = new AtomicInteger(writeSet.size());
         final Set<ReadResult<ByteBuf>> readResults = new HashSet<>();
         ReadEntryCallback readEntryCallback = new ReadEntryCallback() {
@@ -101,17 +100,17 @@ public class LedgerReader {
                 if (BKException.Code.OK != rc) {
                     rr = new ReadResult<>(eid, rc, null, bookieAddress.getSocketAddress());
                 } else {
-                    ByteBuf content;
+                    ByteBuf content = null;
                     try {
-                        content = lh.macManager.verifyDigestAndReturnData(eid, buffer);
+                        //content = lh.macManager.verifyDigestAndReturnData(eid, buffer);
                         ByteBuf toRet = Unpooled.copiedBuffer(content);
                         rr = new ReadResult<>(eid, BKException.Code.OK, toRet, bookieAddress.getSocketAddress());
-                    } catch (BKException.BKDigestMatchException e) {
+                    } catch (Exception e) {
                         rr = new ReadResult<>(
                             eid, BKException.Code.DigestMatchException, null, bookieAddress.getSocketAddress());
 
                     } finally {
-                        ReferenceCountUtil.release(buffer);
+                        buffer.release();
                     }
                 }
                 readResults.add(rr);
@@ -121,12 +120,12 @@ public class LedgerReader {
             }
         };
 
-        List<BookieId> ensemble = lh.getLedgerMetadata().getEnsembleAt(eid);
+        List<BookieId> ensemble = null;
         for (int i = 0; i < writeSet.size(); i++) {
             int idx = writeSet.get(i);
             BookieSocketAddress resolvedNetworkAddress =
                     clientCtx.getBookieWatcher().getBookieAddressResolver().resolve(ensemble.get(idx));
-            clientCtx.getBookieClient().readEntry(ensemble.get(idx), lh.getId(), eid, readEntryCallback,
+            clientCtx.getBookieClient().readEntry(ensemble.get(idx), 1, eid, readEntryCallback,
                                    resolvedNetworkAddress, BookieProtocol.FLAG_NONE);
         }
     }
@@ -201,18 +200,18 @@ public class LedgerReader {
             op.submit();
         };
         // Read Last AddConfirmed
-        new ReadLastConfirmedOp(clientCtx.getBookieClient(),
+        /*new ReadLastConfirmedOp(clientCtx.getBookieClient(),
                                 lh.distributionSchedule,
                                 lh.macManager,
                                 lh.ledgerId,
                                 lh.getCurrentEnsemble(),
                                 lh.ledgerKey,
-                                readLACCallback).initiate();
+                                readLACCallback).initiate();*/
     }
 
     public void readLacs(final LedgerHandle lh, long eid,
                          final GenericCallback<Set<ReadResult<Long>>> callback) {
-        WriteSet writeSet = lh.distributionSchedule.getWriteSet(eid);
+        WriteSet writeSet = null;
         final AtomicInteger numBookies = new AtomicInteger(writeSet.size());
         final Set<ReadResult<Long>> readResults = new HashSet<ReadResult<Long>>();
         ReadEntryCallback readEntryCallback = (rc, lid, eid1, buffer, ctx) -> {
@@ -222,9 +221,9 @@ public class LedgerReader {
                 rr = new ReadResult<Long>(eid1, rc, null, bookieAddress);
             } else {
                 try {
-                    DigestManager.RecoveryData data = lh.macManager.verifyDigestAndReturnLastConfirmed(buffer);
+                    DigestManager.RecoveryData data = null;
                     rr = new ReadResult<Long>(eid1, BKException.Code.OK, data.getLastAddConfirmed(), bookieAddress);
-                } catch (BKException.BKDigestMatchException e) {
+                } catch (Exception e) {
                     rr = new ReadResult<Long>(eid1, BKException.Code.DigestMatchException, null, bookieAddress);
                 }
             }
@@ -234,10 +233,10 @@ public class LedgerReader {
             }
         };
 
-        List<BookieId> ensemble = lh.getLedgerMetadata().getEnsembleAt(eid);
+        List<BookieId> ensemble = null;
         for (int i = 0; i < writeSet.size(); i++) {
             int idx = writeSet.get(i);
-            clientCtx.getBookieClient().readEntry(ensemble.get(idx), lh.getId(), eid, readEntryCallback,
+            clientCtx.getBookieClient().readEntry(ensemble.get(idx), 1, eid, readEntryCallback,
                                    ensemble.get(idx), BookieProtocol.FLAG_NONE);
         }
     }

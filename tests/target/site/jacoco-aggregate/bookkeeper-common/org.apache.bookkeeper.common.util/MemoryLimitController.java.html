@@ -1,0 +1,87 @@
+<?xml version="1.0" encoding="UTF-8"?><!DOCTYPE html PUBLIC "-//W3C//DTD XHTML 1.0 Strict//EN" "http://www.w3.org/TR/xhtml1/DTD/xhtml1-strict.dtd"><html xmlns="http://www.w3.org/1999/xhtml" lang="it"><head><meta http-equiv="Content-Type" content="text/html;charset=UTF-8"/><link rel="stylesheet" href="../../jacoco-resources/report.css" type="text/css"/><link rel="shortcut icon" href="../../jacoco-resources/report.gif" type="image/gif"/><title>MemoryLimitController.java</title><link rel="stylesheet" href="../../jacoco-resources/prettify.css" type="text/css"/><script type="text/javascript" src="../../jacoco-resources/prettify.js"></script></head><body onload="window['PR_TAB_WIDTH']=4;prettyPrint()"><div class="breadcrumb" id="breadcrumb"><span class="info"><a href="../../jacoco-sessions.html" class="el_session">Sessions</a></span><a href="../../index.html" class="el_report">Tests</a> &gt; <a href="../index.html" class="el_bundle">bookkeeper-common</a> &gt; <a href="index.source.html" class="el_package">org.apache.bookkeeper.common.util</a> &gt; <span class="el_source">MemoryLimitController.java</span></div><h1>MemoryLimitController.java</h1><pre class="source lang-java linenums">/**
+ * Licensed to the Apache Software Foundation (ASF) under one
+ * or more contributor license agreements.  See the NOTICE file
+ * distributed with this work for additional information
+ * regarding copyright ownership.  The ASF licenses this file
+ * to you under the Apache License, Version 2.0 (the
+ * &quot;License&quot;); you may not use this file except in compliance
+ * with the License.  You may obtain a copy of the License at
+ *
+ *   http://www.apache.org/licenses/LICENSE-2.0
+ *
+ * Unless required by applicable law or agreed to in writing,
+ * software distributed under the License is distributed on an
+ * &quot;AS IS&quot; BASIS, WITHOUT WARRANTIES OR CONDITIONS OF ANY
+ * KIND, either express or implied.  See the License for the
+ * specific language governing permissions and limitations
+ * under the License.
+ */
+package org.apache.bookkeeper.common.util;
+
+import java.util.concurrent.atomic.AtomicLong;
+import java.util.concurrent.locks.Condition;
+import java.util.concurrent.locks.ReentrantLock;
+
+/**
+ * Controller for tracking the amount of memory used for some task.
+ */
+public class MemoryLimitController {
+
+    private final long memoryLimit;
+<span class="nc" id="L31">    private final AtomicLong currentUsage = new AtomicLong();</span>
+<span class="nc" id="L32">    private final ReentrantLock mutex = new ReentrantLock(false);</span>
+<span class="nc" id="L33">    private final Condition condition = mutex.newCondition();</span>
+
+<span class="nc" id="L35">    public MemoryLimitController(long memoryLimitBytes) {</span>
+<span class="nc" id="L36">        this.memoryLimit = memoryLimitBytes;</span>
+<span class="nc" id="L37">    }</span>
+
+    public boolean tryReserveMemory(long size) {
+        while (true) {
+<span class="nc" id="L41">            long current = currentUsage.get();</span>
+<span class="nc" id="L42">            long newUsage = current + size;</span>
+
+            // We allow one request to go over the limit, to make the notification
+            // path simpler and more efficient
+<span class="nc bnc" id="L46" title="All 4 branches missed.">            if (current &gt; memoryLimit &amp;&amp; memoryLimit &gt; 0) {</span>
+<span class="nc" id="L47">                return false;</span>
+            }
+
+<span class="nc bnc" id="L50" title="All 2 branches missed.">            if (currentUsage.compareAndSet(current, newUsage)) {</span>
+<span class="nc" id="L51">                return true;</span>
+            }
+<span class="nc" id="L53">        }</span>
+    }
+
+    public void reserveMemory(long size) throws InterruptedException {
+<span class="nc bnc" id="L57" title="All 2 branches missed.">        if (!tryReserveMemory(size)) {</span>
+<span class="nc" id="L58">            mutex.lock();</span>
+
+            try {
+<span class="nc bnc" id="L61" title="All 2 branches missed.">                while (!tryReserveMemory(size)) {</span>
+<span class="nc" id="L62">                    condition.await();</span>
+                }
+            } finally {
+<span class="nc" id="L65">                mutex.unlock();</span>
+            }
+        }
+<span class="nc" id="L68">    }</span>
+
+    public void releaseMemory(long size) {
+<span class="nc" id="L71">        long newUsage = currentUsage.addAndGet(-size);</span>
+<span class="nc bnc" id="L72" title="All 4 branches missed.">        if (newUsage + size &gt; memoryLimit &amp;&amp; newUsage &lt;= memoryLimit) {</span>
+            // We just crossed the limit. Now we have more space
+<span class="nc" id="L74">            mutex.lock();</span>
+            try {
+<span class="nc" id="L76">                condition.signalAll();</span>
+            } finally {
+<span class="nc" id="L78">                mutex.unlock();</span>
+            }
+        }
+<span class="nc" id="L81">    }</span>
+
+    public long currentUsage() {
+<span class="nc" id="L84">        return currentUsage.get();</span>
+    }
+}
+</pre><div class="footer"><span class="right">Created with <a href="http://www.jacoco.org/jacoco">JaCoCo</a> 0.8.2.201808211720</span></div></body></html>

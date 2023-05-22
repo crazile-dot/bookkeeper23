@@ -24,10 +24,10 @@ import java.io.IOException;
 import java.util.concurrent.TimeUnit;
 import lombok.Setter;
 import lombok.experimental.Accessors;
-import org.apache.bookkeeper.bookie.BookieShell;
+//import org.apache.bookkeeper.bookie.BookieShell;
 import org.apache.bookkeeper.client.BKException;
-import org.apache.bookkeeper.client.BookKeeper;
-import org.apache.bookkeeper.client.BookKeeperAdmin;
+//import org.apache.bookkeeper.client.BookKeeper;
+//import org.apache.bookkeeper.client.BookKeeperAdmin;
 import org.apache.bookkeeper.client.UpdateLedgerOp;
 import org.apache.bookkeeper.conf.ClientConfiguration;
 import org.apache.bookkeeper.conf.ServerConfiguration;
@@ -147,8 +147,8 @@ public class UpdateBookieInLedgerCommand extends BookieCommand<UpdateBookieInLed
 
         final ClientConfiguration clientConfiguration = new ClientConfiguration();
         clientConfiguration.addConfiguration(conf);
-        final BookKeeper bk = new BookKeeper(clientConfiguration);
-        final BookKeeperAdmin admin = new BookKeeperAdmin(bk, clientConfiguration);
+        /*final BookKeeper bk = new BookKeeper(clientConfiguration);
+        final BookKeeperAdmin admin = new BookKeeperAdmin(bk);
         if (admin.getAvailableBookies().contains(srcBookieAddress)
                 || admin.getReadOnlyBookies().contains(srcBookieAddress)) {
             bk.close();
@@ -179,7 +179,7 @@ public class UpdateBookieInLedgerCommand extends BookieCommand<UpdateBookieInLed
         } catch (IOException e) {
             LOG.error("Failed to update ledger metadata", e);
             return false;
-        }
+        }*/
 
         return true;
     }

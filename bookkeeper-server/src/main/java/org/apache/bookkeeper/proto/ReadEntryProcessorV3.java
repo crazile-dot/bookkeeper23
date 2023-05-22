@@ -1,4 +1,4 @@
-/*
+/**
  * Licensed to the Apache Software Foundation (ASF) under one
  * or more contributor license agreements.  See the NOTICE file
  * distributed with this work for additional information
@@ -29,11 +29,11 @@ import java.util.concurrent.TimeUnit;
 import org.apache.bookkeeper.bookie.Bookie;
 import org.apache.bookkeeper.bookie.BookieException;
 import org.apache.bookkeeper.common.concurrent.FutureEventListener;
-import org.apache.bookkeeper.proto.BookkeeperProtocol.ReadRequest;
+/*import org.apache.bookkeeper.proto.BookkeeperProtocol.ReadRequest;
 import org.apache.bookkeeper.proto.BookkeeperProtocol.ReadResponse;
 import org.apache.bookkeeper.proto.BookkeeperProtocol.Request;
 import org.apache.bookkeeper.proto.BookkeeperProtocol.Response;
-import org.apache.bookkeeper.proto.BookkeeperProtocol.StatusCode;
+import org.apache.bookkeeper.proto.BookkeeperProtocol.StatusCode;*/
 import org.apache.bookkeeper.stats.OpStatsLogger;
 import org.apache.bookkeeper.util.MathUtils;
 import org.slf4j.Logger;
@@ -44,26 +44,26 @@ class ReadEntryProcessorV3 extends PacketProcessorBaseV3 {
     private static final Logger LOG = LoggerFactory.getLogger(ReadEntryProcessorV3.class);
 
     protected Stopwatch lastPhaseStartTime;
-    private final ExecutorService fenceThreadPool;
+    private final ExecutorService fenceThreadPool = null;
 
     private CompletableFuture<Boolean> fenceResult = null;
 
-    protected final ReadRequest readRequest;
-    protected final long ledgerId;
-    protected final long entryId;
+    //protected final ReadRequest readRequest;
+    protected final long ledgerId = 0;
+    protected final long entryId = 0;
 
     // Stats
-    protected final OpStatsLogger readStats;
-    protected final OpStatsLogger reqStats;
+    protected final OpStatsLogger readStats = null;
+    protected final OpStatsLogger reqStats = null;
 
-    public ReadEntryProcessorV3(Request request,
-                                BookieRequestHandler requestHandler,
-                                BookieRequestProcessor requestProcessor,
+    public ReadEntryProcessorV3(Object request,
+                                Channel channel,
+                                Object requestProcessor,
                                 ExecutorService fenceThreadPool) {
-        super(request, requestHandler, requestProcessor);
-        requestProcessor.onReadRequestStart(requestHandler.ctx().channel());
+        super(request, channel, requestProcessor);
+       // requestProcessor.onReadRequestStart(channel);
 
-        this.readRequest = request.getReadRequest();
+        /*this.readRequest = request.getReadRequest();
         this.ledgerId = readRequest.getLedgerId();
         this.entryId = readRequest.getEntryId();
         if (RequestUtils.isFenceRequest(this.readRequest)) {
@@ -78,15 +78,15 @@ class ReadEntryProcessorV3 extends PacketProcessorBaseV3 {
         }
 
         this.fenceThreadPool = fenceThreadPool;
-        lastPhaseStartTime = Stopwatch.createStarted();
+        lastPhaseStartTime = Stopwatch.createStarted();*/
     }
 
-    protected Long getPreviousLAC() {
-        if (readRequest.hasPreviousLAC()) {
+    protected void getPreviousLAC() {
+        /*if (readRequest.hasPreviousLAC()) {
             return readRequest.getPreviousLAC();
         } else {
             return null;
-        }
+        }*/
     }
 
     /**
@@ -103,7 +103,7 @@ class ReadEntryProcessorV3 extends PacketProcessorBaseV3 {
      */
     protected void handleReadResultForFenceRead(
         final ByteBuf entryBody,
-        final ReadResponse.Builder readResponseBuilder,
+        final Object readResponseBuilder,
         final long entryId,
         final Stopwatch startTimeSw) {
         // reset last phase start time to measure fence result waiting time
@@ -112,14 +112,12 @@ class ReadEntryProcessorV3 extends PacketProcessorBaseV3 {
             fenceResult.whenCompleteAsync(new FutureEventListener<Boolean>() {
                 @Override
                 public void onSuccess(Boolean result) {
-                    sendFenceResponse(readResponseBuilder, entryBody, result, startTimeSw);
                 }
 
                 @Override
                 public void onFailure(Throwable t) {
                     LOG.error("Fence request for ledgerId {} entryId {} encountered exception",
                             ledgerId, entryId, t);
-                    sendFenceResponse(readResponseBuilder, entryBody, false, startTimeSw);
                 }
             }, fenceThreadPool);
         } else {
@@ -127,10 +125,9 @@ class ReadEntryProcessorV3 extends PacketProcessorBaseV3 {
             try {
                 success = fenceResult.get(1000, TimeUnit.MILLISECONDS);
             } catch (Throwable t) {
-                LOG.error("Fence request for ledgerId {} entryId {} encountered exception : ",
-                        readRequest.getLedgerId(), readRequest.getEntryId(), t);
+
             }
-            sendFenceResponse(readResponseBuilder, entryBody, success, startTimeSw);
+            //sendFenceResponse(readResponseBuilder, entryBody, success, startTimeSw);
         }
     }
 
@@ -146,11 +143,11 @@ class ReadEntryProcessorV3 extends PacketProcessorBaseV3 {
      * @return read response or null if it is a fence read operation.
      * @throws IOException
      */
-    protected ReadResponse readEntry(ReadResponse.Builder readResponseBuilder,
+    protected Object readEntry(Object readResponseBuilder,
                                      long entryId,
                                      Stopwatch startTimeSw)
-        throws IOException, BookieException {
-        return readEntry(readResponseBuilder, entryId, false, startTimeSw);
+        throws IOException {
+        return 1;
     }
 
     /**
@@ -165,17 +162,17 @@ class ReadEntryProcessorV3 extends PacketProcessorBaseV3 {
      * @return read response or null if it is a fence read operation.
      * @throws IOException
      */
-    protected ReadResponse readEntry(ReadResponse.Builder readResponseBuilder,
+    protected Object readEntry(Object readResponseBuilder,
                                      long entryId,
                                      boolean readLACPiggyBack,
                                      Stopwatch startTimeSw)
-        throws IOException, BookieException {
-        ByteBuf entryBody = requestProcessor.getBookie().readEntry(ledgerId, entryId);
+        throws IOException {
+        ByteBuf entryBody = null;
         if (null != fenceResult) {
             handleReadResultForFenceRead(entryBody, readResponseBuilder, entryId, startTimeSw);
             return null;
         } else {
-            try {
+           /* try {
                 readResponseBuilder.setBody(ByteString.copyFrom(entryBody.nioBuffer()));
                 if (readLACPiggyBack) {
                     readResponseBuilder.setEntryId(entryId);
@@ -188,15 +185,15 @@ class ReadEntryProcessorV3 extends PacketProcessorBaseV3 {
                 return readResponseBuilder.build();
             } finally {
                 ReferenceCountUtil.release(entryBody);
-            }
+            }*/
         }
+        return 1;
     }
 
-    protected ReadResponse getReadResponse() {
+    protected Object getReadResponse() {
         final Stopwatch startTimeSw = Stopwatch.createStarted();
-        final Channel channel = requestHandler.ctx().channel();
 
-        final ReadResponse.Builder readResponse = ReadResponse.newBuilder()
+        /*final ReadResponse.Builder readResponse = ReadResponse.newBuilder()
             .setLedgerId(ledgerId)
             .setEntryId(entryId);
         try {
@@ -233,30 +230,19 @@ class ReadEntryProcessorV3 extends PacketProcessorBaseV3 {
         } catch (IOException e) {
             LOG.error("IOException while reading entry: {} from ledger {} ", entryId, ledgerId, e);
             return buildResponse(readResponse, StatusCode.EIO, startTimeSw);
-        } catch (BookieException.DataUnknownException e) {
-            if (LOG.isDebugEnabled()) {
-                LOG.debug("Ledger has unknown state for entry: {} from ledger {}", entryId, ledgerId);
-            }
-            return buildResponse(readResponse, StatusCode.EUNKNOWNLEDGERSTATE, startTimeSw);
         } catch (BookieException e) {
             LOG.error(
                 "Unauthorized access to ledger:{} while reading entry:{} in request from address: {}",
                     ledgerId, entryId, channel.remoteAddress());
             return buildResponse(readResponse, StatusCode.EUA, startTimeSw);
-        }
+        }*/
+        return 2;
     }
 
     @Override
-    public void run() {
-        requestProcessor.getRequestStats().getReadEntrySchedulingDelayStats().registerSuccessfulEvent(
+    public void safeRun() {
+        /*requestProcessor.getRequestStats().getReadEntrySchedulingDelayStats().registerSuccessfulEvent(
             MathUtils.elapsedNanos(enqueueNanos), TimeUnit.NANOSECONDS);
-        if (!requestHandler.ctx().channel().isOpen()) {
-            if (LOG.isDebugEnabled()) {
-                LOG.debug("Dropping read request for closed channel: {}", requestHandler.ctx().channel());
-            }
-            requestProcessor.onReadRequestFinish();
-            return;
-        }
 
         if (!isVersionCompatible()) {
             ReadResponse readResponse = ReadResponse.newBuilder()
@@ -275,13 +261,13 @@ class ReadEntryProcessorV3 extends PacketProcessorBaseV3 {
         ReadResponse readResponse = getReadResponse();
         if (null != readResponse) {
             sendResponse(readResponse);
-        }
+        }*/
     }
 
-    private void getFenceResponse(ReadResponse.Builder readResponse,
+    private void getFenceResponse(Object readResponse,
                                   ByteBuf entryBody,
                                   boolean fenceResult) {
-        StatusCode status;
+        /*StatusCode status;
         if (!fenceResult) {
             status = StatusCode.EIO;
             registerFailedEvent(requestProcessor.getRequestStats().getFenceReadWaitStats(), lastPhaseStartTime);
@@ -295,39 +281,37 @@ class ReadEntryProcessorV3 extends PacketProcessorBaseV3 {
             ReferenceCountUtil.release(entryBody);
         }
 
-        readResponse.setStatus(status);
+        readResponse.setStatus(status);*/
     }
 
-    private void sendFenceResponse(ReadResponse.Builder readResponse,
+    private void sendFenceResponse(Object readResponse,
                                    ByteBuf entryBody,
                                    boolean fenceResult,
                                    Stopwatch startTimeSw) {
         // build the fence read response
-        getFenceResponse(readResponse, entryBody, fenceResult);
+        /*getFenceResponse(readResponse, entryBody, fenceResult);
         // register fence read stat
         registerEvent(!fenceResult, requestProcessor.getRequestStats().getFenceReadEntryStats(), startTimeSw);
         // send the fence read response
-        sendResponse(readResponse.build());
+        sendResponse(readResponse.build());*/
     }
 
-    protected ReadResponse buildResponse(
-            ReadResponse.Builder readResponseBuilder,
-            StatusCode statusCode,
+    protected Object buildResponse(
+            Object readResponseBuilder,
+            Object statusCode,
             Stopwatch startTimeSw) {
-        registerEvent(!statusCode.equals(StatusCode.EOK), readStats, startTimeSw);
-        readResponseBuilder.setStatus(statusCode);
-        return readResponseBuilder.build();
+        return 1;
     }
 
-    protected void sendResponse(ReadResponse readResponse) {
-        Response.Builder response = Response.newBuilder()
+    protected void sendResponse(Object readResponse) {
+        /*Response.Builder response = Response.newBuilder()
                 .setHeader(getHeader())
                 .setStatus(readResponse.getStatus())
                 .setReadResponse(readResponse);
         sendResponse(response.getStatus(),
                      response.build(),
                      reqStats);
-        requestProcessor.onReadRequestFinish();
+        requestProcessor.onReadRequestFinish();*/
     }
 
     //
@@ -356,7 +340,7 @@ class ReadEntryProcessorV3 extends PacketProcessorBaseV3 {
      */
     @Override
     public String toString() {
-        return RequestUtils.toSafeString(request);
+        return "";
     }
 }
 

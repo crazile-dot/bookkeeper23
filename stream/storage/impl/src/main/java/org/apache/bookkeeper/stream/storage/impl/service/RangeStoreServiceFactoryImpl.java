@@ -19,7 +19,7 @@
 package org.apache.bookkeeper.stream.storage.impl.service;
 
 import org.apache.bookkeeper.clients.impl.internal.api.StorageServerClientManager;
-import org.apache.bookkeeper.common.util.OrderedScheduler;
+//import org.apache.bookkeeper.common.util.OrderedScheduler;
 import org.apache.bookkeeper.common.util.SharedResourceManager;
 import org.apache.bookkeeper.common.util.SharedResourceManager.Resource;
 import org.apache.bookkeeper.stream.protocol.util.StorageContainerPlacementPolicy;
@@ -35,14 +35,14 @@ public class RangeStoreServiceFactoryImpl implements RangeStoreServiceFactory {
 
     private final StorageConfiguration storageConf;
     private final StorageContainerPlacementPolicy rangePlacementPolicy;
-    private final Resource<OrderedScheduler> schedulerResource;
-    private final OrderedScheduler scheduler;
+    private final Resource<Object> schedulerResource;
+    private final Object scheduler;
     private final MVCCStoreFactory storeFactory;
     private final StorageServerClientManager clientManager;
 
     public RangeStoreServiceFactoryImpl(StorageConfiguration storageConf,
                                         StorageContainerPlacementPolicy rangePlacementPolicy,
-                                        Resource<OrderedScheduler> schedulerResource,
+                                        Resource<Object> schedulerResource,
                                         MVCCStoreFactory storeFactory,
                                         StorageServerClientManager clientManager) {
         this.storageConf = storageConf;
@@ -55,12 +55,13 @@ public class RangeStoreServiceFactoryImpl implements RangeStoreServiceFactory {
 
     @Override
     public RangeStoreService createService(long scId) {
-        return new RangeStoreServiceImpl(
+        /*return new RangeStoreServiceImpl(
             scId,
             rangePlacementPolicy,
-            scheduler,
+            null,
             storeFactory,
-            clientManager);
+            clientManager);*/
+        return null;
     }
 
     @Override

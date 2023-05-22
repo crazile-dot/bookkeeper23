@@ -19,10 +19,12 @@
 package org.apache.bookkeeper.client.impl;
 
 import java.util.Arrays;
+
 import org.apache.bookkeeper.client.LedgerHandle;
 import org.apache.bookkeeper.client.api.BKException.Code;
 import org.apache.bookkeeper.client.api.DigestType;
 import org.apache.bookkeeper.client.api.OpenBuilder;
+
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
@@ -33,7 +35,7 @@ public abstract class OpenBuilderBase implements OpenBuilder {
     static final Logger LOG = LoggerFactory.getLogger(OpenBuilderBase.class);
 
     protected boolean recovery = false;
-    protected long ledgerId = LedgerHandle.INVALID_LEDGER_ID;
+    protected long ledgerId = 0;
     protected byte[] password;
     protected DigestType digestType = DigestType.CRC32;
 

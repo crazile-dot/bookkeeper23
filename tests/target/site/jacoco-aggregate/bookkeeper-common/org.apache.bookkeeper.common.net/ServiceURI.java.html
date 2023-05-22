@@ -1,0 +1,253 @@
+<?xml version="1.0" encoding="UTF-8"?><!DOCTYPE html PUBLIC "-//W3C//DTD XHTML 1.0 Strict//EN" "http://www.w3.org/TR/xhtml1/DTD/xhtml1-strict.dtd"><html xmlns="http://www.w3.org/1999/xhtml" lang="it"><head><meta http-equiv="Content-Type" content="text/html;charset=UTF-8"/><link rel="stylesheet" href="../../jacoco-resources/report.css" type="text/css"/><link rel="shortcut icon" href="../../jacoco-resources/report.gif" type="image/gif"/><title>ServiceURI.java</title><link rel="stylesheet" href="../../jacoco-resources/prettify.css" type="text/css"/><script type="text/javascript" src="../../jacoco-resources/prettify.js"></script></head><body onload="window['PR_TAB_WIDTH']=4;prettyPrint()"><div class="breadcrumb" id="breadcrumb"><span class="info"><a href="../../jacoco-sessions.html" class="el_session">Sessions</a></span><a href="../../index.html" class="el_report">Tests</a> &gt; <a href="../index.html" class="el_bundle">bookkeeper-common</a> &gt; <a href="index.source.html" class="el_package">org.apache.bookkeeper.common.net</a> &gt; <span class="el_source">ServiceURI.java</span></div><h1>ServiceURI.java</h1><pre class="source lang-java linenums">/*
+ * Licensed to the Apache Software Foundation (ASF) under one
+ * or more contributor license agreements.  See the NOTICE file
+ * distributed with this work for additional information
+ * regarding copyright ownership.  The ASF licenses this file
+ * to you under the Apache License, Version 2.0 (the
+ * &quot;License&quot;); you may not use this file except in compliance
+ * with the License.  You may obtain a copy of the License at
+ *
+ *     http://www.apache.org/licenses/LICENSE-2.0
+ *
+ * Unless required by applicable law or agreed to in writing, software
+ * distributed under the License is distributed on an &quot;AS IS&quot; BASIS,
+ * WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+ * See the License for the specific language governing permissions and
+ * limitations under the License.
+ */
+
+package org.apache.bookkeeper.common.net;
+
+import static com.google.common.base.Preconditions.checkArgument;
+import static com.google.common.base.Preconditions.checkNotNull;
+
+import com.google.common.base.CharMatcher;
+import com.google.common.base.Splitter;
+import com.google.common.base.Strings;
+import edu.umd.cs.findbugs.annotations.SuppressFBWarnings;
+import java.net.URI;
+import java.util.List;
+import java.util.stream.Collectors;
+import lombok.AccessLevel;
+import lombok.EqualsAndHashCode;
+import lombok.Getter;
+import lombok.RequiredArgsConstructor;
+import org.apache.bookkeeper.common.annotation.InterfaceAudience.Public;
+import org.apache.bookkeeper.common.annotation.InterfaceStability.Evolving;
+import org.apache.commons.lang.StringUtils;
+
+/**
+ * ServiceURI represents service uri within bookkeeper cluster.
+ *
+ * &lt;h3&gt;Service URI syntax and components&lt;/h3&gt;
+ *
+ * &lt;p&gt;At the highest level a service uri is a {@link java.net.URI} in string
+ * form has the syntax.
+ *
+ * &lt;blockquote&gt;
+ * [&lt;i&gt;service&lt;/i&gt;[&lt;i&gt;service-specific-part&lt;/i&gt;]&lt;b&gt;{@code :}&lt;/b&gt;[&lt;b&gt;{@code //}&lt;/b&gt;&lt;i&gt;authority&lt;/i&gt;][&lt;i&gt;path&lt;/i&gt;]
+ * &lt;/blockquote&gt;
+ *
+ * &lt;p&gt;where the characters &lt;b&gt;{@code :}&lt;/b&gt; and &lt;b&gt;{@code /}&lt;/b&gt; stand for themselves.
+ *
+ * &lt;p&gt;The service-specific-part of a service URI consists of the backend information used for services to use.
+ * It has the syntax as below:
+ *
+ * &lt;blockquote&gt;
+ * [({@code -}|{@code +})][&lt;i&gt;backend-part&lt;/i&gt;]
+ * &lt;/blockquote&gt;
+ *
+ * &lt;p&gt;where the characters &lt;b&gt;{@code -}&lt;/b&gt; and &lt;b&gt;{@code +}&lt;/b&gt; stand as a separator to separate service type
+ * from service backend information.
+ *
+ * &lt;p&gt;The authority component of a service URI has the same meaning as the authority component
+ * in a {@link java.net.URI}. If specified, it should be &lt;i&gt;server-based&lt;/i&gt;. A server-based
+ * authority parses according to the familiar syntax
+ *
+ * &lt;blockquote&gt;
+ * [&lt;i&gt;user-info&lt;/i&gt;&lt;b&gt;{@code @}&lt;/b&gt;]&lt;i&gt;host&lt;/i&gt;[&lt;b&gt;{@code :}&lt;/b&gt;&lt;i&gt;port&lt;/i&gt;]
+ * &lt;/blockquote&gt;
+ *
+ * &lt;p&gt;where the characters &lt;b&gt;{@code @}&lt;/b&gt; and &lt;b&gt;{@code :}&lt;/b&gt; stand for themselves.
+ *
+ * &lt;p&gt;The path component of a service URI is itself said to be absolute. It typically means which path a service
+ * stores metadata or data.
+ *
+ * &lt;p&gt;All told, then, a service URI instance has the following components:
+ *
+ * &lt;blockquote&gt;
+ * &lt;table summary=&quot;Describes the components of a service
+ * URI:service,service-specific-part,authority,user-info,host,port,path&quot;&gt;
+ * &lt;tr&gt;&lt;td&gt;service&lt;/td&gt;&lt;td&gt;{@code String}&lt;/td&gt;&lt;/tr&gt;
+ * &lt;tr&gt;&lt;td&gt;service-specific-part&amp;nbsp;&amp;nbsp;&amp;nbsp;&amp;nbsp;&lt;/td&gt;&lt;td&gt;{@code String}&lt;/td&gt;&lt;/tr&gt;
+ * &lt;tr&gt;&lt;td&gt;authority&lt;/td&gt;&lt;td&gt;{@code String}&lt;/td&gt;&lt;/tr&gt;
+ * &lt;tr&gt;&lt;td&gt;user-info&lt;/td&gt;&lt;td&gt;{@code String}&lt;/td&gt;&lt;/tr&gt;
+ * &lt;tr&gt;&lt;td&gt;host&lt;/td&gt;&lt;td&gt;{@code String}&lt;/td&gt;&lt;/tr&gt;
+ * &lt;tr&gt;&lt;td&gt;port&lt;/td&gt;&lt;td&gt;{@code int}&lt;/td&gt;&lt;/tr&gt;
+ * &lt;tr&gt;&lt;td&gt;path&lt;/td&gt;&lt;td&gt;{@code String}&lt;/td&gt;&lt;/tr&gt;
+ * &lt;/table&gt;
+ * &lt;/blockquote&gt;
+ *
+ * &lt;p&gt;Some examples of service URIs are:
+ *
+ * &lt;blockquote&gt;
+ * {@code zk://localhost:2181/cluster1/ledgers} =&amp;gt; ledger service uri using default ledger manager&lt;br&gt;
+ * {@code zk+hierarchical://localhost:2181/ledgers} =&amp;gt; ledger service uri using hierarchical ledger manager&lt;br&gt;
+ * {@code etcd://localhost/ledgers} =&amp;gt; ledger service uri using etcd as metadata store&lt;br&gt;
+ * {@code distributedlog://localhost:2181/distributedlog} =&amp;gt; distributedlog namespace&lt;br&gt;
+ * {@code distributedlog-bk://localhost:2181/distributedlog} =&amp;gt; distributedlog namespace with bk backend&lt;br&gt;
+ * {@code bk://bookkeeper-cluster/} =&amp;gt; stream storage service uri &lt;br&gt;
+ * {@code host1:port,host2:port} =&amp;gt; a list of hosts as bootstrap hosts to a stream storage cluster}
+ * &lt;/blockquote&gt;
+ *
+ * @since 4.8.0
+ */
+@Public
+@Evolving
+<span class="nc" id="L107">@RequiredArgsConstructor(access = AccessLevel.PRIVATE)</span>
+@Getter
+<span class="nc bnc" id="L109" title="All 42 branches missed.">@EqualsAndHashCode</span>
+public class ServiceURI {
+
+    /**
+     * Service string for ledger service that uses zookeeper as metadata store.
+     */
+    public static final String SERVICE_ZK   = &quot;zk&quot;;
+
+    /**
+     * Service string for dlog service.
+     */
+    public static final String SERVICE_DLOG = &quot;distributedlog&quot;;
+
+    /**
+     * Service string for bookkeeper service.
+     */
+    public static final String SERVICE_BK = &quot;bk&quot;;
+    public static final int SERVICE_BK_PORT = 4181;
+
+    /**
+     * The default local bk service uri.
+     */
+<span class="nc" id="L131">    public static final ServiceURI DEFAULT_LOCAL_STREAM_STORAGE_SERVICE_URI =</span>
+<span class="nc" id="L132">        ServiceURI.create(&quot;bk://localhost:4181&quot;);</span>
+
+    private static final String SERVICE_SEP = &quot;+&quot;;
+    private static final String SERVICE_DLOG_SEP = &quot;-&quot;;
+
+    /**
+     * Create a service uri instance from a uri string.
+     *
+     * @param uriStr service uri string
+     * @return a service uri instance
+     * @throws NullPointerException if {@code uriStr} is null
+     * @throws IllegalArgumentException if the given string violates RFC&amp;nbsp;2396
+     */
+    public static ServiceURI create(String uriStr) {
+<span class="nc" id="L146">        checkNotNull(uriStr, &quot;service uri string is null&quot;);</span>
+
+        // a service uri first should be a valid java.net.URI
+<span class="nc" id="L149">        URI uri = URI.create(uriStr);</span>
+
+<span class="nc" id="L151">        return create(uri);</span>
+    }
+
+    /**
+     * Create a service uri instance from a {@link URI} instance.
+     *
+     * @param uri {@link URI} instance
+     * @return a service uri instance
+     * @throws NullPointerException if {@code uriStr} is null
+     * @throws IllegalArgumentException if the given string violates RFC&amp;nbsp;2396
+     */
+    public static ServiceURI create(URI uri) {
+<span class="nc" id="L163">        checkNotNull(uri, &quot;service uri instance is null&quot;);</span>
+
+        String serviceName;
+<span class="nc" id="L166">        String[] serviceInfos = new String[0];</span>
+<span class="nc" id="L167">        String scheme = uri.getScheme();</span>
+<span class="nc bnc" id="L168" title="All 2 branches missed.">        if (null != scheme) {</span>
+<span class="nc" id="L169">            scheme = scheme.toLowerCase();</span>
+            final String serviceSep;
+<span class="nc bnc" id="L171" title="All 2 branches missed.">            if (scheme.startsWith(SERVICE_DLOG)) {</span>
+<span class="nc" id="L172">                serviceSep = SERVICE_DLOG_SEP;</span>
+            } else {
+<span class="nc" id="L174">                serviceSep = SERVICE_SEP;</span>
+            }
+<span class="nc" id="L176">            String[] schemeParts = StringUtils.split(scheme, serviceSep);</span>
+<span class="nc" id="L177">            serviceName = schemeParts[0];</span>
+<span class="nc" id="L178">            serviceInfos = new String[schemeParts.length - 1];</span>
+<span class="nc" id="L179">            System.arraycopy(schemeParts, 1, serviceInfos, 0, serviceInfos.length);</span>
+<span class="nc" id="L180">        } else {</span>
+<span class="nc" id="L181">            serviceName = null;</span>
+        }
+
+<span class="nc" id="L184">        String userAndHostInformation = uri.getAuthority();</span>
+<span class="nc bnc" id="L185" title="All 2 branches missed.">        checkArgument(!Strings.isNullOrEmpty(userAndHostInformation),</span>
+            &quot;authority component is missing in service uri : &quot; + uri);
+
+        String serviceUser;
+        List&lt;String&gt; serviceHosts;
+<span class="nc" id="L190">        int atIndex = userAndHostInformation.indexOf('@');</span>
+<span class="nc" id="L191">        Splitter splitter = Splitter.on(CharMatcher.anyOf(&quot;,;&quot;));</span>
+<span class="nc bnc" id="L192" title="All 2 branches missed.">        if (atIndex &gt; 0) {</span>
+<span class="nc" id="L193">            serviceUser = userAndHostInformation.substring(0, atIndex);</span>
+<span class="nc" id="L194">            serviceHosts = splitter.splitToList(userAndHostInformation.substring(atIndex + 1));</span>
+        } else {
+<span class="nc" id="L196">            serviceUser = null;</span>
+<span class="nc" id="L197">            serviceHosts = splitter.splitToList(userAndHostInformation);</span>
+        }
+<span class="nc" id="L199">        serviceHosts = serviceHosts</span>
+<span class="nc" id="L200">            .stream()</span>
+<span class="nc" id="L201">            .map(host -&gt; validateHostName(serviceName, host))</span>
+<span class="nc" id="L202">            .collect(Collectors.toList());</span>
+
+<span class="nc" id="L204">        String servicePath = uri.getPath();</span>
+<span class="nc bnc" id="L205" title="All 2 branches missed.">        checkArgument(null != servicePath,</span>
+            &quot;service path component is missing in service uri : &quot; + uri);
+
+<span class="nc" id="L208">        return new ServiceURI(</span>
+            serviceName,
+            serviceInfos,
+            serviceUser,
+<span class="nc" id="L212">            serviceHosts.toArray(new String[serviceHosts.size()]),</span>
+            servicePath,
+            uri);
+    }
+
+    private static String validateHostName(String serviceName, String hostname) {
+<span class="nc" id="L218">        String[] parts = hostname.split(&quot;:&quot;);</span>
+<span class="nc bnc" id="L219" title="All 2 branches missed.">        if (parts.length &gt;= 3) {</span>
+<span class="nc" id="L220">            throw new IllegalArgumentException(&quot;Invalid hostname : &quot; + hostname);</span>
+<span class="nc bnc" id="L221" title="All 2 branches missed.">        } else if (parts.length == 2) {</span>
+            try {
+<span class="nc" id="L223">                Integer.parseUnsignedInt(parts[1]);</span>
+<span class="nc" id="L224">            } catch (NumberFormatException nfe) {</span>
+<span class="nc" id="L225">                throw new IllegalArgumentException(&quot;Invalid hostname : &quot; + hostname);</span>
+<span class="nc" id="L226">            }</span>
+<span class="nc" id="L227">            return hostname;</span>
+<span class="nc bnc" id="L228" title="All 4 branches missed.">        } else if (parts.length == 1 &amp;&amp; serviceName.toLowerCase().equals(SERVICE_BK)) {</span>
+<span class="nc" id="L229">            return hostname + &quot;:&quot; + SERVICE_BK_PORT;</span>
+        } else {
+<span class="nc" id="L231">            return hostname;</span>
+        }
+    }
+
+<span class="nc" id="L235">    private final String serviceName;</span>
+    private final String[] serviceInfos;
+<span class="nc" id="L237">    private final String serviceUser;</span>
+    private final String[] serviceHosts;
+<span class="nc" id="L239">    private final String servicePath;</span>
+<span class="nc" id="L240">    private final URI uri;</span>
+
+    @SuppressFBWarnings(&quot;EI_EXPOSE_REP&quot;)
+    public String[] getServiceInfos() {
+<span class="nc" id="L244">        return serviceInfos;</span>
+    }
+
+    @SuppressFBWarnings(&quot;EI_EXPOSE_REP&quot;)
+    public String[] getServiceHosts() {
+<span class="nc" id="L249">        return serviceHosts;</span>
+    }
+
+}
+</pre><div class="footer"><span class="right">Created with <a href="http://www.jacoco.org/jacoco">JaCoCo</a> 0.8.2.201808211720</span></div></body></html>

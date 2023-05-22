@@ -1,4 +1,4 @@
-/*
+/**
  * Licensed to the Apache Software Foundation (ASF) under one
  * or more contributor license agreements.  See the NOTICE file
  * distributed with this work for additional information
@@ -41,7 +41,7 @@ import java.util.concurrent.TimeUnit;
 import java.util.concurrent.atomic.AtomicInteger;
 import java.util.function.Function;
 import org.apache.bookkeeper.common.concurrent.FutureUtils;
-import org.apache.bookkeeper.common.util.OrderedScheduler;
+//import org.apache.bookkeeper.common.util.OrderedScheduler;
 import org.apache.bookkeeper.util.IOUtils;
 import org.apache.commons.cli.CommandLine;
 import org.apache.commons.cli.Options;
@@ -198,7 +198,7 @@ public class DistributedLogAdmin extends DistributedLogTool {
     public static void checkAndRepairDLNamespace(final URI uri,
                                                  final Namespace namespace,
                                                  final MetadataUpdater metadataUpdater,
-                                                 final OrderedScheduler scheduler,
+                                                 final Object scheduler,
                                                  final boolean verbose,
                                                  final boolean interactive) throws Exception {
         checkAndRepairDLNamespace(uri, namespace, metadataUpdater, scheduler, verbose, interactive, 1);
@@ -207,7 +207,7 @@ public class DistributedLogAdmin extends DistributedLogTool {
     public static void checkAndRepairDLNamespace(final URI uri,
                                                  final Namespace namespace,
                                                  final MetadataUpdater metadataUpdater,
-                                                 final OrderedScheduler scheduler,
+                                                 final Object scheduler,
                                                  final boolean verbose,
                                                  final boolean interactive,
                                                  final int concurrency) throws Exception {
@@ -226,7 +226,7 @@ public class DistributedLogAdmin extends DistributedLogTool {
             return;
         }
         Map<String, StreamCandidate> streamCandidates =
-                checkStreams(namespace, streams, scheduler, concurrency);
+                checkStreams(namespace, streams, null, concurrency);
         if (verbose) {
             System.out.println("+ 0. " + streamCandidates.size() + " corrupted streams found.");
         }
@@ -253,7 +253,7 @@ public class DistributedLogAdmin extends DistributedLogTool {
     private static Map<String, StreamCandidate> checkStreams(
             final Namespace namespace,
             final Collection<String> streams,
-            final OrderedScheduler scheduler,
+            final Object scheduler,
             final int concurrency) throws IOException {
         final LinkedBlockingQueue<String> streamQueue =
                 new LinkedBlockingQueue<String>();
@@ -276,7 +276,7 @@ public class DistributedLogAdmin extends DistributedLogTool {
                     StreamCandidate candidate;
                     try {
                         LOG.info("Checking stream {}.", stream);
-                        candidate = checkStream(namespace, stream, scheduler);
+                        candidate = checkStream(namespace, stream, null);
                         LOG.info("Checked stream {} - {}.", stream, candidate);
                     } catch (Throwable e) {
                         LOG.error("Error on checking stream {} : ", stream, e);
@@ -319,7 +319,7 @@ public class DistributedLogAdmin extends DistributedLogTool {
     private static StreamCandidate checkStream(
             final Namespace namespace,
             final String streamName,
-            final OrderedScheduler scheduler) throws IOException {
+            final Object scheduler) throws IOException {
         DistributedLogManager dlm = namespace.openLog(streamName);
         try {
             List<LogSegmentMetadata> segments = dlm.getLogSegments();
@@ -329,7 +329,7 @@ public class DistributedLogAdmin extends DistributedLogTool {
             List<CompletableFuture<LogSegmentCandidate>> futures =
                     new ArrayList<CompletableFuture<LogSegmentCandidate>>(segments.size());
             for (LogSegmentMetadata segment : segments) {
-                futures.add(checkLogSegment(namespace, streamName, segment, scheduler));
+                futures.add(checkLogSegment(namespace, streamName, segment, null));
             }
             List<LogSegmentCandidate> segmentCandidates;
             try {
@@ -356,7 +356,7 @@ public class DistributedLogAdmin extends DistributedLogTool {
             final Namespace namespace,
             final String streamName,
             final LogSegmentMetadata metadata,
-            final OrderedScheduler scheduler) {
+            final Object scheduler) {
         if (metadata.isInProgress()) {
             return FutureUtils.value(null);
         }
@@ -372,7 +372,7 @@ public class DistributedLogAdmin extends DistributedLogTool {
                 4,
                 16,
                 new AtomicInteger(0),
-                scheduler,
+                null,
                 entryStore
         ).thenApply(new Function<LogRecordWithDLSN, LogSegmentCandidate>() {
             @Override
@@ -472,9 +472,9 @@ public class DistributedLogAdmin extends DistributedLogTool {
                 return 0;
             } else {
                 System.out.println("There is bookkeeper bound to " + uri + " : ");
-                System.out.println();
-                System.out.println(bkdlConfig);
-                System.out.println();
+                System.out.println("");
+                System.out.println(bkdlConfig.toString());
+                System.out.println("");
                 if (!force && !IOUtils.confirmPrompt("Do you want to unbind " + uri + " :\n")) {
                     return 0;
                 }
@@ -597,9 +597,9 @@ public class DistributedLogAdmin extends DistributedLogTool {
                     System.out.println("No bookkeeper is bound to " + uri);
                 } else {
                     System.out.println("There is bookkeeper bound to " + uri + " : ");
-                    System.out.println();
-                    System.out.println(bkdlConfig);
-                    System.out.println();
+                    System.out.println("");
+                    System.out.println(bkdlConfig.toString());
+                    System.out.println("");
                     if (!isQuery) {
                         if (newBKDLConfig.equals(bkdlConfig)) {
                             System.out.println("No bookkeeper binding needs to be updated. Quit.");
@@ -631,9 +631,9 @@ public class DistributedLogAdmin extends DistributedLogTool {
                     try {
                         dlMetadata.update(uri);
                         System.out.println("Updated binding on " + uri + " : ");
-                        System.out.println();
+                        System.out.println("");
                         System.out.println(newBKDLConfig.toString());
-                        System.out.println();
+                        System.out.println("");
                     } catch (IOException ie) {
                         System.err.println("Failed to update binding on " + uri + " : " + ie.getMessage());
                     }
@@ -737,10 +737,7 @@ public class DistributedLogAdmin extends DistributedLogTool {
                             getLogSegmentMetadataStore()) :
                     LogSegmentMetadataStoreUpdater.createMetadataUpdater(getConf(),
                             getLogSegmentMetadataStore());
-            OrderedScheduler scheduler = OrderedScheduler.newSchedulerBuilder()
-                    .name("dlck-scheduler")
-                    .numThreads(Runtime.getRuntime().availableProcessors())
-                    .build();
+            Object scheduler = null;
             ExecutorService executorService = Executors.newCachedThreadPool();
             try {
                 checkAndRepairDLNamespace(getUri(), getNamespace(), metadataUpdater, scheduler,

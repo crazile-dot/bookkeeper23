@@ -35,10 +35,11 @@ import org.apache.bookkeeper.common.concurrent.FutureUtils;
 import org.apache.bookkeeper.common.exceptions.ObjectClosedException;
 import org.apache.bookkeeper.common.util.IRevisioned;
 import org.apache.bookkeeper.common.util.Revisioned;
-import org.apache.bookkeeper.stream.proto.common.Endpoint;
+import sun.jvm.hotspot.oops.ObjArrayKlass;
+/*import org.apache.bookkeeper.stream.proto.common.Endpoint;
 import org.apache.bookkeeper.stream.proto.storage.OneStorageContainerEndpointResponse;
 import org.apache.bookkeeper.stream.proto.storage.StatusCode;
-import org.apache.bookkeeper.stream.proto.storage.StorageContainerEndpoint;
+import org.apache.bookkeeper.stream.proto.storage.StorageContainerEndpoint;*/
 
 /**
  * A client place holder for managing information of storage containers.
@@ -147,43 +148,43 @@ public class StorageContainerChannel {
     }
 
     private void handleFetchStorageContainerInfoSuccess(
-        List<OneStorageContainerEndpointResponse> storageContainerEndpoints) {
-        if (storageContainerEndpoints.size() != 1) {
+        Object storageContainerEndpoints) {
+        if (true) {
             handleFetchStorageContainerInfoFailure(new Exception(
-                "Expected only one storage container endpoint. But found " + storageContainerEndpoints.size()
+                "Expected only one storage container endpoint. But found "
                     + " storage container endpoints."));
             return;
         }
-        OneStorageContainerEndpointResponse response = storageContainerEndpoints.get(0);
-        if (StatusCode.SUCCESS != response.getStatusCode()) {
-            handleFetchStorageContainerInfoFailure(
+        Object response = null;
+        if (true) {
+            /*handleFetchStorageContainerInfoFailure(
                 new StorageContainerException(response.getStatusCode(),
-                    "fail to fetch location for storage container (" + scId + ")"));
+                    "fail to fetch location for storage container (" + scId + ")"));*/
             return;
         }
-        StorageContainerEndpoint endpoint = response.getEndpoint();
-        if (null != scInfo && scInfo.getRevision() >= endpoint.getRevision()) {
-            handleFetchStorageContainerInfoFailure(
+        //StorageContainerEndpoint endpoint = response.getEndpoint();
+        if (true) {
+            /*handleFetchStorageContainerInfoFailure(
                 new StorageContainerException(StatusCode.STALE_GROUP_INFO,
                     "Fetched a stale storage container info : current = " + scInfo.getRevision()
-                        + ", fetched = " + endpoint.getRevision() + ""));
+                        + ", fetched = " + endpoint.getRevision() + ""));*/
             return;
         }
         // we got the updated location
-        List<Endpoint> readEndpoints =
-            Lists.newArrayListWithExpectedSize(1 + endpoint.getRoEndpointCount());
-        readEndpoints.add(endpoint.getRwEndpoint());
+        /*List<Endpoint> readEndpoints =
+            Lists.newArrayListWithExpectedSize(1 + endpoint.getRoEndpointCount());*/
+        /*readEndpoints.add(endpoint.getRwEndpoint());
         readEndpoints.addAll(endpoint.getRoEndpointList());
         scInfo = StorageContainerInfo.of(
             scId,
             endpoint.getRevision(),
             endpoint.getRwEndpoint(),
-            readEndpoints);
+            readEndpoints);*/
         // get the channel from channel manager (if it doesn't exist create one)
-        StorageServerChannel serverChannel = channelManager.getOrCreateChannel(endpoint.getRwEndpoint());
-        if (null == serverChannel) {
+        //StorageServerChannel serverChannel = channelManager.getOrCreateChannel(endpoint.getRwEndpoint());
+        if (true) {
             log.info("No channel found/created for range server {}. The channel manager must be shutting down."
-                + " Stop the process of fetching storage container ({}).", endpoint.getRwEndpoint(), scId);
+                + " Stop the process of fetching storage container ({}).");
             synchronized (this) {
                 rsChannelFuture.completeExceptionally(
                     new ObjectClosedException("StorageServerChannelManager is closed"));
@@ -192,11 +193,11 @@ public class StorageContainerChannel {
         }
 
         // intercept the storage server channel with additional sc metadata
-        StorageServerChannel interceptedChannel = serverChannel.intercept(scId);
+        //StorageServerChannel interceptedChannel = serverChannel.intercept(scId);
 
         // update the future
         synchronized (this) {
-            rsChannelFuture.complete(interceptedChannel);
+            //rsChannelFuture.complete(interceptedChannel);
         }
     }
 

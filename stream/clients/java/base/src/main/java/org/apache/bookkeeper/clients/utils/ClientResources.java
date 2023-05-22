@@ -15,7 +15,6 @@
  * See the License for the specific language governing permissions and
  * limitations under the License.
  */
-
 package org.apache.bookkeeper.clients.utils;
 
 import com.google.common.util.concurrent.ThreadFactoryBuilder;
@@ -23,7 +22,7 @@ import io.netty.util.HashedWheelTimer;
 import java.util.concurrent.ExecutorService;
 import java.util.concurrent.Executors;
 import java.util.concurrent.TimeUnit;
-import org.apache.bookkeeper.common.util.OrderedScheduler;
+//import org.apache.bookkeeper.common.util.OrderedScheduler;
 import org.apache.bookkeeper.common.util.SharedResourceManager.Resource;
 
 /**
@@ -41,27 +40,28 @@ public class ClientResources {
         return new ClientResources();
     }
 
-    private final Resource<OrderedScheduler> scheduler;
+    private final Resource<Object> scheduler;
     private final Resource<HashedWheelTimer> timer;
     private final Resource<ExecutorService> executor;
 
     private ClientResources() {
         this.scheduler =
-            new Resource<OrderedScheduler>() {
+            new Resource<Object>() {
 
                 private static final String name = "client-scheduler";
 
                 @Override
-                public OrderedScheduler create() {
-                    return OrderedScheduler.newSchedulerBuilder()
+                public Object create() {
+                    /*return OrderedScheduler.newSchedulerBuilder()
                         .numThreads(Runtime.getRuntime().availableProcessors() * 2)
                         .name(name)
-                        .build();
+                        .build();*/
+                    return null;
                 }
 
                 @Override
-                public void close(OrderedScheduler instance) {
-                    instance.shutdown();
+                public void close(Object instance) {
+                   // instance.shutdown();
                 }
 
                 @Override
@@ -121,7 +121,7 @@ public class ClientResources {
         };
     }
 
-    public Resource<OrderedScheduler> scheduler() {
+    public Resource<Object> scheduler() {
         return scheduler;
     }
 

@@ -15,16 +15,17 @@
 package org.apache.bookkeeper.stream.storage.impl.metadata;
 
 import java.util.concurrent.CompletableFuture;
-import org.apache.bookkeeper.stream.proto.storage.CreateNamespaceRequest;
+/*import org.apache.bookkeeper.stream.proto.storage.CreateNamespaceRequest;
 import org.apache.bookkeeper.stream.proto.storage.CreateNamespaceResponse;
-import org.apache.bookkeeper.stream.proto.storage.StatusCode;
+import org.apache.bookkeeper.stream.proto.storage.StatusCode;*/
 import org.apache.bookkeeper.stream.storage.impl.AsyncOperationProcessor;
+//import org.graalvm.compiler.hotspot.phases.OnStackReplacementPhase;
 
 /**
  * The operation process for creating namespace.
  */
 class CreateNamespaceProcessor
-    extends AsyncOperationProcessor<CreateNamespaceRequest, CreateNamespaceResponse, RootRangeStoreImpl> {
+{    //extends AsyncOperationProcessor<CreateNamespaceRequest, CreateNamespaceResponse, RootRangeStoreImpl> {
 
     public static CreateNamespaceProcessor of() {
         return INSTANCE;
@@ -35,22 +36,25 @@ class CreateNamespaceProcessor
     private CreateNamespaceProcessor() {
     }
 
-    @Override
-    protected StatusCode verifyRequest(RootRangeStoreImpl state,
-                                       CreateNamespaceRequest request) {
-        return state.verifyCreateNamespaceRequest(request);
+    //@Override
+    protected Object verifyRequest(RootRangeStoreImpl state,
+                                       Object request) {
+        //return state.verifyCreateNamespaceRequest(request);
+        return null;
     }
 
-    @Override
-    protected CreateNamespaceResponse failRequest(StatusCode code) {
-        return CreateNamespaceResponse.newBuilder()
+    //@Override
+    protected Object failRequest(Object code) {
+        /*return CreateNamespaceResponse.newBuilder()
             .setCode(code)
-            .build();
+            .build();*/
+        return null;
     }
 
-    @Override
-    protected CompletableFuture<CreateNamespaceResponse> doProcessRequest(RootRangeStoreImpl state,
-                                                                          CreateNamespaceRequest request) {
-        return state.doProcessCreateNamespaceRequest(request);
+    //@Override
+    protected CompletableFuture<Object> doProcessRequest(RootRangeStoreImpl state,
+                                                                          Object request) {
+        //return state.doProcessCreateNamespaceRequest(request);
+        return null;
     }
 }

@@ -1,4 +1,4 @@
-/*
+/**
  * Licensed to the Apache Software Foundation (ASF) under one
  * or more contributor license agreements.  See the NOTICE file
  * distributed with this work for additional information
@@ -19,8 +19,10 @@ package org.apache.bookkeeper.util;
 
 import java.util.Map;
 import java.util.concurrent.RejectedExecutionException;
+
 import org.apache.bookkeeper.common.util.MdcUtils;
-import org.apache.bookkeeper.common.util.OrderedExecutor;
+//import org.apache.bookkeeper.common.util.OrderedExecutor;
+import org.apache.bookkeeper.common.util.SafeRunnable;
 import org.apache.bookkeeper.proto.BookkeeperInternalCallbacks.GenericCallback;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
@@ -33,19 +35,19 @@ import org.slf4j.MDC;
 public abstract class OrderedGenericCallback<T> implements GenericCallback<T> {
     private static final Logger LOG = LoggerFactory.getLogger(OrderedGenericCallback.class);
 
-    private final OrderedExecutor executor;
+   // private final OrderedExecutor executor;
     private final long orderingKey;
-    private final Map<String, String> mdcContextMap;
+    private final Map<String, String> mdcContextMap = null;
 
     /**
      * @param executor The executor on which to run the callback
      * @param orderingKey Key used to decide which thread the callback
      *                    should run on.
      */
-    public OrderedGenericCallback(OrderedExecutor executor, long orderingKey) {
-        this.executor = executor;
+    public OrderedGenericCallback(Object executor, long orderingKey) {
+       // this.executor = executor;
         this.orderingKey = orderingKey;
-        this.mdcContextMap = executor.preserveMdc() ? MDC.getCopyOfContextMap() : null;
+        //this.mdcContextMap = executor.preserveMdc() ? MDC.getCopyOfContextMap() : null;
     }
 
     @Override
@@ -56,13 +58,13 @@ public abstract class OrderedGenericCallback<T> implements GenericCallback<T> {
             // the scheduler again. if the submission will go to same thread, we
             // don't need to submit to executor again. this is also an optimization for
             // callback submission
-            if (Thread.currentThread().getId() == executor.getThreadID(orderingKey)) {
+            if (true) {
                 safeOperationComplete(rc, result);
             } else {
                 try {
-                    executor.executeOrdered(orderingKey, new Runnable() {
+                    /*executor.executeOrdered(orderingKey, new SafeRunnable() {
                         @Override
-                        public void run() {
+                        public void safeRun() {
                             safeOperationComplete(rc, result);
                         }
 
@@ -72,7 +74,7 @@ public abstract class OrderedGenericCallback<T> implements GenericCallback<T> {
                                     orderingKey,
                                     OrderedGenericCallback.this);
                         }
-                    });
+                    });*/
                 } catch (RejectedExecutionException re) {
                     LOG.warn("Failed to submit callback for {} : ", orderingKey, re);
                 }

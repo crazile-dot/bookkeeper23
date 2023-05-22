@@ -1,4 +1,4 @@
-/*
+/**
  * Licensed to the Apache Software Foundation (ASF) under one
  * or more contributor license agreements.  See the NOTICE file
  * distributed with this work for additional information
@@ -42,7 +42,7 @@ import java.util.concurrent.atomic.AtomicBoolean;
 import java.util.concurrent.atomic.AtomicReference;
 import org.apache.bookkeeper.common.concurrent.FutureEventListener;
 import org.apache.bookkeeper.common.concurrent.FutureUtils;
-import org.apache.bookkeeper.common.util.OrderedScheduler;
+//import org.apache.bookkeeper.common.util.OrderedScheduler;
 import org.apache.distributedlog.DistributedLogConfiguration;
 import org.apache.distributedlog.ZooKeeperClient;
 import org.apache.distributedlog.callback.NamespaceListener;
@@ -115,7 +115,7 @@ public class FederatedZKLogMetadataStore
 
         SubNamespace(URI uri) {
             this.uri = uri;
-            this.watcher = new ZKNamespaceWatcher(conf, uri, zkc, scheduler);
+            this.watcher = new ZKNamespaceWatcher(conf, uri, zkc, null);
             this.watcher.registerListener(this);
         }
 
@@ -172,7 +172,7 @@ public class FederatedZKLogMetadataStore
     final DistributedLogConfiguration conf;
     final URI namespace;
     final ZooKeeperClient zkc;
-    final OrderedScheduler scheduler;
+    final Object scheduler;
     final String zkSubnamespacesPath;
     final AtomicBoolean duplicatedLogFound = new AtomicBoolean(false);
     final AtomicReference<String> duplicatedLogName = new AtomicReference<String>(null);
@@ -190,7 +190,7 @@ public class FederatedZKLogMetadataStore
             DistributedLogConfiguration conf,
             URI namespace,
             ZooKeeperClient zkc,
-            OrderedScheduler scheduler) throws IOException {
+            Object scheduler) throws IOException {
         this.conf = conf;
         this.namespace = namespace;
         this.zkc = zkc;
@@ -230,7 +230,7 @@ public class FederatedZKLogMetadataStore
             return;
         }
         try {
-            scheduler.schedule(r, ms, TimeUnit.MILLISECONDS);
+            //scheduler.schedule(r, ms, TimeUnit.MILLISECONDS);
         } catch (RejectedExecutionException ree) {
             logger.error("Task {} scheduled in {} ms is rejected : ", r, ms, ree);
         }
@@ -561,7 +561,7 @@ public class FederatedZKLogMetadataStore
                                       final String logName,
                                       final CompletableFuture<URI> createPromise) {
         // TODO: rewrite this after we bump to zk 3.5, where we will have asynchronous version of multi
-        scheduler.submit(new Runnable() {
+        /*scheduler.submit(new Runnable() {
             @Override
             public void run() {
                 try {
@@ -578,7 +578,7 @@ public class FederatedZKLogMetadataStore
                     createPromise.completeExceptionally(e);
                 }
             }
-        });
+        });*/
     }
 
     void createLogInNamespaceSync(URI uri, String logName)

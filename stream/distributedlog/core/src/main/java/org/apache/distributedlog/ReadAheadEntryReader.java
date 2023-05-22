@@ -1,4 +1,4 @@
-/*
+/**
  * Licensed to the Apache Software Foundation (ASF) under one
  * or more contributor license agreements.  See the NOTICE file
  * distributed with this work for additional information
@@ -34,9 +34,10 @@ import java.util.concurrent.atomic.AtomicBoolean;
 import java.util.concurrent.atomic.AtomicReference;
 import java.util.function.Function;
 import java.util.stream.Collectors;
+
 import org.apache.bookkeeper.common.concurrent.FutureEventListener;
 import org.apache.bookkeeper.common.concurrent.FutureUtils;
-import org.apache.bookkeeper.common.util.OrderedScheduler;
+//import org.apache.bookkeeper.common.util.OrderedScheduler;
 import org.apache.bookkeeper.common.util.SafeRunnable;
 import org.apache.bookkeeper.stats.AlertStatsLogger;
 import org.apache.bookkeeper.versioning.Versioned;
@@ -243,7 +244,7 @@ class ReadAheadEntryReader implements
     private final DistributedLogConfiguration conf;
     private final BKLogReadHandler readHandler;
     private final LogSegmentEntryStore entryStore;
-    private final OrderedScheduler scheduler;
+    private final Object scheduler;
 
     //
     // Parameters
@@ -296,7 +297,7 @@ class ReadAheadEntryReader implements
                                 DistributedLogConfiguration conf,
                                 BKLogReadHandler readHandler,
                                 LogSegmentEntryStore entryStore,
-                                OrderedScheduler scheduler,
+                                Object scheduler,
                                 Ticker ticker,
                                 AlertStatsLogger alertStatsLogger) {
         this.streamName = streamName;
@@ -328,13 +329,13 @@ class ReadAheadEntryReader implements
 
     private ScheduledFuture<?> scheduleIdleReaderTaskIfNecessary() {
         if (idleWarnThresholdMillis < Integer.MAX_VALUE && idleWarnThresholdMillis > 0) {
-            return scheduler.scheduleAtFixedRateOrdered(streamName, () -> {
+            /*return scheduler.scheduleAtFixedRateOrdered(streamName, () -> {
                 if (!isReaderIdle(idleWarnThresholdMillis, TimeUnit.MILLISECONDS)) {
                     return;
                 }
                 // the readahead has been idle
                 unsafeCheckIfReadAheadIsIdle();
-            }, idleWarnThresholdMillis, idleWarnThresholdMillis, TimeUnit.MILLISECONDS);
+            }, idleWarnThresholdMillis, idleWarnThresholdMillis, TimeUnit.MILLISECONDS);*/
         }
         return null;
     }
@@ -397,14 +398,14 @@ class ReadAheadEntryReader implements
         return isInitialized;
     }
 
-    private void orderedSubmit(Runnable runnable) {
+    private void orderedSubmit(SafeRunnable runnable) {
         synchronized (this) {
             if (null != closePromise) {
                 return;
             }
         }
         try {
-            scheduler.executeOrdered(streamName, runnable);
+            //scheduler.executeOrdered(streamName, runnable);
         } catch (RejectedExecutionException ree) {
             logger.debug("Failed to submit and execute an operation for readhead entry reader of {}",
                     streamName, ree);
@@ -463,7 +464,7 @@ class ReadAheadEntryReader implements
         // use runnable here instead of CloseableRunnable,
         // because we need this to be executed
         try {
-            scheduler.executeOrdered(streamName, () -> unsafeAsyncClose(closeFuture));
+            //scheduler.executeOrdered(streamName, () -> unsafeAsyncClose(closeFuture));
         } catch (RejectedExecutionException ree) {
             logger.warn("Scheduler has been shutdown before closing the readahead entry reader for stream {}",
                     streamName, ree);
@@ -607,7 +608,7 @@ class ReadAheadEntryReader implements
 
         if (cause instanceof EndOfLogSegmentException) {
             // we reach end of the log segment
-            moveToNextLogSegment(currentSegmentReader);
+            moveToNextLogSegment();
             return;
         }
         if (cause instanceof IOException) {
@@ -905,15 +906,11 @@ class ReadAheadEntryReader implements
         return true;
     }
 
-    void moveToNextLogSegment(final SegmentReader prevSegmentReader) {
+    void moveToNextLogSegment() {
         orderedSubmit(new CloseableRunnable() {
             @Override
             public void safeRun() {
-                // Do not move forward if previous enqueued runnable
-                // already moved the segment forward.
-                if (prevSegmentReader == currentSegmentReader) {
-                    unsafeMoveToNextLogSegment();
-                }
+                unsafeMoveToNextLogSegment();
             }
         });
     }

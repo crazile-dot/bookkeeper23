@@ -1,4 +1,4 @@
-/*
+/**
  * Licensed to the Apache Software Foundation (ASF) under one
  * or more contributor license agreements.  See the NOTICE file
  * distributed with this work for additional information
@@ -72,10 +72,8 @@ abstract class BKAbstractLogWriter implements Closeable, AsyncCloseable, Abortab
         this.conf = conf;
         this.dynConf = dynConf;
         this.bkDistributedLogManager = bkdlm;
-        if (LOG.isDebugEnabled()) {
-            LOG.debug("Initial retention period for {} : {}", bkdlm.getStreamName(),
-                    TimeUnit.MILLISECONDS.convert(dynConf.getRetentionPeriodHours(), TimeUnit.HOURS));
-        }
+        LOG.debug("Initial retention period for {} : {}", bkdlm.getStreamName(),
+                TimeUnit.MILLISECONDS.convert(dynConf.getRetentionPeriodHours(), TimeUnit.HOURS));
     }
 
     @VisibleForTesting
@@ -241,14 +239,14 @@ abstract class BKAbstractLogWriter implements Closeable, AsyncCloseable, Abortab
             closeFuture = closePromise = new CompletableFuture<Void>();
         }
         cancelTruncation();
-        FutureUtils.proxyTo(
+        /*FutureUtils.proxyTo(
             Utils.closeSequence(bkDistributedLogManager.getScheduler(),
                     true, /** ignore close errors **/
-                    getCachedLogWriter(),
+                   /* getCachedLogWriter(),
                     getAllocatedLogWriter(),
                     getCachedWriteHandler()
             ),
-            closeFuture);
+            closeFuture);*/
         return closeFuture;
     }
 
@@ -267,12 +265,12 @@ abstract class BKAbstractLogWriter implements Closeable, AsyncCloseable, Abortab
             closeFuture = closePromise = new CompletableFuture<Void>();
         }
         cancelTruncation();
-        FutureUtils.proxyTo(
+        /*FutureUtils.proxyTo(
             Abortables.abortSequence(bkDistributedLogManager.getScheduler(),
                     getCachedLogWriter(),
                     getAllocatedLogWriter(),
                     getCachedWriteHandler()),
-            closeFuture);
+            closeFuture);*/
         return closeFuture;
     }
 

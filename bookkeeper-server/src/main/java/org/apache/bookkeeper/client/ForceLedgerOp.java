@@ -1,4 +1,4 @@
-/*
+/**
  * Licensed to the Apache Software Foundation (ASF) under one
  * or more contributor license agreements.  See the NOTICE file
  * distributed with this work for additional information
@@ -18,20 +18,20 @@
 package org.apache.bookkeeper.client;
 
 import static com.google.common.base.Preconditions.checkState;
-
 import java.util.List;
 import java.util.concurrent.CompletableFuture;
 import org.apache.bookkeeper.common.concurrent.FutureUtils;
 import org.apache.bookkeeper.net.BookieId;
 import org.apache.bookkeeper.proto.BookieClient;
 import org.apache.bookkeeper.proto.BookkeeperInternalCallbacks.ForceLedgerCallback;
+import org.apache.bookkeeper.util.SafeRunnable;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
 /**
  * This represents a request to sync the ledger on every bookie.
  */
-class ForceLedgerOp implements Runnable, ForceLedgerCallback {
+class ForceLedgerOp extends SafeRunnable implements ForceLedgerCallback {
 
     private static final Logger LOG = LoggerFactory.getLogger(ForceLedgerOp.class);
     final CompletableFuture<Void> cb;
@@ -57,11 +57,11 @@ class ForceLedgerOp implements Runnable, ForceLedgerCallback {
     }
 
     void sendForceLedgerRequest(int bookieIndex) {
-        bookieClient.forceLedger(currentEnsemble.get(bookieIndex), lh.ledgerId, this, bookieIndex);
+        bookieClient.forceLedger(currentEnsemble.get(bookieIndex), 1, this, bookieIndex);
     }
 
     @Override
-    public void run() {
+    public void safeRun() {
         initiate();
     }
 
@@ -70,15 +70,14 @@ class ForceLedgerOp implements Runnable, ForceLedgerCallback {
         // capture currentNonDurableLastAddConfirmed
         // remember that we are inside OrderedExecutor, this induces a strict ordering
         // on the sequence of events
-        this.currentNonDurableLastAddConfirmed = lh.pendingAddsSequenceHead;
+        //this.currentNonDurableLastAddConfirmed = lh.pendingAddsSequenceHead;
         if (LOG.isDebugEnabled()) {
-            LOG.debug("force {} clientNonDurableLac {}", lh.ledgerId, currentNonDurableLastAddConfirmed);
+            LOG.debug("force {} clientNonDurableLac {}", 1, currentNonDurableLastAddConfirmed);
         }
         // we need to send the request to every bookie in the ensamble
-        this.ackSet = lh.distributionSchedule.getEnsembleAckSet();
+        //this.ackSet = lh.distributionSchedule.getEnsembleAckSet();
 
-        DistributionSchedule.WriteSet writeSet = lh.getDistributionSchedule()
-                                                   .getEnsembleSet(currentNonDurableLastAddConfirmed);
+        DistributionSchedule.WriteSet writeSet = null;
         try {
             for (int i = 0; i < writeSet.size(); i++) {
                 sendForceLedgerRequest(writeSet.get(i));
@@ -112,13 +111,13 @@ class ForceLedgerOp implements Runnable, ForceLedgerCallback {
                     LOG.debug("After force on ledger {} updating LastAddConfirmed to {} ",
                               ledgerId, currentNonDurableLastAddConfirmed);
                 }
-                lh.updateLastConfirmed(currentNonDurableLastAddConfirmed, lh.getLength());
+               // lh.updateLastConfirmed(currentNonDurableLastAddConfirmed, lh.getLength());
                 FutureUtils.complete(cb, null);
             }
         } else {
             // at least one bookie failed, as we are waiting for all the bookies
             // we can fail immediately
-            LOG.error("ForceLedger did not succeed: Ledger {} on {}", ledgerId, addr);
+            LOG.info("ForceLedger did not succeed: Ledger {} on {}", ledgerId, addr);
             errored = true;
 
             // notify the failure

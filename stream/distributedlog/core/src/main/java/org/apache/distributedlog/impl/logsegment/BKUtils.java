@@ -1,4 +1,4 @@
-/*
+/**
  * Licensed to the Apache Software Foundation (ASF) under one
  * or more contributor license agreements.  See the NOTICE file
  * distributed with this work for additional information
@@ -41,7 +41,7 @@ public class BKUtils {
      */
     public static CompletableFuture<Void> closeLedger(LedgerHandle lh) {
         final CompletableFuture<Void> closePromise = new CompletableFuture<Void>();
-        lh.asyncClose(new AsyncCallback.CloseCallback() {
+        /*lh.asyncClose(new AsyncCallback.CloseCallback() {
             @Override
             public void closeComplete(int rc, LedgerHandle lh, Object ctx) {
                 if (BKException.Code.OK != rc) {
@@ -50,7 +50,7 @@ public class BKUtils {
                     FutureUtils.complete(closePromise, null);
                 }
             }
-        }, null);
+        }, null);*/
         return closePromise;
     }
 

@@ -21,7 +21,7 @@ package org.apache.bookkeeper.stream.storage.impl;
 import java.util.concurrent.CompletableFuture;
 import java.util.concurrent.ScheduledExecutorService;
 import org.apache.bookkeeper.common.concurrent.FutureUtils;
-import org.apache.bookkeeper.stream.proto.storage.StatusCode;
+//import org.apache.bookkeeper.stream.proto.storage.StatusCode;
 
 /**
  * Operation Processor.
@@ -39,17 +39,17 @@ public abstract class AsyncOperationProcessor<ReqT, RespT, StateT> {
         return future;
     }
 
-    protected abstract StatusCode verifyRequest(StateT state,
+    protected abstract Object verifyRequest(StateT state,
                                                 ReqT request);
 
-    protected abstract RespT failRequest(StatusCode code);
+    protected abstract RespT failRequest(Object code);
 
     protected abstract CompletableFuture<RespT> doProcessRequest(StateT state, ReqT request);
 
     protected void processRequest(CompletableFuture<RespT> future,
                                   StateT state,
                                   ReqT request) {
-        try {
+        /*try {
             StatusCode code = verifyRequest(state, request);
             if (StatusCode.SUCCESS != code) {
                 future.complete(failRequest(code));
@@ -64,7 +64,7 @@ public abstract class AsyncOperationProcessor<ReqT, RespT, StateT> {
             }
         } catch (Throwable cause) {
             future.completeExceptionally(cause);
-        }
+        }*/
     }
 
 }

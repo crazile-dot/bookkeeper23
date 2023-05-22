@@ -1,0 +1,107 @@
+<?xml version="1.0" encoding="UTF-8"?><!DOCTYPE html PUBLIC "-//W3C//DTD XHTML 1.0 Strict//EN" "http://www.w3.org/TR/xhtml1/DTD/xhtml1-strict.dtd"><html xmlns="http://www.w3.org/1999/xhtml" lang="it"><head><meta http-equiv="Content-Type" content="text/html;charset=UTF-8"/><link rel="stylesheet" href="../../jacoco-resources/report.css" type="text/css"/><link rel="shortcut icon" href="../../jacoco-resources/report.gif" type="image/gif"/><title>GetListOfEntriesOfLedgerProcessorV3.java</title><link rel="stylesheet" href="../../jacoco-resources/prettify.css" type="text/css"/><script type="text/javascript" src="../../jacoco-resources/prettify.js"></script></head><body onload="window['PR_TAB_WIDTH']=4;prettyPrint()"><div class="breadcrumb" id="breadcrumb"><span class="info"><a href="../../jacoco-sessions.html" class="el_session">Sessions</a></span><a href="../../index.html" class="el_report">Tests</a> &gt; <a href="../index.html" class="el_bundle">bookkeeper-server</a> &gt; <a href="index.source.html" class="el_package">org.apache.bookkeeper.proto</a> &gt; <span class="el_source">GetListOfEntriesOfLedgerProcessorV3.java</span></div><h1>GetListOfEntriesOfLedgerProcessorV3.java</h1><pre class="source lang-java linenums">/*
+ *
+ * Licensed to the Apache Software Foundation (ASF) under one
+ * or more contributor license agreements.  See the NOTICE file
+ * distributed with this work for additional information
+ * regarding copyright ownership.  The ASF licenses this file
+ * to you under the Apache License, Version 2.0 (the
+ * &quot;License&quot;); you may not use this file except in compliance
+ * with the License.  You may obtain a copy of the License at
+ *
+ *   http://www.apache.org/licenses/LICENSE-2.0
+ *
+ * Unless required by applicable law or agreed to in writing,
+ * software distributed under the License is distributed on an
+ * &quot;AS IS&quot; BASIS, WITHOUT WARRANTIES OR CONDITIONS OF ANY
+ * KIND, either express or implied.  See the License for the
+ * specific language governing permissions and limitations
+ * under the License.
+ *
+ */
+package org.apache.bookkeeper.proto;
+
+import com.google.protobuf.ByteString;
+import io.netty.channel.Channel;
+import java.io.IOException;
+import java.util.concurrent.TimeUnit;
+
+import org.apache.bookkeeper.bookie.Bookie;
+
+import org.apache.bookkeeper.util.AvailabilityOfEntriesOfLedger;
+import org.apache.bookkeeper.util.MathUtils;
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
+
+/**
+ * A processor class for v3 entries of a ledger packets.
+ */
+public class GetListOfEntriesOfLedgerProcessorV3 extends PacketProcessorBaseV3 implements Runnable {
+
+<span class="nc" id="L40">    private static final Logger LOG = LoggerFactory.getLogger(GetListOfEntriesOfLedgerProcessorV3.class);</span>
+    //protected final GetListOfEntriesOfLedgerRequest getListOfEntriesOfLedgerRequest;
+    //protected final long ledgerId;
+
+    public GetListOfEntriesOfLedgerProcessorV3(Object request, Channel channel,
+            Object requestProcessor) {
+<span class="nc" id="L46">        super(null, channel, null);</span>
+        /*this.getListOfEntriesOfLedgerRequest = request.getGetListOfEntriesOfLedgerRequest();
+        this.ledgerId = getListOfEntriesOfLedgerRequest.getLedgerId();*/
+<span class="nc" id="L49">    }</span>
+
+    private Object getListOfEntriesOfLedgerResponse() {
+<span class="nc" id="L52">        long startTimeNanos = MathUtils.nowInNano();</span>
+
+       // GetListOfEntriesOfLedgerResponse.Builder getListOfEntriesOfLedgerResponse = GetListOfEntriesOfLedgerResponse
+               // .newBuilder();
+        /*getListOfEntriesOfLedgerResponse.setLedgerId(ledgerId);
+
+        if (!isVersionCompatible()) {
+            getListOfEntriesOfLedgerResponse.setStatus(StatusCode.EBADVERSION);
+            requestProcessor.getRequestStats().getGetListOfEntriesOfLedgerStats()
+                    .registerFailedEvent(MathUtils.elapsedNanos(startTimeNanos), TimeUnit.NANOSECONDS);
+            return getListOfEntriesOfLedgerResponse.build();
+        }
+
+        if (LOG.isDebugEnabled()) {
+            LOG.debug(&quot;Received new getListOfEntriesOfLedger request: {}&quot;, request);
+        }
+        StatusCode status = StatusCode.EOK;
+        AvailabilityOfEntriesOfLedger availabilityOfEntriesOfLedger = null;
+        try {
+            availabilityOfEntriesOfLedger = new AvailabilityOfEntriesOfLedger(
+                    requestProcessor.bookie.getListOfEntriesOfLedger(ledgerId));
+            getListOfEntriesOfLedgerResponse.setAvailabilityOfEntriesOfLedger(
+                    ByteString.copyFrom(availabilityOfEntriesOfLedger.serializeStateOfEntriesOfLedger()));
+
+        } catch (Bookie.NoLedgerException e) {
+            status = StatusCode.ENOLEDGER;
+            LOG.error(&quot;No ledger found while performing getListOfEntriesOfLedger from ledger: {}&quot;, ledgerId, e);
+        } catch (IOException e) {
+            status = StatusCode.EIO;
+            LOG.error(&quot;IOException while performing getListOfEntriesOfLedger from ledger: {}&quot;, ledgerId);
+        }
+
+        if (status == StatusCode.EOK) {
+            requestProcessor.getRequestStats().getListOfEntriesOfLedgerStats
+                    .registerSuccessfulEvent(MathUtils.elapsedNanos(startTimeNanos), TimeUnit.NANOSECONDS);
+        } else {
+            requestProcessor.getRequestStats().getListOfEntriesOfLedgerStats
+                    .registerFailedEvent(MathUtils.elapsedNanos(startTimeNanos), TimeUnit.NANOSECONDS);
+        }
+        // Finally set the status and return
+        getListOfEntriesOfLedgerResponse.setStatus(status);*/
+<span class="nc" id="L93">        return 1;</span>
+    }
+
+    @Override
+    public void safeRun() {
+        /*GetListOfEntriesOfLedgerResponse listOfEntriesOfLedgerResponse = getListOfEntriesOfLedgerResponse();
+        Response.Builder response = Response.newBuilder().setHeader(getHeader())
+                .setStatus(listOfEntriesOfLedgerResponse.getStatus())
+                .setGetListOfEntriesOfLedgerResponse(listOfEntriesOfLedgerResponse);
+        Response resp = response.build();
+        sendResponse(listOfEntriesOfLedgerResponse.getStatus(), resp,
+                requestProcessor.getRequestStats().getListOfEntriesOfLedgerRequestStats);*/
+<span class="nc" id="L105">    }</span>
+}
+</pre><div class="footer"><span class="right">Created with <a href="http://www.jacoco.org/jacoco">JaCoCo</a> 0.8.2.201808211720</span></div></body></html>

@@ -1,4 +1,4 @@
-/*
+/**
  * Licensed to the Apache Software Foundation (ASF) under one
  * or more contributor license agreements.  See the NOTICE file
  * distributed with this work for additional information
@@ -22,7 +22,7 @@ import java.io.IOException;
 import java.util.Enumeration;
 import java.util.List;
 import java.util.concurrent.CompletableFuture;
-import org.apache.bookkeeper.client.AsyncCallback.ReadCallback;
+//import org.apache.bookkeeper.client.AsyncCallback.ReadCallback;
 import org.apache.bookkeeper.client.BKException;
 import org.apache.bookkeeper.client.LedgerEntry;
 import org.apache.bookkeeper.client.LedgerHandle;
@@ -37,8 +37,7 @@ import org.apache.distributedlog.logsegment.LogSegmentRandomAccessEntryReader;
  * BookKeeper ledger based random access entry reader.
  */
 class BKLogSegmentRandomAccessEntryReader implements
-        LogSegmentRandomAccessEntryReader,
-        ReadCallback {
+        LogSegmentRandomAccessEntryReader{
 
     private final long lssn;
     private final long startSequenceId;
@@ -62,13 +61,13 @@ class BKLogSegmentRandomAccessEntryReader implements
 
     @Override
     public long getLastAddConfirmed() {
-        return lh.getLastAddConfirmed();
+        return 0;
     }
 
     @Override
     public CompletableFuture<List<Entry.Reader>> readEntries(long startEntryId, long endEntryId) {
         CompletableFuture<List<Entry.Reader>> promise = new CompletableFuture<List<Entry.Reader>>();
-        lh.asyncReadEntries(startEntryId, endEntryId, this, promise);
+        //lh.asyncReadEntries(startEntryId, endEntryId, this, promise);
         return promise;
     }
 
@@ -83,7 +82,7 @@ class BKLogSegmentRandomAccessEntryReader implements
     }
 
     @SuppressWarnings("unchecked")
-    @Override
+    //@Override
     public void readComplete(int rc, LedgerHandle lh, Enumeration<LedgerEntry> entries, Object ctx) {
         CompletableFuture<List<Entry.Reader>> promise = (CompletableFuture<List<Entry.Reader>>) ctx;
         if (BKException.Code.OK == rc) {

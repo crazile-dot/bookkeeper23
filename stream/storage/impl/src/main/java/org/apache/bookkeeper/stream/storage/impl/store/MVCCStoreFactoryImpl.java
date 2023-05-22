@@ -28,6 +28,8 @@ import java.util.Map;
 import java.util.concurrent.CompletableFuture;
 import java.util.concurrent.ScheduledExecutorService;
 import java.util.function.Supplier;
+
+import com.sun.tools.classfile.ConstantPool;
 import lombok.AccessLevel;
 import lombok.Getter;
 import lombok.experimental.Accessors;
@@ -35,7 +37,7 @@ import lombok.extern.slf4j.Slf4j;
 import org.apache.bookkeeper.common.coder.ByteArrayCoder;
 import org.apache.bookkeeper.common.concurrent.FutureUtils;
 import org.apache.bookkeeper.common.exceptions.ObjectClosedException;
-import org.apache.bookkeeper.common.util.OrderedScheduler;
+//import org.apache.bookkeeper.common.util.OrderedScheduler;
 import org.apache.bookkeeper.common.util.SharedResourceManager;
 import org.apache.bookkeeper.statelib.StateStores;
 import org.apache.bookkeeper.statelib.api.StateStoreSpec;
@@ -59,11 +61,11 @@ public class MVCCStoreFactoryImpl implements MVCCStoreFactory {
     private final StorageResources storageResources;
     // scheduler
     @Getter(value = AccessLevel.PACKAGE)
-    private final OrderedScheduler writeIOScheduler;
+    private final Object writeIOScheduler;
     @Getter(value = AccessLevel.PACKAGE)
-    private final OrderedScheduler readIOScheduler;
+    private final Object readIOScheduler;
     @Getter(value = AccessLevel.PACKAGE)
-    private final OrderedScheduler checkpointScheduler;
+    private final Object checkpointScheduler;
     // dirs
     private final File[] localStateDirs;
     // checkpoint manager
@@ -96,15 +98,18 @@ public class MVCCStoreFactoryImpl implements MVCCStoreFactory {
     }
 
     private ScheduledExecutorService chooseWriteIOExecutor(long streamId) {
-        return writeIOScheduler.chooseThread(streamId);
+        //return writeIOScheduler.chooseThread(streamId);
+        return null;
     }
 
     private ScheduledExecutorService chooseReadIOExecutor(long streamId) {
-        return readIOScheduler.chooseThread(streamId);
+        //return readIOScheduler.chooseThread(streamId);
+        return null;
     }
 
     private ScheduledExecutorService chooseCheckpointIOExecutor(long streamId) {
-        return checkpointScheduler.chooseThread(streamId);
+        //return checkpointScheduler.chooseThread(streamId);
+        return null;
     }
 
     private File chooseLocalStoreDir(long streamId) {
@@ -157,17 +162,16 @@ public class MVCCStoreFactoryImpl implements MVCCStoreFactory {
     }
 
     @Override
-    public CompletableFuture<MVCCAsyncStore<byte[], byte[]>> openStore(long scId, long streamId, long rangeId,
-                                                                       int ttlSeconds) {
+    public CompletableFuture<MVCCAsyncStore<byte[], byte[]>> openStore(long scId, long streamId, long rangeId) {
         MVCCAsyncStore<byte[], byte[]> store = getStore(scId, streamId, rangeId);
         if (null == store) {
-            return newStore(scId, streamId, rangeId, ttlSeconds);
+            return newStore(scId, streamId, rangeId);
         } else {
             return FutureUtils.value(store);
         }
     }
 
-    CompletableFuture<MVCCAsyncStore<byte[], byte[]>> newStore(long scId, long streamId, long rangeId, int ttlSeconds) {
+    CompletableFuture<MVCCAsyncStore<byte[], byte[]>> newStore(long scId, long streamId, long rangeId) {
         synchronized (this) {
             if (closed) {
                 return FutureUtils.exception(new ObjectClosedException("MVCCStoreFactory"));
@@ -212,10 +216,6 @@ public class MVCCStoreFactoryImpl implements MVCCStoreFactory {
             .isReadonly(serveReadOnlyTable)
             .checkpointChecksumEnable(storageConf.getCheckpointChecksumEnable())
             .checkpointChecksumCompatible(storageConf.getCheckpointChecksumCompatible())
-            .localStorageCleanupEnable(storageConf.getLocalStorageCleanupEnable())
-            .checkpointRestoreIdleLimit(
-                Duration.ofMillis(storageConf.getCheckpointRestoreIdleLimitMs()))
-            .ttlSeconds(ttlSeconds)
             .build();
 
 

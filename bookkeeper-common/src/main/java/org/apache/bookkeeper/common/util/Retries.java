@@ -33,11 +33,12 @@ public final class Retries {
 
     private Retries() {
     }
+}
 
-    public static final Predicate<Throwable> NonFatalPredicate =
-        cause -> !(cause instanceof RuntimeException);
+    /*public static final Predicate<Throwable> NonFatalPredicate =
+        cause -> !(cause instanceof RuntimeException);*/
 
-    /**
+    /*/**
      * Retry a given {@code task} on failures.
      *
      * <p>It is a shortcut of {@link #run(Stream, Predicate, Supplier, OrderedScheduler, Object)}
@@ -50,7 +51,7 @@ public final class Retries {
      * @param <ReturnT>      the return type
      * @return future represents the result of the task with retries.
      */
-    public static <ReturnT> CompletableFuture<ReturnT> run(
+    /*public static <ReturnT> CompletableFuture<ReturnT> run(
         Stream<Long> backoffs,
         Predicate<Throwable> retryPredicate,
         Supplier<CompletableFuture<ReturnT>> task,
@@ -78,7 +79,7 @@ public final class Retries {
      * @param <ReturnT>      the return tye.
      * @return future represents the result of the task with retries.
      */
-    public static <ReturnT> CompletableFuture<ReturnT> run(
+    /*public static <ReturnT> CompletableFuture<ReturnT> run(
         Stream<Long> backoffs,
         Predicate<Throwable> retryPredicate,
         Supplier<CompletableFuture<ReturnT>> task,
@@ -141,4 +142,4 @@ public final class Retries {
         }, scheduler, key);
     }
 
-}
+}*/

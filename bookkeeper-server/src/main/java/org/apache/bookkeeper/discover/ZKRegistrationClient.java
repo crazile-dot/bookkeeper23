@@ -43,8 +43,9 @@ import lombok.extern.slf4j.Slf4j;
 import org.apache.bookkeeper.client.BKException;
 import org.apache.bookkeeper.client.BKException.ZKException;
 import org.apache.bookkeeper.common.concurrent.FutureUtils;
+import org.apache.bookkeeper.common.util.SafeRunnable;
 import org.apache.bookkeeper.net.BookieId;
-import org.apache.bookkeeper.proto.DataFormats.BookieServiceInfoFormat;
+//import org.apache.bookkeeper.proto.DataFormats.BookieServiceInfoFormat;
 import org.apache.bookkeeper.versioning.LongVersion;
 import org.apache.bookkeeper.versioning.Version;
 import org.apache.bookkeeper.versioning.Version.Occurred;
@@ -67,7 +68,7 @@ public class ZKRegistrationClient implements RegistrationClient {
     static final int ZK_CONNECT_BACKOFF_MS = 200;
 
     class WatchTask
-        implements Runnable,
+        implements SafeRunnable,
                    Watcher,
                    BiConsumer<Versioned<Set<BookieId>>, Throwable>,
                    AutoCloseable {
@@ -118,7 +119,7 @@ public class ZKRegistrationClient implements RegistrationClient {
         }
 
         @Override
-        public void run() {
+        public void safeRun() {
             if (isClosed()) {
                 return;
             }
@@ -240,9 +241,7 @@ public class ZKRegistrationClient implements RegistrationClient {
         // because it can happen than this method is called inside the main
         // zookeeper client event loop thread
         Versioned<BookieServiceInfo> resultFromCache = bookieServiceInfoCache.get(bookieId);
-        if (log.isDebugEnabled()) {
-            log.debug("getBookieServiceInfo {} -> {}", bookieId, resultFromCache);
-        }
+        log.debug("getBookieServiceInfo {} -> {}", bookieId, resultFromCache);
         if (resultFromCache != null) {
             return CompletableFuture.completedFuture(resultFromCache);
         } else {
@@ -315,9 +314,9 @@ public class ZKRegistrationClient implements RegistrationClient {
             return BookieServiceInfoUtils.buildLegacyBookieServiceInfo(bookieId.toString());
         }
 
-        BookieServiceInfoFormat builder = BookieServiceInfoFormat.parseFrom(bookieServiceInfo);
+        //BookieServiceInfoFormat builder = BookieServiceInfoFormat.parseFrom(bookieServiceInfo);
         BookieServiceInfo bsi = new BookieServiceInfo();
-        List<BookieServiceInfo.Endpoint> endpoints = builder.getEndpointsList().stream()
+        /*List<BookieServiceInfo.Endpoint> endpoints = builder.getEndpointsList().stream()
                 .map(e -> {
                     BookieServiceInfo.Endpoint endpoint = new BookieServiceInfo.Endpoint();
                     endpoint.setId(e.getId());
@@ -331,7 +330,7 @@ public class ZKRegistrationClient implements RegistrationClient {
                 .collect(Collectors.toList());
 
         bsi.setEndpoints(endpoints);
-        bsi.setProperties(builder.getPropertiesMap());
+        bsi.setProperties(builder.getPropertiesMap());*/
 
         return bsi;
     }
@@ -481,9 +480,7 @@ public class ZKRegistrationClient implements RegistrationClient {
 
         @Override
         public void process(WatchedEvent we) {
-            if (log.isDebugEnabled()) {
-                log.debug("zk event {} for {} state {}", we.getType(), we.getPath(), we.getState());
-            }
+            log.debug("zk event {} for {} state {}", we.getType(), we.getPath(), we.getState());
             if (we.getState() == KeeperState.Expired) {
                 log.info("zk session expired, invalidating cache");
                 bookieServiceInfoCache.clear();
@@ -503,9 +500,7 @@ public class ZKRegistrationClient implements RegistrationClient {
                     readBookieServiceInfoAsync(bookieId);
                     break;
                 default:
-                    if (log.isDebugEnabled()) {
-                        log.debug("ignore cache event {} for {}", we.getType(), bookieId);
-                    }
+                    log.debug("ignore cache event {} for {}", we.getType(), bookieId);
                     break;
             }
         }

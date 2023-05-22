@@ -1,4 +1,4 @@
-/*
+/**
  * Licensed to the Apache Software Foundation (ASF) under one
  * or more contributor license agreements.  See the NOTICE file
  * distributed with this work for additional information
@@ -24,10 +24,10 @@ import java.util.concurrent.CompletableFuture;
 import org.apache.bookkeeper.client.AsyncCallback;
 import org.apache.bookkeeper.client.BKException;
 import org.apache.bookkeeper.client.BKException.Code;
-import org.apache.bookkeeper.client.BookKeeper;
+//import org.apache.bookkeeper.client.BookKeeper;
 import org.apache.bookkeeper.client.LedgerHandle;
 import org.apache.bookkeeper.common.concurrent.FutureUtils;
-import org.apache.bookkeeper.common.util.OrderedScheduler;
+//import org.apache.bookkeeper.common.util.OrderedScheduler;
 import org.apache.bookkeeper.stats.StatsLogger;
 import org.apache.distributedlog.BookKeeperClient;
 import org.apache.distributedlog.DistributedLogConfiguration;
@@ -58,8 +58,7 @@ import org.slf4j.LoggerFactory;
  */
 public class BKLogSegmentEntryStore implements
         LogSegmentEntryStore,
-        AsyncCallback.OpenCallback,
-        AsyncCallback.DeleteCallback {
+        AsyncCallback {
 
     private static final Logger logger = LoggerFactory.getLogger(BKLogSegmentEntryReader.class);
 
@@ -93,7 +92,7 @@ public class BKLogSegmentEntryStore implements
     private final byte[] passwd;
     private final ZooKeeperClient zkc;
     private final BookKeeperClient bkc;
-    private final OrderedScheduler scheduler;
+    private final Object scheduler;
     private final DistributedLogConfiguration conf;
     private final DynamicDistributedLogConfiguration dynConf;
     private final StatsLogger statsLogger;
@@ -105,7 +104,7 @@ public class BKLogSegmentEntryStore implements
                                   DynamicDistributedLogConfiguration dynConf,
                                   ZooKeeperClient zkc,
                                   BookKeeperClient bkc,
-                                  OrderedScheduler scheduler,
+                                  Object scheduler,
                                   LedgerAllocator allocator,
                                   StatsLogger statsLogger,
                                   AsyncFailureInjector failureInjector) {
@@ -123,17 +122,17 @@ public class BKLogSegmentEntryStore implements
     @Override
     public CompletableFuture<LogSegmentMetadata> deleteLogSegment(LogSegmentMetadata segment) {
         DeleteLogSegmentRequest request = new DeleteLogSegmentRequest(segment);
-        BookKeeper bk;
+        //BookKeeper bk;
         try {
-            bk = this.bkc.get();
-        } catch (IOException e) {
+            //bk = this.bkc.get();
+        } catch (Exception e) {
             return FutureUtils.exception(e);
         }
-        bk.asyncDeleteLedger(segment.getLogSegmentId(), this, request);
+        //bk.asyncDeleteLedger(segment.getLogSegmentId(), this, request);
         return request.deletePromise;
     }
 
-    @Override
+    //@Override
     public void deleteComplete(int rc, Object ctx) {
         DeleteLogSegmentRequest deleteRequest = (DeleteLogSegmentRequest) ctx;
         if (Code.NoSuchLedgerExistsOnMetadataServerException == rc) {
@@ -199,15 +198,15 @@ public class BKLogSegmentEntryStore implements
     @Override
     public CompletableFuture<LogSegmentEntryReader> openReader(LogSegmentMetadata segment,
                                                     long startEntryId) {
-        BookKeeper bk;
+        //BookKeeper bk;
         try {
-            bk = this.bkc.get();
-        } catch (IOException e) {
+            //bk = this.bkc.get();
+        } catch (Exception e) {
             return FutureUtils.exception(e);
         }
         OpenReaderRequest request = new OpenReaderRequest(segment, startEntryId);
         if (segment.isInProgress()) {
-            bk.asyncOpenLedgerNoRecovery(
+            /*bk.asyncOpenLedgerNoRecovery(
                     segment.getLogSegmentId(),
                     BookKeeper.DigestType.CRC32,
                     passwd,
@@ -220,11 +219,12 @@ public class BKLogSegmentEntryStore implements
                     passwd,
                     this,
                     request);
-        }
+        }*/
         return request.openPromise;
     }
+    return null;}
 
-    @Override
+    //@Override
     public void openComplete(int rc, LedgerHandle lh, Object ctx) {
         OpenReaderRequest request = (OpenReaderRequest) ctx;
         if (BKException.Code.OK != rc) {
@@ -254,15 +254,15 @@ public class BKLogSegmentEntryStore implements
     @Override
     public CompletableFuture<LogSegmentRandomAccessEntryReader> openRandomAccessReader(final LogSegmentMetadata segment,
                                                                             final boolean fence) {
-        final BookKeeper bk;
+        //final BookKeeper bk;
         try {
-            bk = this.bkc.get();
-        } catch (IOException e) {
+            //bk = this.bkc.get();
+        } catch (Exception e) {
             return FutureUtils.exception(e);
         }
         final CompletableFuture<LogSegmentRandomAccessEntryReader> openPromise =
                 new CompletableFuture<LogSegmentRandomAccessEntryReader>();
-        AsyncCallback.OpenCallback openCallback = new AsyncCallback.OpenCallback() {
+        /*AsyncCallback.OpenCallback openCallback = new AsyncCallback.OpenCallback() {
             @Override
             public void openComplete(int rc, LedgerHandle lh, Object ctx) {
                 if (BKException.Code.OK != rc) {
@@ -277,21 +277,21 @@ public class BKLogSegmentEntryStore implements
                         conf);
                 FutureUtils.complete(openPromise, reader);
             }
-        };
+        };*/
         if (segment.isInProgress() && !fence) {
-            bk.asyncOpenLedgerNoRecovery(
+            /*bk.asyncOpenLedgerNoRecovery(
                     segment.getLogSegmentId(),
                     BookKeeper.DigestType.CRC32,
                     passwd,
                     openCallback,
-                    null);
+                    null);*/
         } else {
-            bk.asyncOpenLedger(
+            /*bk.asyncOpenLedger(
                     segment.getLogSegmentId(),
                     BookKeeper.DigestType.CRC32,
                     passwd,
                     openCallback,
-                    null);
+                    null);*/
         }
         return openPromise;
     }

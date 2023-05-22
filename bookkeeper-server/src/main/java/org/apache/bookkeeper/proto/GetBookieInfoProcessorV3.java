@@ -20,13 +20,16 @@
  */
 package org.apache.bookkeeper.proto;
 
+import io.netty.channel.Channel;
+
 import java.io.IOException;
 import java.util.concurrent.TimeUnit;
-import org.apache.bookkeeper.proto.BookkeeperProtocol.GetBookieInfoRequest;
+
+/*import org.apache.bookkeeper.proto.BookkeeperProtocol.GetBookieInfoRequest;
 import org.apache.bookkeeper.proto.BookkeeperProtocol.GetBookieInfoResponse;
 import org.apache.bookkeeper.proto.BookkeeperProtocol.Request;
 import org.apache.bookkeeper.proto.BookkeeperProtocol.Response;
-import org.apache.bookkeeper.proto.BookkeeperProtocol.StatusCode;
+import org.apache.bookkeeper.proto.BookkeeperProtocol.StatusCode;*/
 import org.apache.bookkeeper.util.MathUtils;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
@@ -37,13 +40,13 @@ import org.slf4j.LoggerFactory;
 public class GetBookieInfoProcessorV3 extends PacketProcessorBaseV3 implements Runnable {
     private static final Logger LOG = LoggerFactory.getLogger(GetBookieInfoProcessorV3.class);
 
-    public GetBookieInfoProcessorV3(Request request, BookieRequestHandler requestHandler,
-                                     BookieRequestProcessor requestProcessor) {
-        super(request, requestHandler, requestProcessor);
+    public GetBookieInfoProcessorV3(Object request, Channel channel,
+                                     Object requestProcessor) {
+        super(null, channel, null);
     }
 
-    private GetBookieInfoResponse getGetBookieInfoResponse() {
-        long startTimeNanos = MathUtils.nowInNano();
+    private Object getGetBookieInfoResponse() {
+        /*long startTimeNanos = MathUtils.nowInNano();
         GetBookieInfoRequest getBookieInfoRequest = request.getGetBookieInfoRequest();
         long requested = getBookieInfoRequest.getRequested();
 
@@ -70,35 +73,31 @@ public class GetBookieInfoProcessorV3 extends PacketProcessorBaseV3 implements R
                 totalDiskSpace = requestProcessor.getBookie().getTotalDiskSpace();
                 getBookieInfoResponse.setTotalDiskCapacity(totalDiskSpace);
             }
-            if (LOG.isDebugEnabled()) {
-                LOG.debug("FreeDiskSpace info is " + freeDiskSpace + " totalDiskSpace is: " + totalDiskSpace);
-            }
-            requestProcessor.getRequestStats().getGetBookieInfoStats()
-                    .registerSuccessfulEvent(MathUtils.elapsedNanos(startTimeNanos), TimeUnit.NANOSECONDS);
+            LOG.debug("FreeDiskSpace info is " + freeDiskSpace + " totalDiskSpace is: " + totalDiskSpace);
         } catch (IOException e) {
             status = StatusCode.EIO;
             LOG.error("IOException while getting  freespace/totalspace", e);
-            requestProcessor.getRequestStats().getGetBookieInfoStats()
-                    .registerFailedEvent(MathUtils.elapsedNanos(startTimeNanos), TimeUnit.NANOSECONDS);
         }
 
         getBookieInfoResponse.setStatus(status);
-        return getBookieInfoResponse.build();
+        requestProcessor.getRequestStats().getGetBookieInfoStats()
+            .registerSuccessfulEvent(MathUtils.elapsedNanos(startTimeNanos), TimeUnit.NANOSECONDS);*/
+        return 1;
     }
 
     @Override
-    public void run() {
-        GetBookieInfoResponse getBookieInfoResponse = getGetBookieInfoResponse();
-        sendResponse(getBookieInfoResponse);
+    public void safeRun() {
+        //GetBookieInfoResponse getBookieInfoResponse = getGetBookieInfoResponse();
+        //sendResponse(getBookieInfoResponse);
     }
 
-    private void sendResponse(GetBookieInfoResponse getBookieInfoResponse) {
-        Response.Builder response = Response.newBuilder()
+    private void sendResponse(Object getBookieInfoResponse) {
+        /*Response.Builder response = Response.newBuilder()
                 .setHeader(getHeader())
                 .setStatus(getBookieInfoResponse.getStatus())
                 .setGetBookieInfoResponse(getBookieInfoResponse);
         sendResponse(response.getStatus(),
                      response.build(),
-                     requestProcessor.getRequestStats().getGetBookieInfoRequestStats());
+                     requestProcessor.getRequestStats().getGetBookieInfoRequestStats());*/
     }
 }

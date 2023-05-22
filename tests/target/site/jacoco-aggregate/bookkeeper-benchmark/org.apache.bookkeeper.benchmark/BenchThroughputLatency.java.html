@@ -1,0 +1,475 @@
+<?xml version="1.0" encoding="UTF-8"?><!DOCTYPE html PUBLIC "-//W3C//DTD XHTML 1.0 Strict//EN" "http://www.w3.org/TR/xhtml1/DTD/xhtml1-strict.dtd"><html xmlns="http://www.w3.org/1999/xhtml" lang="it"><head><meta http-equiv="Content-Type" content="text/html;charset=UTF-8"/><link rel="stylesheet" href="../../jacoco-resources/report.css" type="text/css"/><link rel="shortcut icon" href="../../jacoco-resources/report.gif" type="image/gif"/><title>BenchThroughputLatency.java</title><link rel="stylesheet" href="../../jacoco-resources/prettify.css" type="text/css"/><script type="text/javascript" src="../../jacoco-resources/prettify.js"></script></head><body onload="window['PR_TAB_WIDTH']=4;prettyPrint()"><div class="breadcrumb" id="breadcrumb"><span class="info"><a href="../../jacoco-sessions.html" class="el_session">Sessions</a></span><a href="../../index.html" class="el_report">Tests</a> &gt; <a href="../index.html" class="el_bundle">bookkeeper-benchmark</a> &gt; <a href="index.source.html" class="el_package">org.apache.bookkeeper.benchmark</a> &gt; <span class="el_source">BenchThroughputLatency.java</span></div><h1>BenchThroughputLatency.java</h1><pre class="source lang-java linenums">/*
+ * Licensed to the Apache Software Foundation (ASF) under one
+ * or more contributor license agreements.  See the NOTICE file
+ * distributed with this work for additional information
+ * regarding copyright ownership.  The ASF licenses this file
+ * to you under the Apache License, Version 2.0 (the
+ * &quot;License&quot;); you may not use this file except in compliance
+ * with the License.  You may obtain a copy of the License at
+ *
+ *   http://www.apache.org/licenses/LICENSE-2.0
+ *
+ * Unless required by applicable law or agreed to in writing,
+ * software distributed under the License is distributed on an
+ * &quot;AS IS&quot; BASIS, WITHOUT WARRANTIES OR CONDITIONS OF ANY
+ * KIND, either express or implied.  See the License for the
+ * specific language governing permissions and limitations
+ * under the License.
+ *
+ */
+package org.apache.bookkeeper.benchmark;
+
+import static java.nio.charset.StandardCharsets.UTF_8;
+import static org.apache.bookkeeper.util.BookKeeperConstants.AVAILABLE_NODE;
+
+import java.io.BufferedOutputStream;
+import java.io.FileOutputStream;
+import java.io.IOException;
+import java.io.OutputStream;
+import java.util.Arrays;
+import java.util.Random;
+import java.util.Timer;
+import java.util.TimerTask;
+import java.util.concurrent.CountDownLatch;
+import java.util.concurrent.Semaphore;
+import java.util.concurrent.TimeUnit;
+import java.util.concurrent.atomic.AtomicLong;
+import org.apache.bookkeeper.client.AsyncCallback.AddCallback;
+import org.apache.bookkeeper.client.BKException;
+//import org.apache.bookkeeper.client.BookKeeper;
+import org.apache.bookkeeper.client.LedgerHandle;
+import org.apache.bookkeeper.conf.ClientConfiguration;
+import org.apache.bookkeeper.meta.zk.ZKMetadataDriverBase;
+import org.apache.commons.cli.CommandLine;
+import org.apache.commons.cli.CommandLineParser;
+import org.apache.commons.cli.HelpFormatter;
+import org.apache.commons.cli.Options;
+import org.apache.commons.cli.ParseException;
+import org.apache.commons.cli.PosixParser;
+import org.apache.zookeeper.CreateMode;
+import org.apache.zookeeper.KeeperException;
+import org.apache.zookeeper.WatchedEvent;
+import org.apache.zookeeper.Watcher;
+import org.apache.zookeeper.Watcher.Event.EventType;
+import org.apache.zookeeper.Watcher.Event.KeeperState;
+import org.apache.zookeeper.ZooDefs;
+import org.apache.zookeeper.ZooKeeper;
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
+
+/**
+ * A benchmark that benchmarks write throughput and latency.
+ */
+public class BenchThroughputLatency implements AddCallback, Runnable {
+<span class="nc" id="L64">    static final Logger LOG = LoggerFactory.getLogger(BenchThroughputLatency.class);</span>
+
+    //BookKeeper bk;
+    LedgerHandle[] lh;
+    AtomicLong counter;
+
+    Semaphore sem;
+<span class="nc" id="L71">    int numberOfLedgers = 1;</span>
+    final int sendLimit;
+    final long[] latencies;
+
+    static class Context {
+        long localStartTime;
+        long id;
+
+<span class="nc" id="L79">        Context(long id, long time){</span>
+<span class="nc" id="L80">            this.id = id;</span>
+<span class="nc" id="L81">            this.localStartTime = time;</span>
+<span class="nc" id="L82">        }</span>
+    }
+
+    public BenchThroughputLatency(int ensemble, int writeQuorumSize, int ackQuorumSize, byte[] passwd,
+            int numberOfLedgers, int sendLimit, ClientConfiguration conf)
+<span class="nc" id="L87">            throws BKException, IOException, InterruptedException {</span>
+<span class="nc" id="L88">        this.sem = new Semaphore(conf.getThrottleValue());</span>
+        //bk = new BookKeeper(conf);
+<span class="nc" id="L90">        this.counter = new AtomicLong(0);</span>
+<span class="nc" id="L91">        this.numberOfLedgers = numberOfLedgers;</span>
+<span class="nc" id="L92">        this.sendLimit = sendLimit;</span>
+<span class="nc" id="L93">        this.latencies = new long[sendLimit];</span>
+        try {
+<span class="nc" id="L95">            lh = new LedgerHandle[this.numberOfLedgers];</span>
+
+<span class="nc bnc" id="L97" title="All 2 branches missed.">            for (int i = 0; i &lt; this.numberOfLedgers; i++) {</span>
+                /*lh[i] = bk.createLedger(ensemble, writeQuorumSize,
+                                        ackQuorumSize,
+                                        BookKeeper.DigestType.CRC32,
+                                        passwd);
+                LOG.debug(&quot;Ledger Handle: &quot; + lh[i].getId());*/
+            }
+<span class="nc" id="L104">        } catch (Exception e) {</span>
+<span class="nc" id="L105">            e.printStackTrace();</span>
+<span class="nc" id="L106">        }</span>
+<span class="nc" id="L107">    }</span>
+
+<span class="nc" id="L109">    Random rand = new Random();</span>
+    public void close() throws InterruptedException, BKException {
+<span class="nc bnc" id="L111" title="All 2 branches missed.">        for (int i = 0; i &lt; numberOfLedgers; i++) {</span>
+            //lh[i].close();
+        }
+       // bk.close();
+<span class="nc" id="L115">    }</span>
+
+<span class="nc" id="L117">    long previous = 0;</span>
+    byte[] bytes;
+
+    void setEntryData(byte[] data) {
+<span class="nc" id="L121">        bytes = data;</span>
+<span class="nc" id="L122">    }</span>
+
+<span class="nc" id="L124">    int lastLedger = 0;</span>
+    private int getRandomLedger() {
+<span class="nc" id="L126">         return rand.nextInt(numberOfLedgers);</span>
+    }
+
+<span class="nc" id="L129">    int latencyIndex = -1;</span>
+<span class="nc" id="L130">    AtomicLong completedRequests = new AtomicLong(0);</span>
+
+<span class="nc" id="L132">    long duration = -1;</span>
+    public synchronized long getDuration() {
+<span class="nc" id="L134">        return duration;</span>
+    }
+
+    @Override
+    public void run() {
+<span class="nc" id="L139">        LOG.info(&quot;Running...&quot;);</span>
+<span class="nc" id="L140">        long start = previous = System.currentTimeMillis();</span>
+
+<span class="nc" id="L142">        int sent = 0;</span>
+
+<span class="nc" id="L144">        Thread reporter = new Thread() {</span>
+                @Override
+                public void run() {
+                    try {
+                        while (true) {
+<span class="nc" id="L149">                            Thread.sleep(1000);</span>
+<span class="nc" id="L150">                            LOG.info(&quot;ms: {} req: {}&quot;, System.currentTimeMillis(), completedRequests.getAndSet(0));</span>
+                        }
+<span class="nc" id="L152">                    } catch (InterruptedException ie) {</span>
+<span class="nc" id="L153">                        LOG.info(&quot;Caught interrupted exception, going away&quot;);</span>
+<span class="nc" id="L154">                        Thread.currentThread().interrupt();</span>
+                    }
+<span class="nc" id="L156">                }</span>
+            };
+<span class="nc" id="L158">        reporter.start();</span>
+<span class="nc" id="L159">        long beforeSend = System.nanoTime();</span>
+
+<span class="nc bnc" id="L161" title="All 4 branches missed.">        while (!Thread.currentThread().isInterrupted() &amp;&amp; sent &lt; sendLimit) {</span>
+            try {
+<span class="nc" id="L163">                sem.acquire();</span>
+<span class="nc bnc" id="L164" title="All 2 branches missed.">                if (sent == 10000) {</span>
+<span class="nc" id="L165">                    long afterSend = System.nanoTime();</span>
+<span class="nc" id="L166">                    long time = afterSend - beforeSend;</span>
+<span class="nc" id="L167">                    LOG.info(&quot;Time to send first batch: {}s {}ns &quot;, time / 1000 / 1000 / 1000, time);</span>
+                }
+<span class="nc" id="L169">            } catch (InterruptedException e) {</span>
+<span class="nc" id="L170">                Thread.currentThread().interrupt();</span>
+<span class="nc" id="L171">                break;</span>
+<span class="nc" id="L172">            }</span>
+
+<span class="nc" id="L174">            final int index = getRandomLedger();</span>
+<span class="nc" id="L175">            LedgerHandle h = lh[index];</span>
+<span class="nc bnc" id="L176" title="All 2 branches missed.">            if (h == null) {</span>
+<span class="nc" id="L177">                LOG.error(&quot;Handle &quot; + index + &quot; is null!&quot;);</span>
+            } else {
+<span class="nc" id="L179">                long nanoTime = System.nanoTime();</span>
+               // lh[index].asyncAddEntry(bytes, this, new Context(sent, nanoTime));
+<span class="nc" id="L181">                counter.incrementAndGet();</span>
+            }
+<span class="nc" id="L183">            sent++;</span>
+<span class="nc" id="L184">        }</span>
+<span class="nc" id="L185">        LOG.info(&quot;Sent: &quot;  + sent);</span>
+        try {
+<span class="nc" id="L187">            int i = 0;</span>
+<span class="nc bnc" id="L188" title="All 2 branches missed.">            while (this.counter.get() &gt; 0) {</span>
+<span class="nc" id="L189">                Thread.sleep(1000);</span>
+<span class="nc" id="L190">                i++;</span>
+<span class="nc bnc" id="L191" title="All 2 branches missed.">                if (i &gt; 30) {</span>
+<span class="nc" id="L192">                    break;</span>
+                }
+            }
+<span class="nc" id="L195">        } catch (InterruptedException e) {</span>
+<span class="nc" id="L196">            LOG.error(&quot;Interrupted while waiting&quot;, e);</span>
+<span class="nc" id="L197">            Thread.currentThread().interrupt();</span>
+<span class="nc" id="L198">        }</span>
+<span class="nc" id="L199">        synchronized (this) {</span>
+<span class="nc" id="L200">            duration = System.currentTimeMillis() - start;</span>
+<span class="nc" id="L201">        }</span>
+<span class="nc" id="L202">        throughput = sent * 1000 / getDuration();</span>
+
+<span class="nc" id="L204">        reporter.interrupt();</span>
+        try {
+<span class="nc" id="L206">            reporter.join();</span>
+<span class="nc" id="L207">        } catch (InterruptedException ie) {</span>
+<span class="nc" id="L208">            Thread.currentThread().interrupt();</span>
+<span class="nc" id="L209">        }</span>
+<span class="nc" id="L210">        LOG.info(&quot;Finished processing in ms: &quot; + getDuration() + &quot; tp = &quot; + throughput);</span>
+<span class="nc" id="L211">    }</span>
+
+<span class="nc" id="L213">    long throughput = -1;</span>
+    public long getThroughput() {
+<span class="nc" id="L215">        return throughput;</span>
+    }
+
+<span class="nc" id="L218">    long threshold = 20000;</span>
+<span class="nc" id="L219">    long runningAverageCounter = 0;</span>
+<span class="nc" id="L220">    long totalTime = 0;</span>
+    @Override
+    public void addComplete(int rc, LedgerHandle lh, long entryId, Object ctx) {
+<span class="nc" id="L223">        Context context = (Context) ctx;</span>
+
+        // we need to use the id passed in the context in the case of
+        // multiple ledgers, and it works even with one ledger
+<span class="nc" id="L227">        entryId = context.id;</span>
+<span class="nc" id="L228">        long newTime = System.nanoTime() - context.localStartTime;</span>
+
+<span class="nc" id="L230">        sem.release();</span>
+<span class="nc" id="L231">        counter.decrementAndGet();</span>
+
+<span class="nc bnc" id="L233" title="All 2 branches missed.">        if (rc == 0) {</span>
+<span class="nc" id="L234">            latencies[(int) entryId] = newTime;</span>
+<span class="nc" id="L235">            completedRequests.incrementAndGet();</span>
+        }
+<span class="nc" id="L237">    }</span>
+
+    @SuppressWarnings(&quot;deprecation&quot;)
+    public static void main(String[] args)
+            throws KeeperException, IOException, InterruptedException, ParseException, BKException {
+<span class="nc" id="L242">        Options options = new Options();</span>
+<span class="nc" id="L243">        options.addOption(&quot;time&quot;, true, &quot;Running time (seconds), default 60&quot;);</span>
+<span class="nc" id="L244">        options.addOption(&quot;entrysize&quot;, true, &quot;Entry size (bytes), default 1024&quot;);</span>
+<span class="nc" id="L245">        options.addOption(&quot;ensemble&quot;, true, &quot;Ensemble size, default 3&quot;);</span>
+<span class="nc" id="L246">        options.addOption(&quot;quorum&quot;, true, &quot;Quorum size, default 2&quot;);</span>
+<span class="nc" id="L247">        options.addOption(&quot;ackQuorum&quot;, true, &quot;Ack quorum size, default is same as quorum&quot;);</span>
+<span class="nc" id="L248">        options.addOption(&quot;throttle&quot;, true, &quot;Max outstanding requests, default 10000&quot;);</span>
+<span class="nc" id="L249">        options.addOption(&quot;ledgers&quot;, true, &quot;Number of ledgers, default 1&quot;);</span>
+<span class="nc" id="L250">        options.addOption(&quot;zookeeper&quot;, true, &quot;Zookeeper ensemble, default \&quot;localhost:2181\&quot;&quot;);</span>
+<span class="nc" id="L251">        options.addOption(&quot;password&quot;, true, &quot;Password used to create ledgers (default 'benchPasswd')&quot;);</span>
+<span class="nc" id="L252">        options.addOption(&quot;coordnode&quot;, true, &quot;Coordination znode for multi client benchmarks (optional)&quot;);</span>
+<span class="nc" id="L253">        options.addOption(&quot;timeout&quot;, true, &quot;Number of seconds after which to give up&quot;);</span>
+<span class="nc" id="L254">        options.addOption(&quot;sockettimeout&quot;, true, &quot;Socket timeout for bookkeeper client. In seconds. Default 5&quot;);</span>
+<span class="nc" id="L255">        options.addOption(&quot;skipwarmup&quot;, false, &quot;Skip warm up, default false&quot;);</span>
+<span class="nc" id="L256">        options.addOption(&quot;sendlimit&quot;, true, &quot;Max number of entries to send. Default 20000000&quot;);</span>
+<span class="nc" id="L257">        options.addOption(&quot;latencyFile&quot;, true, &quot;File to dump latencies. Default is latencyDump.dat&quot;);</span>
+<span class="nc" id="L258">        options.addOption(&quot;help&quot;, false, &quot;This message&quot;);</span>
+
+<span class="nc" id="L260">        CommandLineParser parser = new PosixParser();</span>
+<span class="nc" id="L261">        CommandLine cmd = parser.parse(options, args);</span>
+
+<span class="nc bnc" id="L263" title="All 2 branches missed.">        if (cmd.hasOption(&quot;help&quot;)) {</span>
+<span class="nc" id="L264">            HelpFormatter formatter = new HelpFormatter();</span>
+<span class="nc" id="L265">            formatter.printHelp(&quot;BenchThroughputLatency &lt;options&gt;&quot;, options);</span>
+<span class="nc" id="L266">            System.exit(-1);</span>
+        }
+
+<span class="nc" id="L269">        long runningTime = Long.parseLong(cmd.getOptionValue(&quot;time&quot;, &quot;60&quot;));</span>
+<span class="nc" id="L270">        String servers = cmd.getOptionValue(&quot;zookeeper&quot;, &quot;localhost:2181&quot;);</span>
+<span class="nc" id="L271">        int entrysize = Integer.parseInt(cmd.getOptionValue(&quot;entrysize&quot;, &quot;1024&quot;));</span>
+
+<span class="nc" id="L273">        int ledgers = Integer.parseInt(cmd.getOptionValue(&quot;ledgers&quot;, &quot;1&quot;));</span>
+<span class="nc" id="L274">        int ensemble = Integer.parseInt(cmd.getOptionValue(&quot;ensemble&quot;, &quot;3&quot;));</span>
+<span class="nc" id="L275">        int quorum = Integer.parseInt(cmd.getOptionValue(&quot;quorum&quot;, &quot;2&quot;));</span>
+<span class="nc" id="L276">        int ackQuorum = quorum;</span>
+<span class="nc bnc" id="L277" title="All 2 branches missed.">        if (cmd.hasOption(&quot;ackQuorum&quot;)) {</span>
+<span class="nc" id="L278">            ackQuorum = Integer.parseInt(cmd.getOptionValue(&quot;ackQuorum&quot;));</span>
+        }
+<span class="nc" id="L280">        int throttle = Integer.parseInt(cmd.getOptionValue(&quot;throttle&quot;, &quot;10000&quot;));</span>
+<span class="nc" id="L281">        int sendLimit = Integer.parseInt(cmd.getOptionValue(&quot;sendlimit&quot;, &quot;20000000&quot;));</span>
+
+<span class="nc" id="L283">        final int sockTimeout = Integer.parseInt(cmd.getOptionValue(&quot;sockettimeout&quot;, &quot;5&quot;));</span>
+
+<span class="nc" id="L285">        String coordinationZnode = cmd.getOptionValue(&quot;coordnode&quot;);</span>
+<span class="nc" id="L286">        final byte[] passwd = cmd.getOptionValue(&quot;password&quot;, &quot;benchPasswd&quot;).getBytes(UTF_8);</span>
+
+<span class="nc" id="L288">        String latencyFile = cmd.getOptionValue(&quot;latencyFile&quot;, &quot;latencyDump.dat&quot;);</span>
+
+<span class="nc" id="L290">        Timer timeouter = new Timer();</span>
+<span class="nc bnc" id="L291" title="All 2 branches missed.">        if (cmd.hasOption(&quot;timeout&quot;)) {</span>
+<span class="nc" id="L292">            final long timeout = Long.parseLong(cmd.getOptionValue(&quot;timeout&quot;, &quot;360&quot;)) * 1000;</span>
+
+<span class="nc" id="L294">            timeouter.schedule(new TimerTask() {</span>
+                    @Override
+                    public void run() {
+<span class="nc" id="L297">                        System.err.println(&quot;Timing out benchmark after &quot; + timeout + &quot;ms&quot;);</span>
+<span class="nc" id="L298">                        System.exit(-1);</span>
+<span class="nc" id="L299">                    }</span>
+                }, timeout);
+        }
+
+<span class="nc" id="L303">        LOG.warn(&quot;(Parameters received) running time: &quot; + runningTime</span>
+                + &quot;, entry size: &quot; + entrysize + &quot;, ensemble size: &quot; + ensemble
+                + &quot;, quorum size: &quot; + quorum
+                + &quot;, throttle: &quot; + throttle
+                + &quot;, number of ledgers: &quot; + ledgers
+                + &quot;, zk servers: &quot; + servers
+                + &quot;, latency file: &quot; + latencyFile);
+
+<span class="nc" id="L311">        long totalTime = runningTime * 1000;</span>
+
+        // Do a warmup run
+        Thread thread;
+
+<span class="nc" id="L316">        byte[] data = new byte[entrysize];</span>
+<span class="nc" id="L317">        Arrays.fill(data, (byte) 'x');</span>
+
+<span class="nc" id="L319">        ClientConfiguration conf = new ClientConfiguration();</span>
+<span class="nc" id="L320">        conf.setThrottleValue(throttle).setReadTimeout(sockTimeout).setZkServers(servers);</span>
+
+<span class="nc bnc" id="L322" title="All 2 branches missed.">        if (!cmd.hasOption(&quot;skipwarmup&quot;)) {</span>
+            long throughput;
+<span class="nc" id="L324">            LOG.info(&quot;Starting warmup&quot;);</span>
+
+<span class="nc" id="L326">            throughput = warmUp(data, ledgers, ensemble, quorum, passwd, conf);</span>
+<span class="nc" id="L327">            LOG.info(&quot;Warmup tp: &quot; + throughput);</span>
+<span class="nc" id="L328">            LOG.info(&quot;Warmup phase finished&quot;);</span>
+        }
+
+
+        // Now do the benchmark
+<span class="nc" id="L333">        BenchThroughputLatency bench = new BenchThroughputLatency(ensemble, quorum, ackQuorum,</span>
+                passwd, ledgers, sendLimit, conf);
+<span class="nc" id="L335">        bench.setEntryData(data);</span>
+<span class="nc" id="L336">        thread = new Thread(bench);</span>
+<span class="nc" id="L337">        ZooKeeper zk = null;</span>
+
+<span class="nc bnc" id="L339" title="All 2 branches missed.">        if (coordinationZnode != null) {</span>
+<span class="nc" id="L340">            final CountDownLatch connectLatch = new CountDownLatch(1);</span>
+<span class="nc" id="L341">            zk = new ZooKeeper(servers, 15000, new Watcher() {</span>
+                    @Override
+                    public void process(WatchedEvent event) {
+<span class="nc bnc" id="L344" title="All 2 branches missed.">                        if (event.getState() == KeeperState.SyncConnected) {</span>
+<span class="nc" id="L345">                            connectLatch.countDown();</span>
+                        }
+<span class="nc" id="L347">                    }});</span>
+<span class="nc bnc" id="L348" title="All 2 branches missed.">            if (!connectLatch.await(10, TimeUnit.SECONDS)) {</span>
+<span class="nc" id="L349">                LOG.error(&quot;Couldn't connect to zookeeper at &quot; + servers);</span>
+<span class="nc" id="L350">                zk.close();</span>
+<span class="nc" id="L351">                System.exit(-1);</span>
+            }
+
+<span class="nc" id="L354">            final CountDownLatch latch = new CountDownLatch(1);</span>
+<span class="nc" id="L355">            LOG.info(&quot;Waiting for &quot; + coordinationZnode);</span>
+<span class="nc bnc" id="L356" title="All 2 branches missed.">            if (zk.exists(coordinationZnode, new Watcher() {</span>
+                @Override
+                public void process(WatchedEvent event) {
+<span class="nc bnc" id="L359" title="All 2 branches missed.">                    if (event.getType() == EventType.NodeCreated) {</span>
+<span class="nc" id="L360">                        latch.countDown();</span>
+                    }
+<span class="nc" id="L362">                }}) != null) {</span>
+<span class="nc" id="L363">                latch.countDown();</span>
+            }
+<span class="nc" id="L365">            latch.await();</span>
+<span class="nc" id="L366">            LOG.info(&quot;Coordination znode created&quot;);</span>
+        }
+<span class="nc" id="L368">        thread.start();</span>
+<span class="nc" id="L369">        Thread.sleep(totalTime);</span>
+<span class="nc" id="L370">        thread.interrupt();</span>
+<span class="nc" id="L371">        thread.join();</span>
+
+<span class="nc" id="L373">        LOG.info(&quot;Calculating percentiles&quot;);</span>
+
+<span class="nc" id="L375">        int numlat = 0;</span>
+<span class="nc bnc" id="L376" title="All 2 branches missed.">        for (int i = 0; i &lt; bench.latencies.length; i++) {</span>
+<span class="nc bnc" id="L377" title="All 2 branches missed.">            if (bench.latencies[i] &gt; 0) {</span>
+<span class="nc" id="L378">                numlat++;</span>
+            }
+        }
+<span class="nc" id="L381">        int numcompletions = numlat;</span>
+<span class="nc" id="L382">        numlat = Math.min(bench.sendLimit, numlat);</span>
+<span class="nc" id="L383">        long[] latency = new long[numlat];</span>
+<span class="nc" id="L384">        int j = 0;</span>
+<span class="nc bnc" id="L385" title="All 4 branches missed.">        for (int i = 0; i &lt; bench.latencies.length &amp;&amp; j &lt; numlat; i++) {</span>
+<span class="nc bnc" id="L386" title="All 2 branches missed.">            if (bench.latencies[i] &gt; 0) {</span>
+<span class="nc" id="L387">                latency[j++] = bench.latencies[i];</span>
+            }
+        }
+<span class="nc" id="L390">        Arrays.sort(latency);</span>
+
+<span class="nc" id="L392">        long tp = (long) ((double) (numcompletions * 1000.0) / (double) bench.getDuration());</span>
+
+<span class="nc" id="L394">        LOG.info(numcompletions + &quot; completions in &quot; + bench.getDuration() + &quot; milliseconds: &quot; + tp + &quot; ops/sec&quot;);</span>
+
+<span class="nc bnc" id="L396" title="All 2 branches missed.">        if (zk != null) {</span>
+<span class="nc" id="L397">            zk.create(coordinationZnode + &quot;/worker-&quot;,</span>
+<span class="nc" id="L398">                      (&quot;tp &quot; + tp + &quot; duration &quot; + bench.getDuration()).getBytes(UTF_8),</span>
+                      ZooDefs.Ids.OPEN_ACL_UNSAFE, CreateMode.PERSISTENT_SEQUENTIAL);
+<span class="nc" id="L400">            zk.close();</span>
+        }
+
+        // dump the latencies for later debugging (it will be sorted by entryid)
+<span class="nc" id="L404">        OutputStream fos = new BufferedOutputStream(new FileOutputStream(latencyFile));</span>
+
+<span class="nc bnc" id="L406" title="All 2 branches missed.">        for (Long l: latency) {</span>
+<span class="nc" id="L407">            fos.write((Long.toString(l) + &quot;\t&quot; + (l / 1000000) + &quot;ms\n&quot;).getBytes(UTF_8));</span>
+        }
+<span class="nc" id="L409">        fos.flush();</span>
+<span class="nc" id="L410">        fos.close();</span>
+
+        // now get the latencies
+<span class="nc" id="L413">        LOG.info(&quot;99th percentile latency: {}&quot;, percentile(latency, 99));</span>
+<span class="nc" id="L414">        LOG.info(&quot;95th percentile latency: {}&quot;, percentile(latency, 95));</span>
+
+<span class="nc" id="L416">        bench.close();</span>
+<span class="nc" id="L417">        timeouter.cancel();</span>
+<span class="nc" id="L418">    }</span>
+
+    private static double percentile(long[] latency, int percentile) {
+<span class="nc" id="L421">        int size = latency.length;</span>
+<span class="nc" id="L422">        double percent = (double) percentile / 100;</span>
+<span class="nc" id="L423">        int sampleSize = (int) (size * percent);</span>
+<span class="nc" id="L424">        long total = 0;</span>
+<span class="nc" id="L425">        int count = 0;</span>
+<span class="nc bnc" id="L426" title="All 2 branches missed.">        for (int i = 0; i &lt; sampleSize; i++) {</span>
+<span class="nc" id="L427">            total += latency[i];</span>
+<span class="nc" id="L428">            count++;</span>
+        }
+<span class="nc" id="L430">        return ((double) total / (double) count) / 1000000.0;</span>
+    }
+
+    /**
+     * The benchmark is assuming zookeeper based metadata service.
+     *
+     * &lt;p&gt;TODO: update benchmark to use metadata service uri {@link
+     */
+    private static long warmUp(byte[] data, int ledgers, int ensemble, int qSize,
+                               byte[] passwd, ClientConfiguration conf)
+            throws KeeperException, IOException, InterruptedException, BKException {
+<span class="nc" id="L441">        final CountDownLatch connectLatch = new CountDownLatch(1);</span>
+        final int bookies;
+<span class="nc" id="L443">        String bookieRegistrationPath = ZKMetadataDriverBase.resolveZkLedgersRootPath(conf) + &quot;/&quot; + AVAILABLE_NODE;</span>
+<span class="nc" id="L444">        ZooKeeper zk = null;</span>
+        try {
+<span class="nc" id="L446">            final String servers = ZKMetadataDriverBase.resolveZkServers(conf);</span>
+<span class="nc" id="L447">            zk = new ZooKeeper(servers, 15000, new Watcher() {</span>
+                    @Override
+                    public void process(WatchedEvent event) {
+<span class="nc bnc" id="L450" title="All 2 branches missed.">                        if (event.getState() == KeeperState.SyncConnected) {</span>
+<span class="nc" id="L451">                            connectLatch.countDown();</span>
+                        }
+<span class="nc" id="L453">                    }});</span>
+<span class="nc bnc" id="L454" title="All 2 branches missed.">            if (!connectLatch.await(10, TimeUnit.SECONDS)) {</span>
+<span class="nc" id="L455">                LOG.error(&quot;Couldn't connect to zookeeper at &quot; + servers);</span>
+<span class="nc" id="L456">                throw new IOException(&quot;Couldn't connect to zookeeper &quot; + servers);</span>
+            }
+<span class="nc" id="L458">            bookies = zk.getChildren(bookieRegistrationPath, false).size() - 1;</span>
+        } finally {
+<span class="nc bnc" id="L460" title="All 2 branches missed.">            if (zk != null) {</span>
+<span class="nc" id="L461">                zk.close();</span>
+            }
+        }
+
+<span class="nc" id="L465">        BenchThroughputLatency warmup = new BenchThroughputLatency(bookies, bookies, bookies, passwd,</span>
+                                                                   ledgers, 10000, conf);
+<span class="nc" id="L467">        warmup.setEntryData(data);</span>
+<span class="nc" id="L468">        Thread thread = new Thread(warmup);</span>
+<span class="nc" id="L469">        thread.start();</span>
+<span class="nc" id="L470">        thread.join();</span>
+<span class="nc" id="L471">        warmup.close();</span>
+<span class="nc" id="L472">        return warmup.getThroughput();</span>
+    }
+}
+</pre><div class="footer"><span class="right">Created with <a href="http://www.jacoco.org/jacoco">JaCoCo</a> 0.8.2.201808211720</span></div></body></html>

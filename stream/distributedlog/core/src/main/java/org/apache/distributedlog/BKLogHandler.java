@@ -1,4 +1,4 @@
-/*
+/**
  * Licensed to the Apache Software Foundation (ASF) under one
  * or more contributor license agreements.  See the NOTICE file
  * distributed with this work for additional information
@@ -35,7 +35,7 @@ import java.util.concurrent.atomic.AtomicReferenceFieldUpdater;
 import java.util.function.Function;
 import org.apache.bookkeeper.common.concurrent.FutureEventListener;
 import org.apache.bookkeeper.common.concurrent.FutureUtils;
-import org.apache.bookkeeper.common.util.OrderedScheduler;
+//import org.apache.bookkeeper.common.util.OrderedScheduler;
 import org.apache.bookkeeper.stats.AlertStatsLogger;
 import org.apache.bookkeeper.stats.OpStatsLogger;
 import org.apache.bookkeeper.stats.StatsLogger;
@@ -92,7 +92,7 @@ abstract class BKLogHandler implements AsyncCloseable, AsyncAbortable {
     protected final int firstNumEntriesPerReadLastRecordScan;
     protected final int maxNumEntriesPerReadLastRecordScan;
     protected volatile long lastLedgerRollingTimeMillis = -1;
-    protected final OrderedScheduler scheduler;
+    protected final Object scheduler;
     protected final StatsLogger statsLogger;
     protected final AlertStatsLogger alertStatsLogger;
     protected volatile boolean reportGetSegmentStats = false;
@@ -123,7 +123,7 @@ abstract class BKLogHandler implements AsyncCloseable, AsyncAbortable {
                  LogStreamMetadataStore streamMetadataStore,
                  LogSegmentMetadataCache metadataCache,
                  LogSegmentEntryStore entryStore,
-                 OrderedScheduler scheduler,
+                 Object scheduler,
                  StatsLogger statsLogger,
                  AlertStatsLogger alertStatsLogger,
                  String lockClientId) {
@@ -306,7 +306,7 @@ abstract class BKLogHandler implements AsyncCloseable, AsyncAbortable {
                 firstNumEntriesPerReadLastRecordScan,
                 maxNumEntriesPerReadLastRecordScan,
                 new AtomicInteger(0),
-                scheduler,
+                null,
                 entryStore,
                 beginDLSN
         );
@@ -427,7 +427,7 @@ abstract class BKLogHandler implements AsyncCloseable, AsyncAbortable {
                 firstNumEntriesPerReadLastRecordScan,
                 maxNumEntriesPerReadLastRecordScan,
                 numRecordsScanned,
-                scheduler,
+                null,
                 entryStore
         ).whenComplete(new FutureEventListener<LogRecordWithDLSN>() {
             @Override

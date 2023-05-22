@@ -1,4 +1,4 @@
-/*
+/**
  *
  * Licensed to the Apache Software Foundation (ASF) under one
  * or more contributor license agreements.  See the NOTICE file
@@ -77,19 +77,19 @@ class ReadLastConfirmedAndEntryOp implements BookkeeperInternalCallbacks.ReadEnt
         int numMissedEntryReads = 0;
 
         final List<BookieId> ensemble;
-        final DistributionSchedule.WriteSet writeSet;
-        final DistributionSchedule.WriteSet orderedEnsemble;
+        final DistributionSchedule.WriteSet writeSet = null;
+        final DistributionSchedule.WriteSet orderedEnsemble = null;
         final LedgerEntryImpl entryImpl;
 
         ReadLACAndEntryRequest(List<BookieId> ensemble, long lId, long eId) {
             this.entryImpl = LedgerEntryImpl.create(lId, eId);
             this.ensemble = ensemble;
-            this.writeSet = lh.getDistributionSchedule().getEnsembleSet(eId);
+            //this.writeSet = lh.getDistributionSchedule().getEnsembleSet(eId);
             if (clientCtx.getConf().enableReorderReadSequence) {
-                this.orderedEnsemble = clientCtx.getPlacementPolicy().reorderReadLACSequence(ensemble,
-                        lh.getBookiesHealthInfo(), writeSet.copy());
+                /*this.orderedEnsemble = clientCtx.getPlacementPolicy().reorderReadLACSequence(ensemble,
+                        lh.getBookiesHealthInfo(), writeSet.copy());*/
             } else {
-                this.orderedEnsemble = writeSet.copy();
+                //this.orderedEnsemble = writeSet.copy();
             }
         }
 
@@ -122,8 +122,8 @@ class ReadLastConfirmedAndEntryOp implements BookkeeperInternalCallbacks.ReadEnt
         boolean complete(int bookieIndex, BookieId host, final ByteBuf buffer, long entryId) {
             ByteBuf content;
             try {
-                content = lh.getDigestManager().verifyDigestAndReturnData(entryId, buffer);
-            } catch (BKException.BKDigestMatchException e) {
+                //content = lh.getDigestManager().verifyDigestAndReturnData(entryId, buffer);
+            } catch (Exception e) {
                 logErrorAndReattemptRead(bookieIndex, host, "Mac mismatch", BKException.Code.DigestMatchException);
                 return false;
             }
@@ -137,7 +137,7 @@ class ReadLastConfirmedAndEntryOp implements BookkeeperInternalCallbacks.ReadEnt
                  * Consequently, we have to subtract 8 from METADATA_LENGTH to get the length.
                  */
                 entryImpl.setLength(buffer.getLong(DigestManager.METADATA_LENGTH - 8));
-                entryImpl.setEntryBuf(content);
+               // entryImpl.setEntryBuf(content);
                 return true;
             } else {
                 return false;
@@ -198,14 +198,14 @@ class ReadLastConfirmedAndEntryOp implements BookkeeperInternalCallbacks.ReadEnt
                 // treat these errors as failures if the node from which we received this is part of
                 // the writeSet
                 if (this.writeSet.contains(bookieIndex)) {
-                    lh.registerOperationFailureOnBookie(host, entryImpl.getEntryId());
+                    //lh.registerOperationFailureOnBookie(host, entryImpl.getEntryId());
                 }
                 ++numMissedEntryReads;
             }
 
             if (LOG.isDebugEnabled()) {
-                LOG.debug("{} while reading entry: {} ledgerId: {} from bookie: {}", errMsg, entryImpl.getEntryId(),
-                        lh.getId(), host);
+                /*LOG.debug("{} while reading entry: {} ledgerId: {} from bookie: {}", errMsg, entryImpl.getEntryId(),
+                        lh.getId(), host);*/
             }
         }
 
@@ -438,7 +438,7 @@ class ReadLastConfirmedAndEntryOp implements BookkeeperInternalCallbacks.ReadEnt
         this.clientCtx = clientCtx;
         this.cb = cb;
         this.prevEntryId = prevEntryId;
-        this.lastAddConfirmed = lh.getLastAddConfirmed();
+        //this.lastAddConfirmed = lh.getLastAddConfirmed();
         this.timeOutInMillis = timeOutInMillis;
         this.numResponsesPending = 0;
 
@@ -457,7 +457,7 @@ class ReadLastConfirmedAndEntryOp implements BookkeeperInternalCallbacks.ReadEnt
     }
 
     protected LedgerMetadata getLedgerMetadata() {
-        return lh.getLedgerMetadata();
+        return null;
     }
 
     ReadLastConfirmedAndEntryOp parallelRead(boolean enabled) {
@@ -476,7 +476,7 @@ class ReadLastConfirmedAndEntryOp implements BookkeeperInternalCallbacks.ReadEnt
      */
     @Override
     public ListenableFuture<Boolean> issueSpeculativeRequest() {
-        return clientCtx.getMainWorkerPool().submitOrdered(lh.getId(), new Callable<Boolean>() {
+        /*return clientCtx.getMainWorkerPool().submitOrdered(lh.getId(), new Callable<Boolean>() {
             @Override
             public Boolean call() throws Exception {
                 if (!requestComplete.get() && !request.isComplete()
@@ -489,20 +489,23 @@ class ReadLastConfirmedAndEntryOp implements BookkeeperInternalCallbacks.ReadEnt
                 }
                 return false;
             }
-        });
+        });*
+
+         */
+        return null;
     }
 
     public void initiate() {
         if (parallelRead) {
-            request = new ParallelReadRequest(currentEnsemble, lh.getId(), prevEntryId + 1);
+            //request = new ParallelReadRequest(currentEnsemble, lh.getId(), prevEntryId + 1);
         } else {
-            request = new SequenceReadRequest(currentEnsemble, lh.getId(), prevEntryId + 1);
+           // request = new SequenceReadRequest(currentEnsemble, lh.getId(), prevEntryId + 1);
         }
         request.read();
 
         if (!parallelRead && clientCtx.getConf().readLACSpeculativeRequestPolicy.isPresent()) {
-            speculativeTask = clientCtx.getConf().readLACSpeculativeRequestPolicy.get()
-                .initiateSpeculativeRequest(clientCtx.getScheduler(), this);
+            /*speculativeTask = clientCtx.getConf().readLACSpeculativeRequestPolicy.get()
+                .initiateSpeculativeRequest(clientCtx.getScheduler(), this);*/
         }
     }
 
@@ -511,14 +514,14 @@ class ReadLastConfirmedAndEntryOp implements BookkeeperInternalCallbacks.ReadEnt
             LOG.debug("Calling Read LAC and Entry with {} and long polling interval {} on Bookie {} - Parallel {}",
                     prevEntryId, timeOutInMillis, to, parallelRead);
         }
-        clientCtx.getBookieClient().readEntryWaitForLACUpdate(to,
+       /* clientCtx.getBookieClient().readEntryWaitForLACUpdate(to,
             lh.getId(),
             BookieProtocol.LAST_ADD_CONFIRMED,
             prevEntryId,
             timeOutInMillis,
             true,
             this, new ReadLastConfirmedAndEntryContext(bookieIndex, to));
-        this.numResponsesPending++;
+        this.numResponsesPending++;*/
     }
 
     /**
@@ -567,7 +570,7 @@ class ReadLastConfirmedAndEntryOp implements BookkeeperInternalCallbacks.ReadEnt
 
             if (rCtx.getLastAddConfirmed() > lastAddConfirmed) {
                 lastAddConfirmed = rCtx.getLastAddConfirmed();
-                lh.updateLastConfirmed(rCtx.getLastAddConfirmed(), 0L);
+                //lh.updateLastConfirmed(rCtx.getLastAddConfirmed(), 0L);
             }
 
             hasValidResponse = true;
@@ -645,7 +648,7 @@ class ReadLastConfirmedAndEntryOp implements BookkeeperInternalCallbacks.ReadEnt
 
     @Override
     public String toString() {
-        return String.format("ReadLastConfirmedAndEntryOp(lid=%d, prevEntryId=%d])", lh.getId(), prevEntryId);
+        return "";
     }
 
 }

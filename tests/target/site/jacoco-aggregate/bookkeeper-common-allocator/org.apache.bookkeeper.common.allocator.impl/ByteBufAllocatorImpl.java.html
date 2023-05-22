@@ -1,0 +1,196 @@
+<?xml version="1.0" encoding="UTF-8"?><!DOCTYPE html PUBLIC "-//W3C//DTD XHTML 1.0 Strict//EN" "http://www.w3.org/TR/xhtml1/DTD/xhtml1-strict.dtd"><html xmlns="http://www.w3.org/1999/xhtml" lang="it"><head><meta http-equiv="Content-Type" content="text/html;charset=UTF-8"/><link rel="stylesheet" href="../../jacoco-resources/report.css" type="text/css"/><link rel="shortcut icon" href="../../jacoco-resources/report.gif" type="image/gif"/><title>ByteBufAllocatorImpl.java</title><link rel="stylesheet" href="../../jacoco-resources/prettify.css" type="text/css"/><script type="text/javascript" src="../../jacoco-resources/prettify.js"></script></head><body onload="window['PR_TAB_WIDTH']=4;prettyPrint()"><div class="breadcrumb" id="breadcrumb"><span class="info"><a href="../../jacoco-sessions.html" class="el_session">Sessions</a></span><a href="../../index.html" class="el_report">Tests</a> &gt; <a href="../index.html" class="el_bundle">bookkeeper-common-allocator</a> &gt; <a href="index.source.html" class="el_package">org.apache.bookkeeper.common.allocator.impl</a> &gt; <span class="el_source">ByteBufAllocatorImpl.java</span></div><h1>ByteBufAllocatorImpl.java</h1><pre class="source lang-java linenums">/**
+ * Licensed to the Apache Software Foundation (ASF) under one
+ * or more contributor license agreements.  See the NOTICE file
+ * distributed with this work for additional information
+ * regarding copyright ownership.  The ASF licenses this file
+ * to you under the Apache License, Version 2.0 (the
+ * &quot;License&quot;); you may not use this file except in compliance
+ * with the License.  You may obtain a copy of the License at
+ *
+ *     http://www.apache.org/licenses/LICENSE-2.0
+ *
+ * Unless required by applicable law or agreed to in writing, software
+ * distributed under the License is distributed on an &quot;AS IS&quot; BASIS,
+ * WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+ * See the License for the specific language governing permissions and
+ * limitations under the License.
+ */
+package org.apache.bookkeeper.common.allocator.impl;
+
+import io.netty.buffer.AbstractByteBufAllocator;
+import io.netty.buffer.ByteBuf;
+import io.netty.buffer.ByteBufAllocator;
+import io.netty.buffer.PooledByteBufAllocator;
+import io.netty.buffer.UnpooledByteBufAllocator;
+import io.netty.util.ResourceLeakDetector;
+import io.netty.util.ResourceLeakDetector.Level;
+import java.util.function.Consumer;
+
+import org.apache.bookkeeper.common.allocator.LeakDetectionPolicy;
+import org.apache.bookkeeper.common.allocator.OutOfMemoryPolicy;
+import org.apache.bookkeeper.common.allocator.PoolingPolicy;
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
+
+/**
+ * Implementation of {@link ByteBufAllocator}.
+ */
+public class ByteBufAllocatorImpl extends AbstractByteBufAllocator implements ByteBufAllocator {
+
+<span class="nc" id="L40">    private static final Logger log = LoggerFactory.getLogger(ByteBufAllocatorImpl.class);</span>
+
+    // Same as AbstractByteBufAllocator, but copied here since it's not visible
+    private static final int DEFAULT_INITIAL_CAPACITY = 256;
+    private static final int DEFAULT_MAX_CAPACITY = Integer.MAX_VALUE;
+
+    private final ByteBufAllocator pooledAllocator;
+    private final ByteBufAllocator unpooledAllocator;
+    private final PoolingPolicy poolingPolicy;
+    private final OutOfMemoryPolicy outOfMemoryPolicy;
+    private final Consumer&lt;OutOfMemoryError&gt; outOfMemoryListener;
+
+    ByteBufAllocatorImpl(ByteBufAllocator pooledAllocator, ByteBufAllocator unpooledAllocator,
+            PoolingPolicy poolingPolicy, int poolingConcurrency, OutOfMemoryPolicy outOfMemoryPolicy,
+            Consumer&lt;OutOfMemoryError&gt; outOfMemoryListener,
+            LeakDetectionPolicy leakDetectionPolicy) {
+<span class="nc bnc" id="L56" title="All 2 branches missed.">        super(poolingPolicy == PoolingPolicy.PooledDirect /* preferDirect */);</span>
+
+<span class="nc" id="L58">        this.poolingPolicy = poolingPolicy;</span>
+<span class="nc" id="L59">        this.outOfMemoryPolicy = outOfMemoryPolicy;</span>
+<span class="nc bnc" id="L60" title="All 2 branches missed.">        if (outOfMemoryListener == null) {</span>
+<span class="nc" id="L61">            this.outOfMemoryListener = (v) -&gt; {</span>
+<span class="nc" id="L62">                log.error(&quot;Unable to allocate memory&quot;, v);</span>
+<span class="nc" id="L63">            };</span>
+        } else {
+<span class="nc" id="L65">            this.outOfMemoryListener = outOfMemoryListener;</span>
+        }
+
+<span class="nc bnc" id="L68" title="All 2 branches missed.">        if (poolingPolicy == PoolingPolicy.PooledDirect) {</span>
+<span class="nc bnc" id="L69" title="All 2 branches missed.">            if (pooledAllocator == null) {</span>
+<span class="nc bnc" id="L70" title="All 2 branches missed.">                if (poolingConcurrency == PooledByteBufAllocator.defaultNumDirectArena()) {</span>
+                    // If all the parameters are the same as in the default Netty pool,
+                    // just reuse the static instance as the underlying allocator.
+<span class="nc" id="L73">                    this.pooledAllocator = PooledByteBufAllocator.DEFAULT;</span>
+                } else {
+<span class="nc" id="L75">                    this.pooledAllocator = new PooledByteBufAllocator(</span>
+                            true /* preferDirect */,
+                            poolingConcurrency /* nHeapArena */,
+                            poolingConcurrency /* nDirectArena */,
+<span class="nc" id="L79">                            PooledByteBufAllocator.defaultPageSize(),</span>
+<span class="nc" id="L80">                            PooledByteBufAllocator.defaultMaxOrder(),</span>
+<span class="nc" id="L81">                            PooledByteBufAllocator.defaultTinyCacheSize(),</span>
+<span class="nc" id="L82">                            PooledByteBufAllocator.defaultSmallCacheSize(),</span>
+<span class="nc" id="L83">                            PooledByteBufAllocator.defaultNormalCacheSize(),</span>
+<span class="nc" id="L84">                            PooledByteBufAllocator.defaultUseCacheForAllThreads());</span>
+                }
+            } else {
+<span class="nc" id="L87">                this.pooledAllocator = pooledAllocator;</span>
+            }
+        } else {
+<span class="nc" id="L90">            this.pooledAllocator = null;</span>
+        }
+
+<span class="nc bnc" id="L93" title="All 2 branches missed.">        this.unpooledAllocator = (unpooledAllocator != null) ? unpooledAllocator : UnpooledByteBufAllocator.DEFAULT;</span>
+
+        // The setting is static in Netty, so it will actually affect all
+        // allocators
+<span class="nc bnc" id="L97" title="All 5 branches missed.">        switch (leakDetectionPolicy) {</span>
+        case Disabled:
+<span class="nc bnc" id="L99" title="All 2 branches missed.">            if (log.isDebugEnabled()) {</span>
+<span class="nc" id="L100">                log.debug(&quot;Disable Netty allocator leak detector&quot;);</span>
+            }
+<span class="nc" id="L102">            ResourceLeakDetector.setLevel(Level.DISABLED);</span>
+<span class="nc" id="L103">            break;</span>
+
+        case Simple:
+<span class="nc" id="L106">            log.info(&quot;Setting Netty allocator leak detector to Simple&quot;);</span>
+<span class="nc" id="L107">            ResourceLeakDetector.setLevel(Level.SIMPLE);</span>
+<span class="nc" id="L108">            break;</span>
+
+        case Advanced:
+<span class="nc" id="L111">            log.info(&quot;Setting Netty allocator leak detector to Advanced&quot;);</span>
+<span class="nc" id="L112">            ResourceLeakDetector.setLevel(Level.ADVANCED);</span>
+<span class="nc" id="L113">            break;</span>
+
+        case Paranoid:
+<span class="nc" id="L116">            log.info(&quot;Setting Netty allocator leak detector to Paranoid&quot;);</span>
+<span class="nc" id="L117">            ResourceLeakDetector.setLevel(Level.PARANOID);</span>
+            break;
+        }
+<span class="nc" id="L120">    }</span>
+
+    @Override
+    public ByteBuf buffer() {
+<span class="nc" id="L124">        return buffer(DEFAULT_INITIAL_CAPACITY);</span>
+    }
+
+    @Override
+    public ByteBuf buffer(int initialCapacity) {
+<span class="nc" id="L129">        return buffer(initialCapacity, DEFAULT_MAX_CAPACITY);</span>
+    }
+
+    @Override
+    public ByteBuf buffer(int initialCapacity, int maxCapacity) {
+<span class="nc bnc" id="L134" title="All 2 branches missed.">        if (poolingPolicy == PoolingPolicy.PooledDirect) {</span>
+<span class="nc" id="L135">            return newDirectBuffer(initialCapacity, maxCapacity, true /* can fallback to heap if needed */);</span>
+        } else {
+<span class="nc" id="L137">            return newHeapBuffer(initialCapacity, maxCapacity);</span>
+        }
+    }
+
+    @Override
+    protected ByteBuf newHeapBuffer(int initialCapacity, int maxCapacity) {
+        try {
+            // There are few cases in which we ask explicitly for a pooled
+            // heap buffer.
+<span class="nc bnc" id="L146" title="All 2 branches missed.">            ByteBufAllocator alloc = (poolingPolicy == PoolingPolicy.PooledDirect) ? pooledAllocator</span>
+<span class="nc" id="L147">                    : unpooledAllocator;</span>
+<span class="nc" id="L148">            return alloc.heapBuffer(initialCapacity, maxCapacity);</span>
+<span class="nc" id="L149">        } catch (OutOfMemoryError e) {</span>
+<span class="nc" id="L150">            outOfMemoryListener.accept(e);</span>
+<span class="nc" id="L151">            throw e;</span>
+        }
+    }
+
+    @Override
+    protected ByteBuf newDirectBuffer(int initialCapacity, int maxCapacity) {
+        // If caller asked specifically for a direct buffer, we cannot fallback to heap
+<span class="nc" id="L158">        return newDirectBuffer(initialCapacity, maxCapacity, false);</span>
+    }
+
+    private ByteBuf newDirectBuffer(int initialCapacity, int maxCapacity, boolean canFallbackToHeap) {
+<span class="nc bnc" id="L162" title="All 2 branches missed.">        if (poolingPolicy == PoolingPolicy.PooledDirect) {</span>
+            try {
+<span class="nc" id="L164">                return pooledAllocator.directBuffer(initialCapacity, maxCapacity);</span>
+<span class="nc" id="L165">            } catch (OutOfMemoryError e) {</span>
+<span class="nc bnc" id="L166" title="All 4 branches missed.">                if (canFallbackToHeap &amp;&amp; outOfMemoryPolicy == OutOfMemoryPolicy.FallbackToHeap) {</span>
+                    try {
+<span class="nc" id="L168">                        return unpooledAllocator.heapBuffer(initialCapacity, maxCapacity);</span>
+<span class="nc" id="L169">                    } catch (OutOfMemoryError e2) {</span>
+<span class="nc" id="L170">                        outOfMemoryListener.accept(e2);</span>
+<span class="nc" id="L171">                        throw e2;</span>
+                    }
+                } else {
+                    // ThrowException
+<span class="nc" id="L175">                    outOfMemoryListener.accept(e);</span>
+<span class="nc" id="L176">                    throw e;</span>
+                }
+            }
+        } else {
+            // Unpooled heap buffer. Force heap buffers because unpooled direct
+            // buffers have very high overhead of allocation/reclaiming
+            try {
+<span class="nc" id="L183">                return unpooledAllocator.directBuffer(initialCapacity, maxCapacity);</span>
+<span class="nc" id="L184">            } catch (OutOfMemoryError e) {</span>
+<span class="nc" id="L185">                outOfMemoryListener.accept(e);</span>
+<span class="nc" id="L186">                throw e;</span>
+            }
+        }
+    }
+
+    @Override
+    public boolean isDirectBufferPooled() {
+<span class="nc bnc" id="L193" title="All 4 branches missed.">        return pooledAllocator != null &amp;&amp; pooledAllocator.isDirectBufferPooled();</span>
+    }
+}
+</pre><div class="footer"><span class="right">Created with <a href="http://www.jacoco.org/jacoco">JaCoCo</a> 0.8.2.201808211720</span></div></body></html>

@@ -50,7 +50,7 @@ import org.apache.bookkeeper.clients.impl.routing.RangeRouter;
 import org.apache.bookkeeper.common.concurrent.FutureUtils;
 import org.apache.bookkeeper.common.router.ByteBufHashRouter;
 import org.apache.bookkeeper.common.util.Backoff;
-import org.apache.bookkeeper.stream.proto.StreamProperties;
+//import org.apache.bookkeeper.stream.proto.StreamProperties;
 
 /**
  * The default implemenation of {@link PTable}.
@@ -144,7 +144,7 @@ public class PByteBufTableImpl implements PTable<ByteBuf, ByteBuf> {
     private final ResultFactory<ByteBuf, ByteBuf> resultFactory;
     private final KeyValueFactory<ByteBuf, ByteBuf> kvFactory;
     private final String streamName;
-    private final StreamProperties props;
+    //private final StreamProperties props;
     private final StorageServerClientManager clientManager;
     private final ScheduledExecutorService executor;
     private final TableRangeFactory<ByteBuf, ByteBuf> trFactory;
@@ -156,36 +156,28 @@ public class PByteBufTableImpl implements PTable<ByteBuf, ByteBuf> {
 
 
     public PByteBufTableImpl(String streamName,
-                             StreamProperties props,
+                             Object props,
                              StorageServerClientManager clientManager,
                              ScheduledExecutorService executor,
                              Backoff.Policy backoffPolicy) {
         this(
             streamName,
-            props,
+            null,
             clientManager,
             executor,
-            (streamProps, rangeProps, executorService, opFactory, resultFactory, kvFactory)
-                -> new PByteBufTableRangeImpl(
-                    streamProps.getStreamId(),
-                    rangeProps,
-                    clientManager.getStorageContainerChannel(rangeProps.getStorageContainerId()),
-                    executorService,
-                    opFactory,
-                    resultFactory,
-                    kvFactory,
-                    backoffPolicy),
+            null,
+
             Optional.empty());
     }
 
     public PByteBufTableImpl(String streamName,
-                             StreamProperties props,
+                             Object props,
                              StorageServerClientManager clientManager,
                              ScheduledExecutorService executor,
                              TableRangeFactory<ByteBuf, ByteBuf> factory,
                              Optional<RangeRouter<ByteBuf>> rangeRouterOverride) {
         this.streamName = streamName;
-        this.props = props;
+        //this.props = props;
         this.clientManager = clientManager;
         this.executor = executor;
         this.trFactory = factory;
@@ -218,10 +210,11 @@ public class PByteBufTableImpl implements PTable<ByteBuf, ByteBuf> {
     }
 
     public CompletableFuture<PTable<ByteBuf, ByteBuf>> initialize() {
-        return this.clientManager
+        /*return this.clientManager
             .openMetaRangeClient(props)
             .getActiveDataRanges()
-            .thenComposeAsync((ranges) -> refreshRangeSpaces(ranges), executor);
+            .thenComposeAsync((ranges) -> refreshRangeSpaces(ranges), executor);*/
+        return null;
     }
 
     CompletableFuture<PTable<ByteBuf, ByteBuf>> refreshRangeSpaces(HashStreamRanges newRanges) {
@@ -237,7 +230,7 @@ public class PByteBufTableImpl implements PTable<ByteBuf, ByteBuf> {
         rangeRouter.setRanges(newRanges);
         // add new ranges
         Set<Long> activeRanges = Sets.newHashSetWithExpectedSize(newRanges.getRanges().size());
-        newRanges.getRanges().forEach((rk, range) -> {
+        /*newRanges.getRanges().forEach((rk, range) -> {
             activeRanges.add(range.getRangeId());
             if (tableRanges.containsKey(range.getRangeId())) {
                 return;
@@ -248,7 +241,7 @@ public class PByteBufTableImpl implements PTable<ByteBuf, ByteBuf> {
                 log.info("Create table range client for range {}", range.getRangeId());
             }
             this.tableRanges.put(range.getRangeId(), tableRange);
-        });
+        });*/
         // remove old ranges
         Iterator<Entry<Long, PTable<ByteBuf, ByteBuf>>> rsIter = tableRanges.entrySet().iterator();
         while (rsIter.hasNext()) {

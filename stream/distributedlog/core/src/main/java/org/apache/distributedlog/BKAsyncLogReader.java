@@ -1,4 +1,4 @@
-/*
+/**
  * Licensed to the Apache Software Foundation (ASF) under one
  * or more contributor license agreements.  See the NOTICE file
  * distributed with this work for additional information
@@ -33,7 +33,8 @@ import java.util.concurrent.atomic.AtomicReferenceFieldUpdater;
 import java.util.function.Function;
 import org.apache.bookkeeper.common.concurrent.FutureEventListener;
 import org.apache.bookkeeper.common.concurrent.FutureUtils;
-import org.apache.bookkeeper.common.util.OrderedScheduler;
+//import org.apache.bookkeeper.common.util.OrderedScheduler;
+import org.apache.bookkeeper.common.util.SafeRunnable;
 import org.apache.bookkeeper.stats.Counter;
 import org.apache.bookkeeper.stats.OpStatsLogger;
 import org.apache.bookkeeper.stats.StatsLogger;
@@ -67,7 +68,7 @@ import org.slf4j.LoggerFactory;
  * <li> `async_reader`/idle_reader_error: counter. the number idle reader errors.
  * </ul>
  */
-class BKAsyncLogReader implements AsyncLogReader, Runnable, AsyncNotification {
+class BKAsyncLogReader implements AsyncLogReader, SafeRunnable, AsyncNotification {
     static final Logger LOG = LoggerFactory.getLogger(BKAsyncLogReader.class);
 
     private static final Function<List<LogRecordWithDLSN>, LogRecordWithDLSN> READ_NEXT_MAP_FUNCTION =
@@ -79,7 +80,7 @@ class BKAsyncLogReader implements AsyncLogReader, Runnable, AsyncNotification {
     private static final AtomicReferenceFieldUpdater<BKAsyncLogReader, Throwable> lastExceptionUpdater =
         AtomicReferenceFieldUpdater.newUpdater(BKAsyncLogReader.class, Throwable.class, "lastException");
     private volatile Throwable lastException = null;
-    private final OrderedScheduler scheduler;
+    private final Object scheduler;
     private final ConcurrentLinkedQueue<PendingReadRequest> pendingRequests =
             new ConcurrentLinkedQueue<PendingReadRequest>();
     private final Object scheduleLock = new Object();
@@ -104,7 +105,7 @@ class BKAsyncLogReader implements AsyncLogReader, Runnable, AsyncNotification {
 
     private final boolean returnEndOfStreamRecord;
 
-    private final Runnable BACKGROUND_READ_SCHEDULER = () -> {
+    private final SafeRunnable BACKGROUND_READ_SCHEDULER = () -> {
         synchronized (scheduleLock) {
             backgroundScheduleTask = null;
         }
@@ -206,7 +207,7 @@ class BKAsyncLogReader implements AsyncLogReader, Runnable, AsyncNotification {
     }
 
     BKAsyncLogReader(BKDistributedLogManager bkdlm,
-                     OrderedScheduler scheduler,
+                     Object scheduler,
                      DLSN startDLSN,
                      Optional<String> subscriberId,
                      boolean returnEndOfStreamRecord,
@@ -216,9 +217,7 @@ class BKAsyncLogReader implements AsyncLogReader, Runnable, AsyncNotification {
         this.scheduler = scheduler;
         this.readHandler = bkDistributedLogManager.createReadHandler(subscriberId,
                 this, true);
-        if (LOG.isDebugEnabled()) {
-            LOG.debug("Starting async reader at {}", startDLSN);
-        }
+        LOG.debug("Starting async reader at {}", startDLSN);
         this.startDLSN = startDLSN;
         this.scheduleDelayStopwatch = Stopwatch.createUnstarted();
         this.readNextDelayStopwatch = Stopwatch.createStarted();
@@ -259,39 +258,42 @@ class BKAsyncLogReader implements AsyncLogReader, Runnable, AsyncNotification {
             // Except when idle reader threshold is less than a second (tests?)
             period = Math.min(period, idleErrorThresholdMillis / 5);
 
-            return scheduler.scheduleAtFixedRateOrdered(streamName, () -> {
-                PendingReadRequest nextRequest = pendingRequests.peek();
+            /*return scheduler.scheduleAtFixedRateOrdered(streamName, new SafeRunnable() {
+                @Override
+                public void safeRun() {
+                    PendingReadRequest nextRequest = pendingRequests.peek();
 
-                idleReaderCheckCount.inc();
-                if (null == nextRequest) {
-                    return;
-                }
-
-                idleReaderCheckIdleReadRequestCount.inc();
-                if (nextRequest.elapsedSinceEnqueue(TimeUnit.MILLISECONDS) < idleErrorThresholdMillis) {
-                    return;
-                }
-
-                ReadAheadEntryReader readAheadReader = getReadAheadReader();
-
-                // read request has been idle
-                //   - cache has records but read request are idle,
-                //     that means notification was missed between readahead and reader.
-                //   - cache is empty and readahead is idle (no records added for a long time)
-                idleReaderCheckIdleReadAheadCount.inc();
-                try {
-                    if (null == readAheadReader || (!hasMoreRecords()
-                            && readAheadReader.isReaderIdle(idleErrorThresholdMillis, TimeUnit.MILLISECONDS))) {
-                        markReaderAsIdle();
+                    idleReaderCheckCount.inc();
+                    if (null == nextRequest) {
                         return;
-                    } else if (lastProcessTime.elapsed(TimeUnit.MILLISECONDS) > idleErrorThresholdMillis) {
-                        markReaderAsIdle();
                     }
-                } catch (IOException e) {
-                    setLastException(e);
-                    return;
+
+                    idleReaderCheckIdleReadRequestCount.inc();
+                    if (nextRequest.elapsedSinceEnqueue(TimeUnit.MILLISECONDS) < idleErrorThresholdMillis) {
+                        return;
+                    }
+
+                    ReadAheadEntryReader readAheadReader = getReadAheadReader();
+
+                    // read request has been idle
+                    //   - cache has records but read request are idle,
+                    //     that means notification was missed between readahead and reader.
+                    //   - cache is empty and readahead is idle (no records added for a long time)
+                    idleReaderCheckIdleReadAheadCount.inc();
+                    try {
+                        if (null == readAheadReader || (!hasMoreRecords()
+                                && readAheadReader.isReaderIdle(idleErrorThresholdMillis, TimeUnit.MILLISECONDS))) {
+                            markReaderAsIdle();
+                            return;
+                        } else if (lastProcessTime.elapsed(TimeUnit.MILLISECONDS) > idleErrorThresholdMillis) {
+                            markReaderAsIdle();
+                        }
+                    } catch (IOException e) {
+                        setLastException(e);
+                        return;
+                    }
                 }
-            }, period, period, TimeUnit.MILLISECONDS);
+            }, period, period, TimeUnit.MILLISECONDS);*/
         }
         return null;
     }
@@ -424,7 +426,7 @@ class BKAsyncLogReader implements AsyncLogReader, Runnable, AsyncNotification {
                     bkDistributedLogManager.getConf(),
                     readHandler,
                     bkDistributedLogManager.getReaderEntryStore(),
-                    bkDistributedLogManager.getScheduler(),
+                    null,
                     Ticker.systemTicker(),
                     bkDistributedLogManager.alertStatsLogger);
             readHandler.checkLogStreamExists().whenComplete(new FutureEventListener<Void>() {
@@ -476,7 +478,7 @@ class BKAsyncLogReader implements AsyncLogReader, Runnable, AsyncNotification {
         long prevCount = scheduleCountUpdater.getAndIncrement(this);
         if (0 == prevCount) {
             scheduleDelayStopwatch.reset().start();
-            scheduler.executeOrdered(streamName, this);
+            //scheduler.executeOrdered(streamName, this);
         }
     }
 
@@ -511,12 +513,12 @@ class BKAsyncLogReader implements AsyncLogReader, Runnable, AsyncNotification {
             readHandler.unregisterListener(readAheadReader);
             readAheadReader.removeStateChangeNotification(this);
         }
-        FutureUtils.proxyTo(
+        /*FutureUtils.proxyTo(
             Utils.closeSequence(bkDistributedLogManager.getScheduler(), true,
                     readAheadReader,
                     readHandler
             ),
-            closePromise);
+            closePromise);*/
         return closePromise;
     }
 
@@ -569,7 +571,7 @@ class BKAsyncLogReader implements AsyncLogReader, Runnable, AsyncNotification {
     }
 
     @Override
-    public void run() {
+    public void safeRun() {
         synchronized (scheduleLock) {
             if (scheduleDelayStopwatch.isRunning()) {
                 scheduleLatency.registerSuccessfulEvent(
@@ -579,9 +581,7 @@ class BKAsyncLogReader implements AsyncLogReader, Runnable, AsyncNotification {
             Stopwatch runTime = Stopwatch.createStarted();
             int iterations = 0;
             long scheduleCountLocal = scheduleCountUpdater.get(this);
-            if (LOG.isDebugEnabled()) {
-                LOG.debug("{}: Scheduled Background Reader", readHandler.getFullyQualifiedName());
-            }
+            LOG.debug("{}: Scheduled Background Reader", readHandler.getFullyQualifiedName());
             while (true) {
                 if (LOG.isTraceEnabled()) {
                     LOG.trace("{}: Executing Iteration: {}", readHandler.getFullyQualifiedName(), iterations++);
@@ -679,11 +679,11 @@ class BKAsyncLogReader implements AsyncLogReader, Runnable, AsyncNotification {
                         scheduleDelayStopwatch.reset().start();
                         scheduleCountUpdater.set(this, 0);
                         // the request could still wait for more records
-                        backgroundScheduleTask = scheduler.scheduleOrdered(
+                        /*backgroundScheduleTask = scheduler.scheduleOrdered(
                                 streamName,
                                 BACKGROUND_READ_SCHEDULER,
                                 remainingWaitTime,
-                                nextRequest.deadlineTimeUnit);
+                                nextRequest.deadlineTimeUnit);*/
                         return;
                     }
 

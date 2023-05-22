@@ -1,4 +1,4 @@
-/*
+/**
  *
  * Licensed to the Apache Software Foundation (ASF) under one
  * or more contributor license agreements.  See the NOTICE file
@@ -20,45 +20,33 @@
  */
 package org.apache.bookkeeper.bookie.storage.ldb;
 
-
 import static com.google.common.base.Preconditions.checkState;
-//CHECKSTYLE.OFF: IllegalImport
-//CHECKSTYLE.OFF: ImportOrder
-import static io.netty.util.internal.PlatformDependent.maxDirectMemory;
-//CHECKSTYLE.ON: IllegalImport
-//CHECKSTYLE.ON: ImportOrder
 
-import edu.umd.cs.findbugs.annotations.SuppressFBWarnings;
+//CHECKSTYLE.OFF: IllegalImport
+import io.netty.util.internal.PlatformDependent;
+//CHECKSTYLE.ON: IllegalImport
+
 import java.io.IOException;
 import java.nio.file.FileSystems;
 import java.nio.file.Files;
 import java.nio.file.Path;
-import java.nio.file.Paths;
-import java.util.ArrayList;
-import java.util.List;
 import java.util.Map.Entry;
 import java.util.concurrent.TimeUnit;
+
 import org.apache.bookkeeper.bookie.storage.ldb.KeyValueStorageFactory.DbConfigType;
 import org.apache.bookkeeper.conf.ServerConfiguration;
 import org.rocksdb.BlockBasedTableConfig;
 import org.rocksdb.BloomFilter;
 import org.rocksdb.Cache;
 import org.rocksdb.ChecksumType;
-import org.rocksdb.ColumnFamilyDescriptor;
-import org.rocksdb.ColumnFamilyHandle;
 import org.rocksdb.CompressionType;
-import org.rocksdb.DBOptions;
-import org.rocksdb.Env;
 import org.rocksdb.InfoLogLevel;
 import org.rocksdb.LRUCache;
-import org.rocksdb.LiveFileMetaData;
 import org.rocksdb.Options;
-import org.rocksdb.OptionsUtil;
 import org.rocksdb.ReadOptions;
 import org.rocksdb.RocksDB;
 import org.rocksdb.RocksDBException;
 import org.rocksdb.RocksIterator;
-import org.rocksdb.RocksObject;
 import org.rocksdb.Slice;
 import org.rocksdb.WriteBatch;
 import org.rocksdb.WriteOptions;
@@ -74,18 +62,14 @@ public class KeyValueStorageRocksDB implements KeyValueStorage {
             new KeyValueStorageRocksDB(defaultBasePath, subPath, dbConfigType, conf);
 
     private final RocksDB db;
-    private RocksObject options;
-    private List<ColumnFamilyDescriptor> columnFamilyDescriptors;
 
     private final WriteOptions optionSync;
     private final WriteOptions optionDontSync;
-    private Cache cache;
 
     private final ReadOptions optionCache;
     private final ReadOptions optionDontCache;
-    private final WriteBatch emptyBatch;
 
-    private String dbPath;
+    private final WriteBatch emptyBatch;
 
     private static final String ROCKSDB_LOG_PATH = "dbStorage_rocksDB_logPath";
     private static final String ROCKSDB_LOG_LEVEL = "dbStorage_rocksDB_logLevel";
@@ -98,8 +82,6 @@ public class KeyValueStorageRocksDB implements KeyValueStorage {
     private static final String ROCKSDB_NUM_LEVELS = "dbStorage_rocksDB_numLevels";
     private static final String ROCKSDB_NUM_FILES_IN_LEVEL0 = "dbStorage_rocksDB_numFilesInLevel0";
     private static final String ROCKSDB_MAX_SIZE_IN_LEVEL1_MB = "dbStorage_rocksDB_maxSizeInLevel1MB";
-    private static final String ROCKSDB_FORMAT_VERSION = "dbStorage_rocksDB_format_version";
-    private static final String ROCKSDB_CHECKSUM_TYPE = "dbStorage_rocksDB_checksum_type";
 
     public KeyValueStorageRocksDB(String basePath, String subPath, DbConfigType dbConfigType, ServerConfiguration conf)
             throws IOException {
@@ -121,134 +103,72 @@ public class KeyValueStorageRocksDB implements KeyValueStorage {
         this.optionDontCache = new ReadOptions();
         this.emptyBatch = new WriteBatch();
 
-        String dbFilePath = "";
-        if (dbConfigType == DbConfigType.EntryLocation) {
-            dbFilePath = conf.getEntryLocationRocksdbConf();
-        } else if (dbConfigType == DbConfigType.LedgerMetadata) {
-            dbFilePath = conf.getLedgerMetadataRocksdbConf();
-        } else {
-            dbFilePath = conf.getDefaultRocksDBConf();
-        }
-        log.info("Searching for a RocksDB configuration file in {}", dbFilePath);
-        if (Paths.get(dbFilePath).toFile().exists()) {
-            log.info("Found a RocksDB configuration file and using it to initialize the RocksDB");
-            db = initializeRocksDBWithConfFile(basePath, subPath, dbConfigType, conf, readOnly, dbFilePath);
-        } else {
-            log.info("Haven't found the file and read the configuration from the main bookkeeper configuration");
-            db = initializeRocksDBWithBookieConf(basePath, subPath, dbConfigType, conf, readOnly);
-        }
+        try (Options options = new Options()) {
+            options.setCreateIfMissing(true);
 
-        optionSync.setSync(true);
-        optionDontSync.setSync(false);
+            if (dbConfigType == DbConfigType.Huge) {
+                // Set default RocksDB block-cache size to 10% / numberOfLedgers of direct memory, unless override
+                int ledgerDirsSize = conf.getLedgerDirNames().length;
+                long defaultRocksDBBlockCacheSizeBytes = PlatformDependent.maxDirectMemory() / ledgerDirsSize / 10;
+                long blockCacheSize = DbLedgerStorage.getLongVariableOrDefault(conf, ROCKSDB_BLOCK_CACHE_SIZE,
+                        defaultRocksDBBlockCacheSizeBytes);
 
-        optionCache.setFillCache(true);
-        optionDontCache.setFillCache(false);
-    }
+                long writeBufferSizeMB = conf.getInt(ROCKSDB_WRITE_BUFFER_SIZE_MB, 64);
+                long sstSizeMB = conf.getInt(ROCKSDB_SST_SIZE_MB, 64);
+                int numLevels = conf.getInt(ROCKSDB_NUM_LEVELS, -1);
+                int numFilesInLevel0 = conf.getInt(ROCKSDB_NUM_FILES_IN_LEVEL0, 4);
+                long maxSizeInLevel1MB = conf.getLong(ROCKSDB_MAX_SIZE_IN_LEVEL1_MB, 256);
+                int blockSize = conf.getInt(ROCKSDB_BLOCK_SIZE, 64 * 1024);
+                int bloomFilterBitsPerKey = conf.getInt(ROCKSDB_BLOOM_FILTERS_BITS_PER_KEY, 10);
+                boolean lz4CompressionEnabled = conf.getBoolean(ROCKSDB_LZ4_COMPRESSION_ENABLED, true);
 
-    private RocksDB initializeRocksDBWithConfFile(String basePath, String subPath, DbConfigType dbConfigType,
-                                               ServerConfiguration conf, boolean readOnly,
-                                               String dbFilePath) throws IOException {
-        DBOptions dbOptions = new DBOptions();
-        final List<ColumnFamilyDescriptor> cfDescs = new ArrayList<>();
-        final List<ColumnFamilyHandle> cfHandles = new ArrayList<>();
-        try {
-            OptionsUtil.loadOptionsFromFile(dbFilePath, Env.getDefault(), dbOptions, cfDescs, false);
+                if (lz4CompressionEnabled) {
+                    options.setCompressionType(CompressionType.LZ4_COMPRESSION);
+                }
+                options.setWriteBufferSize(writeBufferSizeMB * 1024 * 1024);
+                options.setMaxWriteBufferNumber(4);
+                if (numLevels > 0) {
+                    options.setNumLevels(numLevels);
+                }
+                options.setLevelZeroFileNumCompactionTrigger(numFilesInLevel0);
+                options.setMaxBytesForLevelBase(maxSizeInLevel1MB * 1024 * 1024);
+                options.setMaxBackgroundJobs(32);
+                options.setIncreaseParallelism(32);
+                options.setMaxTotalWalSize(512 * 1024 * 1024);
+                options.setMaxOpenFiles(-1);
+                options.setTargetFileSizeBase(sstSizeMB * 1024 * 1024);
+                options.setDeleteObsoleteFilesPeriodMicros(TimeUnit.HOURS.toMicros(1));
+
+                final Cache cache = new LRUCache(blockCacheSize);
+                BlockBasedTableConfig tableOptions = new BlockBasedTableConfig();
+                tableOptions.setBlockSize(blockSize);
+                tableOptions.setBlockCache(cache);
+                tableOptions.setFormatVersion(2);
+                tableOptions.setChecksumType(ChecksumType.kxxHash);
+                if (bloomFilterBitsPerKey > 0) {
+                    tableOptions.setFilterPolicy(new BloomFilter(bloomFilterBitsPerKey, false));
+                }
+
+                // Options best suited for HDDs
+                tableOptions.setCacheIndexAndFilterBlocks(true);
+                options.setLevelCompactionDynamicLevelBytes(true);
+
+                options.setTableFormatConfig(tableOptions);
+            }
+
             // Configure file path
             String logPath = conf.getString(ROCKSDB_LOG_PATH, "");
             if (!logPath.isEmpty()) {
                 Path logPathSetting = FileSystems.getDefault().getPath(logPath, subPath);
                 Files.createDirectories(logPathSetting);
                 log.info("RocksDB<{}> log path: {}", subPath, logPathSetting);
-                dbOptions.setDbLogDir(logPathSetting.toString());
+                options.setDbLogDir(logPathSetting.toString());
             }
-            this.dbPath = FileSystems.getDefault().getPath(basePath, subPath).toFile().toString();
-            this.options = dbOptions;
-            this.columnFamilyDescriptors = cfDescs;
-            if (readOnly) {
-                return RocksDB.openReadOnly(dbOptions, dbPath, cfDescs, cfHandles);
-            } else {
-                return RocksDB.open(dbOptions, dbPath, cfDescs, cfHandles);
-            }
-        } catch (RocksDBException e) {
-            throw new IOException("Error open RocksDB database", e);
-        }
-    }
+            String path = FileSystems.getDefault().getPath(basePath, subPath).toFile().toString();
 
-    private RocksDB initializeRocksDBWithBookieConf(String basePath, String subPath, DbConfigType dbConfigType,
-                                           ServerConfiguration conf, boolean readOnly) throws IOException {
-        Options options = new Options();
-        options.setCreateIfMissing(true);
-        ChecksumType checksumType = ChecksumType.valueOf(conf.getString(ROCKSDB_CHECKSUM_TYPE, "kxxHash"));
-
-        if (dbConfigType == DbConfigType.EntryLocation) {
-            /* Set default RocksDB block-cache size to 10% / numberOfLedgers of direct memory, unless override */
-            int ledgerDirsSize = conf.getLedgerDirNames().length;
-            long defaultRocksDBBlockCacheSizeBytes = maxDirectMemory() / ledgerDirsSize / 10;
-            long blockCacheSize = DbLedgerStorage.getLongVariableOrDefault(conf, ROCKSDB_BLOCK_CACHE_SIZE,
-                defaultRocksDBBlockCacheSizeBytes);
-
-            long writeBufferSizeMB = conf.getInt(ROCKSDB_WRITE_BUFFER_SIZE_MB, 64);
-            long sstSizeMB = conf.getInt(ROCKSDB_SST_SIZE_MB, 64);
-            int numLevels = conf.getInt(ROCKSDB_NUM_LEVELS, -1);
-            int numFilesInLevel0 = conf.getInt(ROCKSDB_NUM_FILES_IN_LEVEL0, 4);
-            long maxSizeInLevel1MB = conf.getLong(ROCKSDB_MAX_SIZE_IN_LEVEL1_MB, 256);
-            int blockSize = conf.getInt(ROCKSDB_BLOCK_SIZE, 64 * 1024);
-            int bloomFilterBitsPerKey = conf.getInt(ROCKSDB_BLOOM_FILTERS_BITS_PER_KEY, 10);
-            boolean lz4CompressionEnabled = conf.getBoolean(ROCKSDB_LZ4_COMPRESSION_ENABLED, true);
-            int formatVersion = conf.getInt(ROCKSDB_FORMAT_VERSION, 2);
-
-            if (lz4CompressionEnabled) {
-                options.setCompressionType(CompressionType.LZ4_COMPRESSION);
-            }
-            options.setWriteBufferSize(writeBufferSizeMB * 1024 * 1024);
-            options.setMaxWriteBufferNumber(4);
-            if (numLevels > 0) {
-                options.setNumLevels(numLevels);
-            }
-            options.setLevelZeroFileNumCompactionTrigger(numFilesInLevel0);
-            options.setMaxBytesForLevelBase(maxSizeInLevel1MB * 1024 * 1024);
-            options.setMaxBackgroundJobs(32);
-            options.setIncreaseParallelism(32);
-            options.setMaxTotalWalSize(512 * 1024 * 1024);
-            options.setMaxOpenFiles(-1);
-            options.setTargetFileSizeBase(sstSizeMB * 1024 * 1024);
-            options.setDeleteObsoleteFilesPeriodMicros(TimeUnit.HOURS.toMicros(1));
-
-            this.cache = new LRUCache(blockCacheSize);
-            BlockBasedTableConfig tableOptions = new BlockBasedTableConfig();
-            tableOptions.setBlockSize(blockSize);
-            tableOptions.setBlockCache(cache);
-            tableOptions.setFormatVersion(formatVersion);
-            tableOptions.setChecksumType(checksumType);
-            if (bloomFilterBitsPerKey > 0) {
-                tableOptions.setFilterPolicy(new BloomFilter(bloomFilterBitsPerKey, false));
-            }
-
-            // Options best suited for HDDs
-            tableOptions.setCacheIndexAndFilterBlocks(true);
-            options.setLevelCompactionDynamicLevelBytes(true);
-
-            options.setTableFormatConfig(tableOptions);
-        } else {
-            this.cache = null;
-            BlockBasedTableConfig tableOptions = new BlockBasedTableConfig();
-            tableOptions.setChecksumType(checksumType);
-            options.setTableFormatConfig(tableOptions);
-        }
-
-            // Configure file path
-        String logPath = conf.getString(ROCKSDB_LOG_PATH, "");
-        if (!logPath.isEmpty()) {
-            Path logPathSetting = FileSystems.getDefault().getPath(logPath, subPath);
-            Files.createDirectories(logPathSetting);
-            log.info("RocksDB<{}> log path: {}", subPath, logPathSetting);
-            options.setDbLogDir(logPathSetting.toString());
-        }
-        this.dbPath = FileSystems.getDefault().getPath(basePath, subPath).toFile().toString();
-
-        // Configure log level
-        String logLevel = conf.getString(ROCKSDB_LOG_LEVEL, "info");
-        switch (logLevel) {
+            // Configure log level
+            String logLevel = conf.getString(ROCKSDB_LOG_LEVEL, "info");
+            switch (logLevel) {
             case "debug":
                 options.setInfoLogLevel(InfoLogLevel.DEBUG_LEVEL);
                 break;
@@ -263,32 +183,33 @@ public class KeyValueStorageRocksDB implements KeyValueStorage {
                 break;
             default:
                 log.warn("Unrecognized RockDB log level: {}", logLevel);
-        }
+            }
 
             // Keep log files for 1month
-        options.setKeepLogFileNum(30);
-        options.setLogFileTimeToRoll(TimeUnit.DAYS.toSeconds(1));
-        this.options = options;
-        try {
-            if (readOnly) {
-                return RocksDB.openReadOnly(options, dbPath);
-            } else {
-                return RocksDB.open(options, dbPath);
+            options.setKeepLogFileNum(30);
+            options.setLogFileTimeToRoll(TimeUnit.DAYS.toSeconds(1));
+
+            try {
+                if (readOnly) {
+                    db = RocksDB.openReadOnly(options, path);
+                } else {
+                    db = RocksDB.open(options, path);
+                }
+            } catch (RocksDBException e) {
+                throw new IOException("Error open RocksDB database", e);
             }
-        } catch (RocksDBException e) {
-            throw new IOException("Error open RocksDB database", e);
         }
+
+        optionSync.setSync(true);
+        optionDontSync.setSync(false);
+
+        optionCache.setFillCache(true);
+        optionDontCache.setFillCache(false);
     }
 
     @Override
     public void close() throws IOException {
         db.close();
-        if (cache != null) {
-            cache.close();
-        }
-        if (options != null) {
-            options.close();
-        }
         optionSync.close();
         optionDontSync.close();
         optionCache.close();
@@ -331,7 +252,6 @@ public class KeyValueStorageRocksDB implements KeyValueStorage {
     }
 
     @Override
-    @SuppressFBWarnings("RCN_REDUNDANT_NULLCHECK_WOULD_HAVE_BEEN_A_NPE")
     public Entry<byte[], byte[]> getFloor(byte[] key) throws IOException {
         try (Slice upperBound = new Slice(key);
                  ReadOptions option = new ReadOptions(optionCache).setIterateUpperBound(upperBound);
@@ -345,7 +265,6 @@ public class KeyValueStorageRocksDB implements KeyValueStorage {
     }
 
     @Override
-    @SuppressFBWarnings("RCN_REDUNDANT_NULLCHECK_WOULD_HAVE_BEEN_A_NPE")
     public Entry<byte[], byte[]> getCeil(byte[] key) throws IOException {
         try (RocksIterator iterator = db.newIterator(optionCache)) {
             // Position the iterator on the record whose key is >= to the supplied key
@@ -369,47 +288,12 @@ public class KeyValueStorageRocksDB implements KeyValueStorage {
     }
 
     @Override
-    public String getDBPath() {
-        return dbPath;
-    }
-
-    @Override
     public void compact(byte[] firstKey, byte[] lastKey) throws IOException {
         try {
             db.compactRange(firstKey, lastKey);
         } catch (RocksDBException e) {
             throw new IOException("Error in RocksDB compact", e);
         }
-    }
-
-    @Override
-    public void compact() throws IOException {
-        try {
-            final long start = System.currentTimeMillis();
-            final int oriRocksDBFileCount = db.getLiveFilesMetaData().size();
-            final long oriRocksDBSize = getRocksDBSize();
-            log.info("Starting RocksDB {} compact, current RocksDB hold {} files and {} Bytes.",
-                    db.getName(), oriRocksDBFileCount, oriRocksDBSize);
-
-            db.compactRange();
-
-            final long end = System.currentTimeMillis();
-            final int rocksDBFileCount = db.getLiveFilesMetaData().size();
-            final long rocksDBSize = getRocksDBSize();
-            log.info("RocksDB {} compact finished {} ms, space reduced {} Bytes, current hold {} files and {} Bytes.",
-                    db.getName(), end - start, oriRocksDBSize - rocksDBSize, rocksDBFileCount, rocksDBSize);
-        } catch (RocksDBException e) {
-            throw new IOException("Error in RocksDB compact", e);
-        }
-    }
-
-    private long getRocksDBSize() {
-        List<LiveFileMetaData> liveFilesMetaData = db.getLiveFilesMetaData();
-        long rocksDBFileSize = 0L;
-        for (LiveFileMetaData fileMetaData : liveFilesMetaData) {
-            rocksDBFileSize += fileMetaData.size();
-        }
-        return rocksDBFileSize;
     }
 
     @Override
@@ -599,18 +483,6 @@ public class KeyValueStorageRocksDB implements KeyValueStorage {
         public byte[] getKey() {
             return key;
         }
-    }
-
-    RocksDB db() {
-        return db;
-    }
-
-    List<ColumnFamilyDescriptor> getColumnFamilyDescriptors() {
-        return columnFamilyDescriptors;
-    }
-
-    RocksObject getOptions() {
-        return options;
     }
 
     private static final Logger log = LoggerFactory.getLogger(KeyValueStorageRocksDB.class);

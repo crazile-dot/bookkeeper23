@@ -1,0 +1,579 @@
+<?xml version="1.0" encoding="UTF-8"?><!DOCTYPE html PUBLIC "-//W3C//DTD XHTML 1.0 Strict//EN" "http://www.w3.org/TR/xhtml1/DTD/xhtml1-strict.dtd"><html xmlns="http://www.w3.org/1999/xhtml" lang="it"><head><meta http-equiv="Content-Type" content="text/html;charset=UTF-8"/><link rel="stylesheet" href="../../jacoco-resources/report.css" type="text/css"/><link rel="shortcut icon" href="../../jacoco-resources/report.gif" type="image/gif"/><title>FileInfo.java</title><link rel="stylesheet" href="../../jacoco-resources/prettify.css" type="text/css"/><script type="text/javascript" src="../../jacoco-resources/prettify.js"></script></head><body onload="window['PR_TAB_WIDTH']=4;prettyPrint()"><div class="breadcrumb" id="breadcrumb"><span class="info"><a href="../../jacoco-sessions.html" class="el_session">Sessions</a></span><a href="../../index.html" class="el_report">Tests</a> &gt; <a href="../index.html" class="el_bundle">bookkeeper-server</a> &gt; <a href="index.source.html" class="el_package">org.apache.bookkeeper.bookie</a> &gt; <span class="el_source">FileInfo.java</span></div><h1>FileInfo.java</h1><pre class="source lang-java linenums">/*
+ *
+ * Licensed to the Apache Software Foundation (ASF) under one
+ * or more contributor license agreements.  See the NOTICE file
+ * distributed with this work for additional information
+ * regarding copyright ownership.  The ASF licenses this file
+ * to you under the Apache License, Version 2.0 (the
+ * &quot;License&quot;); you may not use this file except in compliance
+ * with the License.  You may obtain a copy of the License at
+ *
+ *   http://www.apache.org/licenses/LICENSE-2.0
+ *
+ * Unless required by applicable law or agreed to in writing,
+ * software distributed under the License is distributed on an
+ * &quot;AS IS&quot; BASIS, WITHOUT WARRANTIES OR CONDITIONS OF ANY
+ * KIND, either express or implied.  See the License for the
+ * specific language governing permissions and limitations
+ * under the License.
+ *
+ */
+
+package org.apache.bookkeeper.bookie;
+
+import static java.nio.charset.StandardCharsets.UTF_8;
+import static org.apache.bookkeeper.bookie.LastAddConfirmedUpdateNotification.WATCHER_RECYCLER;
+
+import com.google.common.annotations.VisibleForTesting;
+import io.netty.buffer.ByteBuf;
+import io.netty.buffer.Unpooled;
+import java.io.File;
+import java.io.IOException;
+import java.io.RandomAccessFile;
+import java.nio.BufferUnderflowException;
+import java.nio.ByteBuffer;
+import java.nio.channels.FileChannel;
+import org.apache.bookkeeper.common.util.Watchable;
+import org.apache.bookkeeper.common.util.Watcher;
+import org.apache.bookkeeper.proto.checksum.DigestManager;
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
+
+/**
+ * This is the file handle for a ledger's index file that maps entry ids to location.
+ * It is used by LedgerCache.
+ *
+ * &lt;p&gt;
+ * Ledger index file is made of a header and several fixed-length index pages, which records the offsets of data stored
+ * in entry loggers
+ * &lt;pre&gt;&amp;lt;header&amp;gt;&amp;lt;index pages&amp;gt;&lt;/pre&gt;
+ * &lt;b&gt;Header&lt;/b&gt; is formated as below:
+ * &lt;pre&gt;&amp;lt;magic bytes&amp;gt;&amp;lt;len of master key&amp;gt;&amp;lt;master key&amp;gt;&lt;/pre&gt;
+ * &lt;ul&gt;
+ * &lt;li&gt;magic bytes: 4 bytes, 'BKLE', version: 4 bytes
+ * &lt;li&gt;len of master key: indicates length of master key. -1 means no master key stored in header.
+ * &lt;li&gt;master key: master key
+ * &lt;li&gt;state: bit map to indicate the state, 32 bits.
+ * &lt;/ul&gt;
+ * &lt;b&gt;Index page&lt;/b&gt; is a fixed-length page, which contains serveral entries which point to the offsets of data stored
+ * in entry loggers.
+ * &lt;/p&gt;
+ */
+
+public class FileInfo extends Watchable&lt;LastAddConfirmedUpdateNotification&gt; {
+<span class="nc" id="L64">    private static final Logger LOG = LoggerFactory.getLogger(FileInfo.class);</span>
+
+    static final int NO_MASTER_KEY = -1;
+    static final int STATE_FENCED_BIT = 0x1;
+
+    private FileChannel fc;
+    private File lf;
+<span class="nc" id="L71">    private ByteBuffer explicitLac = null;</span>
+
+    byte[] masterKey;
+
+    /**
+     * The fingerprint of a ledger index file.
+     */
+<span class="nc" id="L78">    public static final int SIGNATURE = ByteBuffer.wrap(&quot;BKLE&quot;.getBytes(UTF_8)).getInt();</span>
+
+    // No explicitLac
+    static final int V0 = 0;
+    // Adding explicitLac
+    static final int V1 = 1;
+    // current version of FileInfo header is V1
+    public static final int CURRENT_HEADER_VERSION = V1;
+
+    static final long START_OF_DATA = 1024;
+    private long size;
+    private boolean isClosed;
+    private long sizeSinceLastWrite;
+
+    // bit map for states of the ledger.
+    private int stateBits;
+<span class="nc" id="L94">    private boolean needFlushHeader = false;</span>
+
+    // lac
+<span class="nc" id="L97">    private Long lac = null;</span>
+
+    // file access mode
+    protected String mode;
+
+    // this FileInfo Header Version
+    int headerVersion;
+
+    private boolean deleted;
+
+    public FileInfo(File lf, byte[] masterKey, int fileInfoVersionToWrite) throws IOException {
+<span class="nc" id="L108">        super(WATCHER_RECYCLER);</span>
+
+<span class="nc" id="L110">        this.lf = lf;</span>
+<span class="nc" id="L111">        this.masterKey = masterKey;</span>
+<span class="nc" id="L112">        mode = &quot;rw&quot;;</span>
+<span class="nc" id="L113">        this.headerVersion = fileInfoVersionToWrite;</span>
+<span class="nc" id="L114">        this.deleted = false;</span>
+<span class="nc" id="L115">    }</span>
+
+    synchronized Long getLastAddConfirmed() {
+<span class="nc" id="L118">        return lac;</span>
+    }
+
+    long setLastAddConfirmed(long lac) {
+        long lacToReturn;
+<span class="nc" id="L123">        boolean changed = false;</span>
+<span class="nc" id="L124">        synchronized (this) {</span>
+<span class="nc bnc" id="L125" title="All 4 branches missed.">            if (null == this.lac || this.lac &lt; lac) {</span>
+<span class="nc" id="L126">                this.lac = lac;</span>
+<span class="nc" id="L127">                changed = true;</span>
+            }
+<span class="nc" id="L129">            lacToReturn = this.lac;</span>
+<span class="nc" id="L130">        }</span>
+<span class="nc bnc" id="L131" title="All 2 branches missed.">        if (LOG.isTraceEnabled()) {</span>
+<span class="nc" id="L132">            LOG.trace(&quot;Updating LAC {} , {}&quot;, lacToReturn, lac);</span>
+        }
+
+<span class="nc bnc" id="L135" title="All 2 branches missed.">        if (changed) {</span>
+<span class="nc" id="L136">            notifyWatchers(LastAddConfirmedUpdateNotification.FUNC, lacToReturn);</span>
+        }
+<span class="nc" id="L138">        return lacToReturn;</span>
+    }
+
+    synchronized boolean waitForLastAddConfirmedUpdate(long previousLAC,
+                                                       Watcher&lt;LastAddConfirmedUpdateNotification&gt; watcher) {
+<span class="nc bnc" id="L143" title="All 6 branches missed.">        if ((null != lac &amp;&amp; lac &gt; previousLAC) || isClosed) {</span>
+<span class="nc bnc" id="L144" title="All 2 branches missed.">            if (LOG.isTraceEnabled()) {</span>
+<span class="nc" id="L145">                LOG.trace(&quot;Wait For LAC {} , {}&quot;, this.lac, previousLAC);</span>
+            }
+<span class="nc" id="L147">            return false;</span>
+        }
+
+<span class="nc" id="L150">        addWatcher(watcher);</span>
+<span class="nc" id="L151">        return true;</span>
+    }
+
+    synchronized void cancelWaitForLastAddConfirmedUpdate(Watcher&lt;LastAddConfirmedUpdateNotification&gt; watcher) {
+<span class="nc" id="L155">        deleteWatcher(watcher);</span>
+<span class="nc" id="L156">    }</span>
+
+    public boolean isClosed() {
+<span class="nc" id="L159">        return isClosed;</span>
+    }
+
+    public synchronized File getLf() {
+<span class="nc" id="L163">        return lf;</span>
+    }
+
+    public long getSizeSinceLastWrite() {
+<span class="nc" id="L167">        return sizeSinceLastWrite;</span>
+    }
+
+    public ByteBuf getExplicitLac() {
+<span class="nc" id="L171">        ByteBuf retLac = null;</span>
+<span class="nc" id="L172">        synchronized (this) {</span>
+<span class="nc bnc" id="L173" title="All 2 branches missed.">            if (LOG.isDebugEnabled()) {</span>
+<span class="nc" id="L174">                LOG.debug(&quot;fileInfo:GetLac: {}&quot;, explicitLac);</span>
+            }
+<span class="nc bnc" id="L176" title="All 2 branches missed.">            if (explicitLac != null) {</span>
+<span class="nc" id="L177">                retLac = Unpooled.buffer(explicitLac.capacity());</span>
+<span class="nc" id="L178">                explicitLac.rewind(); //copy from the beginning</span>
+<span class="nc" id="L179">                retLac.writeBytes(explicitLac);</span>
+<span class="nc" id="L180">                explicitLac.rewind();</span>
+<span class="nc" id="L181">                return retLac;</span>
+            }
+<span class="nc" id="L183">        }</span>
+<span class="nc" id="L184">        return retLac;</span>
+    }
+
+    public void setExplicitLac(ByteBuf lac) {
+        long explicitLacValue;
+<span class="nc" id="L189">        synchronized (this) {</span>
+<span class="nc bnc" id="L190" title="All 2 branches missed.">            if (explicitLac == null) {</span>
+<span class="nc" id="L191">                explicitLac = ByteBuffer.allocate(lac.capacity());</span>
+            }
+<span class="nc" id="L193">            lac.readBytes(explicitLac);</span>
+<span class="nc" id="L194">            explicitLac.rewind();</span>
+
+            // skip the ledger id
+<span class="nc" id="L197">            explicitLac.getLong();</span>
+<span class="nc" id="L198">            explicitLacValue = explicitLac.getLong();</span>
+<span class="nc" id="L199">            explicitLac.rewind();</span>
+<span class="nc bnc" id="L200" title="All 2 branches missed.">            if (LOG.isDebugEnabled()) {</span>
+<span class="nc" id="L201">                LOG.debug(&quot;fileInfo:SetLac: {}&quot;, explicitLac);</span>
+            }
+<span class="nc" id="L203">            needFlushHeader = true;</span>
+<span class="nc" id="L204">        }</span>
+<span class="nc" id="L205">        setLastAddConfirmed(explicitLacValue);</span>
+<span class="nc" id="L206">    }</span>
+
+    public synchronized void readHeader() throws IOException {
+<span class="nc bnc" id="L209" title="All 2 branches missed.">        if (lf.exists()) {</span>
+<span class="nc bnc" id="L210" title="All 2 branches missed.">            if (fc != null) {</span>
+<span class="nc" id="L211">                return;</span>
+            }
+
+<span class="nc" id="L214">            fc = new RandomAccessFile(lf, mode).getChannel();</span>
+<span class="nc" id="L215">            size = fc.size();</span>
+<span class="nc" id="L216">            sizeSinceLastWrite = size;</span>
+
+            // avoid hang on reading partial index
+<span class="nc" id="L219">            ByteBuffer bb = ByteBuffer.allocate((int) (Math.min(size, START_OF_DATA)));</span>
+<span class="nc bnc" id="L220" title="All 2 branches missed.">            while (bb.hasRemaining()) {</span>
+<span class="nc" id="L221">                fc.read(bb);</span>
+            }
+<span class="nc" id="L223">            bb.flip();</span>
+<span class="nc bnc" id="L224" title="All 2 branches missed.">            if (bb.getInt() != SIGNATURE) {</span>
+<span class="nc" id="L225">                throw new IOException(&quot;Missing ledger signature while reading header for &quot; + lf);</span>
+            }
+<span class="nc" id="L227">            int version = bb.getInt();</span>
+<span class="nc bnc" id="L228" title="All 2 branches missed.">            if (version &gt; CURRENT_HEADER_VERSION) {</span>
+<span class="nc" id="L229">                throw new IOException(&quot;Incompatible ledger version &quot; + version + &quot; while reading header for &quot; + lf);</span>
+            }
+<span class="nc" id="L231">            this.headerVersion = version;</span>
+
+<span class="nc" id="L233">            int length = bb.getInt();</span>
+<span class="nc bnc" id="L234" title="All 2 branches missed.">            if (length &lt; 0) {</span>
+<span class="nc" id="L235">                throw new IOException(&quot;Length &quot; + length + &quot; is invalid while reading header for &quot; + lf);</span>
+<span class="nc bnc" id="L236" title="All 2 branches missed.">            } else if (length &gt; bb.remaining()) {</span>
+<span class="nc" id="L237">                throw new BufferUnderflowException();</span>
+            }
+<span class="nc" id="L239">            masterKey = new byte[length];</span>
+<span class="nc" id="L240">            bb.get(masterKey);</span>
+<span class="nc" id="L241">            stateBits = bb.getInt();</span>
+
+<span class="nc bnc" id="L243" title="All 2 branches missed.">            if (this.headerVersion &gt;= V1) {</span>
+<span class="nc" id="L244">                int explicitLacBufLength = bb.getInt();</span>
+<span class="nc bnc" id="L245" title="All 2 branches missed.">                if (explicitLacBufLength == 0) {</span>
+<span class="nc" id="L246">                    explicitLac = null;</span>
+<span class="nc bnc" id="L247" title="All 2 branches missed.">                } else if (explicitLacBufLength &gt;= DigestManager.LAC_METADATA_LENGTH) {</span>
+<span class="nc bnc" id="L248" title="All 2 branches missed.">                    if (explicitLac == null) {</span>
+<span class="nc" id="L249">                        explicitLac = ByteBuffer.allocate(explicitLacBufLength);</span>
+                    }
+<span class="nc" id="L251">                    byte[] explicitLacBufArray = new byte[explicitLacBufLength];</span>
+<span class="nc" id="L252">                    bb.get(explicitLacBufArray);</span>
+<span class="nc" id="L253">                    explicitLac.put(explicitLacBufArray);</span>
+<span class="nc" id="L254">                    explicitLac.rewind();</span>
+<span class="nc" id="L255">                } else {</span>
+<span class="nc" id="L256">                    throw new IOException(&quot;ExplicitLacBufLength &quot; + explicitLacBufLength</span>
+                            + &quot; is invalid while reading header for &quot; + lf);
+                }
+            }
+
+<span class="nc" id="L261">            needFlushHeader = false;</span>
+<span class="nc" id="L262">        } else {</span>
+<span class="nc" id="L263">            throw new IOException(&quot;Ledger index file &quot; + lf + &quot; does not exist&quot;);</span>
+        }
+<span class="nc" id="L265">    }</span>
+
+    public synchronized boolean isDeleted() {
+<span class="nc" id="L268">        return deleted;</span>
+    }
+
+    public static class FileInfoDeletedException extends IOException {
+        FileInfoDeletedException() {
+<span class="nc" id="L273">            super(&quot;FileInfo already deleted&quot;);</span>
+<span class="nc" id="L274">        }</span>
+    }
+
+    @VisibleForTesting
+    void checkOpen(boolean create) throws IOException {
+<span class="nc" id="L279">        checkOpen(create, false);</span>
+<span class="nc" id="L280">    }</span>
+
+    private synchronized void checkOpen(boolean create, boolean openBeforeClose)
+            throws IOException {
+<span class="nc bnc" id="L284" title="All 2 branches missed.">        if (deleted) {</span>
+<span class="nc" id="L285">            throw new FileInfoDeletedException();</span>
+        }
+<span class="nc bnc" id="L287" title="All 2 branches missed.">        if (fc != null) {</span>
+<span class="nc" id="L288">            return;</span>
+        }
+<span class="nc" id="L290">        boolean exists = lf.exists();</span>
+<span class="nc bnc" id="L291" title="All 4 branches missed.">        if (masterKey == null &amp;&amp; !exists) {</span>
+<span class="nc" id="L292">            throw new IOException(lf + &quot; not found&quot;);</span>
+        }
+
+<span class="nc bnc" id="L295" title="All 2 branches missed.">        if (!exists) {</span>
+<span class="nc bnc" id="L296" title="All 2 branches missed.">            if (create) {</span>
+                // delayed the creation of parents directories
+<span class="nc" id="L298">                checkParents(lf);</span>
+<span class="nc" id="L299">                fc = new RandomAccessFile(lf, mode).getChannel();</span>
+<span class="nc" id="L300">                size = fc.size();</span>
+<span class="nc bnc" id="L301" title="All 2 branches missed.">                if (size == 0) {</span>
+<span class="nc" id="L302">                    writeHeader();</span>
+                }
+            }
+        } else {
+<span class="nc bnc" id="L306" title="All 2 branches missed.">            if (openBeforeClose) {</span>
+                // if it is checking for close, skip reading header
+<span class="nc" id="L308">                return;</span>
+            }
+            try {
+<span class="nc" id="L311">                readHeader();</span>
+<span class="nc" id="L312">            } catch (BufferUnderflowException buf) {</span>
+<span class="nc" id="L313">                LOG.warn(&quot;Exception when reading header of {}.&quot;, lf, buf);</span>
+<span class="nc bnc" id="L314" title="All 2 branches missed.">                if (null != masterKey) {</span>
+<span class="nc" id="L315">                    LOG.warn(&quot;Attempting to write header of {} again.&quot;, lf);</span>
+<span class="nc" id="L316">                    writeHeader();</span>
+                } else {
+<span class="nc" id="L318">                    throw new IOException(&quot;Error reading header &quot; + lf);</span>
+                }
+<span class="nc" id="L320">            }</span>
+        }
+<span class="nc" id="L322">    }</span>
+
+    private void writeHeader() throws IOException {
+<span class="nc" id="L325">        ByteBuffer bb = ByteBuffer.allocate((int) START_OF_DATA);</span>
+<span class="nc" id="L326">        bb.putInt(SIGNATURE);</span>
+<span class="nc" id="L327">        bb.putInt(this.headerVersion);</span>
+<span class="nc" id="L328">        bb.putInt(masterKey.length);</span>
+<span class="nc" id="L329">        bb.put(masterKey);</span>
+<span class="nc" id="L330">        bb.putInt(stateBits);</span>
+<span class="nc bnc" id="L331" title="All 2 branches missed.">        if (this.headerVersion &gt;= V1) {</span>
+<span class="nc bnc" id="L332" title="All 2 branches missed.">            if (explicitLac != null) {</span>
+<span class="nc" id="L333">                explicitLac.rewind();</span>
+<span class="nc" id="L334">                bb.putInt(explicitLac.capacity());</span>
+<span class="nc" id="L335">                bb.put(explicitLac);</span>
+<span class="nc" id="L336">                explicitLac.rewind();</span>
+            } else {
+<span class="nc" id="L338">                bb.putInt(0);</span>
+            }
+        }
+<span class="nc" id="L341">        bb.rewind();</span>
+<span class="nc" id="L342">        fc.position(0);</span>
+<span class="nc" id="L343">        fc.write(bb);</span>
+<span class="nc" id="L344">    }</span>
+
+    public synchronized boolean isFenced() throws IOException {
+<span class="nc" id="L347">        checkOpen(false);</span>
+<span class="nc bnc" id="L348" title="All 2 branches missed.">        return (stateBits &amp; STATE_FENCED_BIT) == STATE_FENCED_BIT;</span>
+    }
+
+    /**
+     * @return true if set fence succeed, otherwise false when
+     * it already fenced or failed to set fenced.
+     */
+    public boolean setFenced() throws IOException {
+<span class="nc" id="L356">        boolean returnVal = false;</span>
+<span class="nc" id="L357">        boolean changed = false;</span>
+<span class="nc" id="L358">        synchronized (this) {</span>
+<span class="nc" id="L359">            checkOpen(false);</span>
+<span class="nc bnc" id="L360" title="All 2 branches missed.">            if (LOG.isDebugEnabled()) {</span>
+<span class="nc" id="L361">                LOG.debug(&quot;Try to set fenced state in file info {} : state bits {}.&quot;, lf, stateBits);</span>
+            }
+<span class="nc bnc" id="L363" title="All 2 branches missed.">            if ((stateBits &amp; STATE_FENCED_BIT) != STATE_FENCED_BIT) {</span>
+                // not fenced yet
+<span class="nc" id="L365">                stateBits |= STATE_FENCED_BIT;</span>
+<span class="nc" id="L366">                needFlushHeader = true;</span>
+<span class="nc" id="L367">                changed = true;</span>
+<span class="nc" id="L368">                returnVal = true;</span>
+            }
+<span class="nc" id="L370">        }</span>
+<span class="nc bnc" id="L371" title="All 2 branches missed.">        if (changed) {</span>
+<span class="nc" id="L372">            notifyWatchers(LastAddConfirmedUpdateNotification.FUNC, Long.MAX_VALUE);</span>
+        }
+<span class="nc" id="L374">        return returnVal;</span>
+    }
+
+    // flush the header when header is changed
+    public synchronized void flushHeader() throws IOException {
+<span class="nc bnc" id="L379" title="All 2 branches missed.">        if (needFlushHeader) {</span>
+<span class="nc" id="L380">            checkOpen(true);</span>
+<span class="nc" id="L381">            writeHeader();</span>
+<span class="nc" id="L382">            needFlushHeader = false;</span>
+        }
+<span class="nc" id="L384">    }</span>
+
+    public synchronized long size() throws IOException {
+<span class="nc" id="L387">        checkOpen(false);</span>
+<span class="nc" id="L388">        long rc = size - START_OF_DATA;</span>
+<span class="nc bnc" id="L389" title="All 2 branches missed.">        if (rc &lt; 0) {</span>
+<span class="nc" id="L390">            rc = 0;</span>
+        }
+<span class="nc" id="L392">        return rc;</span>
+    }
+
+    public int read(ByteBuffer bb, long position, boolean bestEffort)
+            throws IOException {
+<span class="nc" id="L397">        return readAbsolute(bb, position + START_OF_DATA, bestEffort);</span>
+    }
+
+    /**
+     * Read data from position &lt;i&gt;start&lt;/i&gt; to fill the byte buffer &lt;i&gt;bb&lt;/i&gt;.
+     * If &lt;i&gt;bestEffort &lt;/i&gt; is provided, it would return when it reaches EOF.
+     * Otherwise, it would throw {@link org.apache.bookkeeper.bookie.ShortReadException}
+     * if it reaches EOF.
+     *
+     * @param bb
+     *          byte buffer of data
+     * @param start
+     *          start position to read data
+     * @param bestEffort
+     *          flag indicates if it is a best-effort read
+     * @return number of bytes read
+     * @throws IOException
+     */
+    private int readAbsolute(ByteBuffer bb, long start, boolean bestEffort)
+            throws IOException {
+<span class="nc" id="L417">        checkOpen(false);</span>
+<span class="nc" id="L418">        synchronized (this) {</span>
+<span class="nc bnc" id="L419" title="All 2 branches missed.">            if (fc == null) {</span>
+<span class="nc" id="L420">                return 0;</span>
+            }
+<span class="nc" id="L422">        }</span>
+<span class="nc" id="L423">        int total = 0;</span>
+<span class="nc" id="L424">        int rc = 0;</span>
+<span class="nc bnc" id="L425" title="All 2 branches missed.">        while (bb.remaining() &gt; 0) {</span>
+<span class="nc" id="L426">            synchronized (this) {</span>
+<span class="nc" id="L427">                rc = fc.read(bb, start);</span>
+<span class="nc" id="L428">            }</span>
+<span class="nc bnc" id="L429" title="All 2 branches missed.">            if (rc &lt;= 0) {</span>
+<span class="nc bnc" id="L430" title="All 2 branches missed.">                if (bestEffort) {</span>
+<span class="nc" id="L431">                    return total;</span>
+                } else {
+<span class="nc" id="L433">                    throw new ShortReadException(&quot;Short read at &quot; + getLf().getPath() + &quot;@&quot; + start);</span>
+                }
+            }
+<span class="nc" id="L436">            total += rc;</span>
+            // should move read position
+<span class="nc" id="L438">            start += rc;</span>
+        }
+<span class="nc" id="L440">        return total;</span>
+    }
+
+    /**
+     * Close a file info. Generally, force should be set to true. If set to false metadata will not be flushed and
+     * accessing metadata before restart and recovery will be unsafe (since reloading from the index file will
+     * cause metadata to be lost). Setting force=false helps avoid expensive file create during shutdown with many
+     * dirty ledgers, and is safe because ledger metadata will be recovered before being accessed again.
+     *
+     * @param force
+     *          if set to true, the index is forced to create before closed,
+     *          if set to false, the index is not forced to create.
+     */
+    public void close(boolean force) throws IOException {
+<span class="nc" id="L454">        boolean changed = false;</span>
+<span class="nc" id="L455">        synchronized (this) {</span>
+<span class="nc bnc" id="L456" title="All 2 branches missed.">            if (isClosed) {</span>
+<span class="nc" id="L457">                return;</span>
+            }
+<span class="nc" id="L459">            isClosed = true;</span>
+<span class="nc" id="L460">            checkOpen(force, true);</span>
+            // Any time when we force close a file, we should try to flush header.
+            // otherwise, we might lose fence bit.
+<span class="nc bnc" id="L463" title="All 2 branches missed.">            if (force) {</span>
+<span class="nc" id="L464">                flushHeader();</span>
+            }
+<span class="nc" id="L466">            changed = true;</span>
+<span class="nc bnc" id="L467" title="All 2 branches missed.">            if (fc != null) {</span>
+<span class="nc" id="L468">                fc.close();</span>
+            }
+<span class="nc" id="L470">            fc = null;</span>
+<span class="nc" id="L471">        }</span>
+<span class="nc bnc" id="L472" title="All 2 branches missed.">        if (changed) {</span>
+<span class="nc" id="L473">            notifyWatchers(LastAddConfirmedUpdateNotification.FUNC, Long.MAX_VALUE);</span>
+        }
+<span class="nc" id="L475">    }</span>
+
+    public synchronized long write(ByteBuffer[] buffs, long position) throws IOException {
+<span class="nc" id="L478">        checkOpen(true);</span>
+<span class="nc" id="L479">        long total = 0;</span>
+        try {
+<span class="nc" id="L481">            fc.position(position + START_OF_DATA);</span>
+<span class="nc bnc" id="L482" title="All 2 branches missed.">            while (buffs[buffs.length - 1].remaining() &gt; 0) {</span>
+<span class="nc" id="L483">                long rc = fc.write(buffs);</span>
+<span class="nc bnc" id="L484" title="All 2 branches missed.">                if (rc &lt;= 0) {</span>
+<span class="nc" id="L485">                    throw new IOException(&quot;Short write&quot;);</span>
+                }
+<span class="nc" id="L487">                total += rc;</span>
+<span class="nc" id="L488">            }</span>
+        } finally {
+<span class="nc" id="L490">            fc.force(true);</span>
+<span class="nc" id="L491">            long newsize = position + START_OF_DATA + total;</span>
+<span class="nc bnc" id="L492" title="All 2 branches missed.">            if (newsize &gt; size) {</span>
+<span class="nc" id="L493">                size = newsize;</span>
+            }
+        }
+<span class="nc" id="L496">        sizeSinceLastWrite = fc.size();</span>
+<span class="nc" id="L497">        return total;</span>
+    }
+
+    /**
+     * Copies current file contents upto specified size to the target file and
+     * deletes the current file. If size not known then pass size as
+     * Long.MAX_VALUE to copy complete file.
+     */
+    public synchronized void moveToNewLocation(File newFile, long size) throws IOException {
+<span class="nc" id="L506">        checkOpen(false);</span>
+        // If the channel is null, or same file path, just return.
+<span class="nc bnc" id="L508" title="All 4 branches missed.">        if (null == fc || isSameFile(newFile)) {</span>
+<span class="nc" id="L509">            return;</span>
+        }
+<span class="nc bnc" id="L511" title="All 2 branches missed.">        if (size &gt; fc.size()) {</span>
+<span class="nc" id="L512">            size = fc.size();</span>
+        }
+<span class="nc" id="L514">        File rlocFile = new File(newFile.getParentFile(), newFile.getName() + IndexPersistenceMgr.RLOC);</span>
+<span class="nc bnc" id="L515" title="All 2 branches missed.">        if (!rlocFile.exists()) {</span>
+<span class="nc" id="L516">            checkParents(rlocFile);</span>
+<span class="nc bnc" id="L517" title="All 2 branches missed.">            if (!rlocFile.createNewFile()) {</span>
+<span class="nc" id="L518">                throw new IOException(&quot;Creating new cache index file &quot; + rlocFile + &quot; failed &quot;);</span>
+            }
+        }
+        // copy contents from old.idx to new.idx.rloc
+<span class="nc" id="L522">        FileChannel newFc = new RandomAccessFile(rlocFile, &quot;rw&quot;).getChannel();</span>
+        try {
+<span class="nc" id="L524">            long written = 0;</span>
+<span class="nc bnc" id="L525" title="All 2 branches missed.">            while (written &lt; size) {</span>
+<span class="nc" id="L526">                long count = fc.transferTo(written, size, newFc);</span>
+<span class="nc bnc" id="L527" title="All 2 branches missed.">                if (count &lt;= 0) {</span>
+<span class="nc" id="L528">                    throw new IOException(&quot;Copying to new location &quot; + rlocFile + &quot; failed&quot;);</span>
+                }
+<span class="nc" id="L530">                written += count;</span>
+<span class="nc" id="L531">            }</span>
+<span class="nc bnc" id="L532" title="All 4 branches missed.">            if (written &lt;= 0 &amp;&amp; size &gt; 0) {</span>
+<span class="nc" id="L533">                throw new IOException(&quot;Copying to new location &quot; + rlocFile + &quot; failed&quot;);</span>
+            }
+        } finally {
+<span class="nc" id="L536">            newFc.force(true);</span>
+<span class="nc" id="L537">            newFc.close();</span>
+        }
+        // delete old.idx
+<span class="nc" id="L540">        fc.close();</span>
+<span class="nc bnc" id="L541" title="All 2 branches missed.">        if (!delete()) {</span>
+<span class="nc" id="L542">            LOG.error(&quot;Failed to delete the previous index file &quot; + lf);</span>
+<span class="nc" id="L543">            throw new IOException(&quot;Failed to delete the previous index file &quot; + lf);</span>
+        }
+
+        // rename new.idx.rloc to new.idx
+<span class="nc bnc" id="L547" title="All 2 branches missed.">        if (!rlocFile.renameTo(newFile)) {</span>
+<span class="nc" id="L548">            LOG.error(&quot;Failed to rename &quot; + rlocFile + &quot; to &quot; + newFile);</span>
+<span class="nc" id="L549">            throw new IOException(&quot;Failed to rename &quot; + rlocFile + &quot; to &quot; + newFile);</span>
+        }
+<span class="nc" id="L551">        fc = new RandomAccessFile(newFile, mode).getChannel();</span>
+<span class="nc" id="L552">        lf = newFile;</span>
+<span class="nc" id="L553">    }</span>
+
+    public synchronized byte[] getMasterKey() throws IOException {
+<span class="nc" id="L556">        checkOpen(false);</span>
+<span class="nc" id="L557">        return masterKey;</span>
+    }
+
+    public synchronized boolean delete() {
+<span class="nc" id="L561">        deleted = true;</span>
+<span class="nc" id="L562">        return lf.delete();</span>
+    }
+
+    private static void checkParents(File f) throws IOException {
+<span class="nc" id="L566">        File parent = f.getParentFile();</span>
+<span class="nc bnc" id="L567" title="All 2 branches missed.">        if (parent.exists()) {</span>
+<span class="nc" id="L568">            return;</span>
+        }
+<span class="nc bnc" id="L570" title="All 2 branches missed.">        if (!parent.mkdirs()) {</span>
+<span class="nc" id="L571">            throw new IOException(&quot;Couldn't mkdirs for &quot; + parent);</span>
+        }
+<span class="nc" id="L573">    }</span>
+
+    public synchronized boolean isSameFile(File f) {
+<span class="nc" id="L576">        return this.lf.equals(f);</span>
+    }
+}
+</pre><div class="footer"><span class="right">Created with <a href="http://www.jacoco.org/jacoco">JaCoCo</a> 0.8.2.201808211720</span></div></body></html>

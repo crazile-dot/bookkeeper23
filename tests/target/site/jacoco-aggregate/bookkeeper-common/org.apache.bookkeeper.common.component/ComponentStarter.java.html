@@ -1,0 +1,91 @@
+<?xml version="1.0" encoding="UTF-8"?><!DOCTYPE html PUBLIC "-//W3C//DTD XHTML 1.0 Strict//EN" "http://www.w3.org/TR/xhtml1/DTD/xhtml1-strict.dtd"><html xmlns="http://www.w3.org/1999/xhtml" lang="it"><head><meta http-equiv="Content-Type" content="text/html;charset=UTF-8"/><link rel="stylesheet" href="../../jacoco-resources/report.css" type="text/css"/><link rel="shortcut icon" href="../../jacoco-resources/report.gif" type="image/gif"/><title>ComponentStarter.java</title><link rel="stylesheet" href="../../jacoco-resources/prettify.css" type="text/css"/><script type="text/javascript" src="../../jacoco-resources/prettify.js"></script></head><body onload="window['PR_TAB_WIDTH']=4;prettyPrint()"><div class="breadcrumb" id="breadcrumb"><span class="info"><a href="../../jacoco-sessions.html" class="el_session">Sessions</a></span><a href="../../index.html" class="el_report">Tests</a> &gt; <a href="../index.html" class="el_bundle">bookkeeper-common</a> &gt; <a href="index.source.html" class="el_package">org.apache.bookkeeper.common.component</a> &gt; <span class="el_source">ComponentStarter.java</span></div><h1>ComponentStarter.java</h1><pre class="source lang-java linenums">/*
+ * Licensed to the Apache Software Foundation (ASF) under one
+ * or more contributor license agreements.  See the NOTICE file
+ * distributed with this work for additional information
+ * regarding copyright ownership.  The ASF licenses this file
+ * to you under the Apache License, Version 2.0 (the
+ * &quot;License&quot;); you may not use this file except in compliance
+ * with the License.  You may obtain a copy of the License at
+ *
+ *      http://www.apache.org/licenses/LICENSE-2.0
+ *
+ * Unless required by applicable law or agreed to in writing, software
+ * distributed under the License is distributed on an &quot;AS IS&quot; BASIS,
+ * WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+ * See the License for the specific language governing permissions and
+ * limitations under the License.
+ */
+
+package org.apache.bookkeeper.common.component;
+
+import java.util.concurrent.CompletableFuture;
+
+import lombok.extern.slf4j.Slf4j;
+import org.apache.bookkeeper.common.concurrent.FutureUtils;
+
+/**
+ * Utils to start components.
+ */
+<span class="nc" id="L29">@Slf4j</span>
+<span class="nc" id="L30">public class ComponentStarter {</span>
+
+    static class ComponentShutdownHook implements Runnable {
+
+        private final LifecycleComponent component;
+        private final CompletableFuture&lt;Void&gt; future;
+
+        ComponentShutdownHook(LifecycleComponent component,
+<span class="nc" id="L38">                              CompletableFuture&lt;Void&gt; future) {</span>
+<span class="nc" id="L39">            this.component = component;</span>
+<span class="nc" id="L40">            this.future = future;</span>
+<span class="nc" id="L41">        }</span>
+
+        @Override
+        public void run() {
+<span class="nc" id="L45">            log.info(&quot;Closing component {} in shutdown hook.&quot;, component.getName());</span>
+            try {
+<span class="nc" id="L47">                component.close();</span>
+<span class="nc" id="L48">                log.info(&quot;Closed component {} in shutdown hook successfully. Exiting.&quot;, component.getName());</span>
+<span class="nc" id="L49">                FutureUtils.complete(future, null);</span>
+<span class="nc" id="L50">            } catch (Throwable e) {</span>
+<span class="nc" id="L51">                log.error(&quot;Failed to close component {} in shutdown hook gracefully, Exiting anyway&quot;,</span>
+<span class="nc" id="L52">                    component.getName(), e);</span>
+<span class="nc" id="L53">                future.completeExceptionally(e);</span>
+<span class="nc" id="L54">            }</span>
+<span class="nc" id="L55">        }</span>
+
+    }
+
+    /**
+     * Start a component and register a shutdown hook.
+     *
+     * @param component component to start.
+     */
+    public static CompletableFuture&lt;Void&gt; startComponent(LifecycleComponent component) {
+<span class="nc" id="L65">        CompletableFuture&lt;Void&gt; future = new CompletableFuture&lt;&gt;();</span>
+<span class="nc" id="L66">        final Thread shutdownHookThread = new Thread(</span>
+            new ComponentShutdownHook(component, future),
+            &quot;component-shutdown-thread&quot;
+        );
+
+        // register a shutdown hook
+<span class="nc" id="L72">        Runtime.getRuntime().addShutdownHook(shutdownHookThread);</span>
+
+        // register a component exception handler
+<span class="nc" id="L75">        component.setExceptionHandler((t, e) -&gt; {</span>
+<span class="nc" id="L76">            log.error(&quot;Triggered exceptionHandler of Component: {} because of Exception in Thread: {}&quot;,</span>
+<span class="nc" id="L77">                    component.getName(), t, e);</span>
+            // start the shutdown hook when an uncaught exception happen in the lifecycle component.
+<span class="nc" id="L79">            shutdownHookThread.start();</span>
+<span class="nc" id="L80">        });</span>
+
+<span class="nc" id="L82">        component.publishInfo(new ComponentInfoPublisher());</span>
+
+<span class="nc" id="L84">        log.info(&quot;Starting component {}.&quot;, component.getName());</span>
+<span class="nc" id="L85">        component.start();</span>
+<span class="nc" id="L86">        log.info(&quot;Started component {}.&quot;, component.getName());</span>
+<span class="nc" id="L87">        return future;</span>
+    }
+
+}
+</pre><div class="footer"><span class="right">Created with <a href="http://www.jacoco.org/jacoco">JaCoCo</a> 0.8.2.201808211720</span></div></body></html>

@@ -1,4 +1,4 @@
-/*
+/**
  *
  * Licensed to the Apache Software Foundation (ASF) under one
  * or more contributor license agreements.  See the NOTICE file
@@ -22,19 +22,17 @@ package org.apache.bookkeeper.replication;
 
 import static org.apache.bookkeeper.replication.ReplicationStats.AUDITOR_SCOPE;
 import static org.apache.bookkeeper.replication.ReplicationStats.REPLICATION_WORKER_SCOPE;
-
 import com.google.common.annotations.VisibleForTesting;
 import java.io.File;
 import java.io.IOException;
 import java.lang.Thread.UncaughtExceptionHandler;
 import java.net.MalformedURLException;
-import java.util.concurrent.CompletableFuture;
 import java.util.concurrent.ExecutionException;
 import org.apache.bookkeeper.bookie.BookieCriticalThread;
 import org.apache.bookkeeper.bookie.BookieImpl;
 import org.apache.bookkeeper.bookie.ExitCode;
 import org.apache.bookkeeper.client.BKException;
-import org.apache.bookkeeper.client.BookKeeper;
+//import org.apache.bookkeeper.client.BookKeeper;
 import org.apache.bookkeeper.client.BookKeeperClientStats;
 import org.apache.bookkeeper.common.component.ComponentStarter;
 import org.apache.bookkeeper.common.component.LifecycleComponent;
@@ -63,14 +61,15 @@ import org.slf4j.LoggerFactory;
 /**
  * Class to start/stop the AutoRecovery daemons Auditor and ReplicationWorker.
  *
- * <p>TODO: eliminate the direct usage of zookeeper here {@link https://github.com/apache/bookkeeper/issues/1332}
+ * <p>TODO: eliminate the direct usage of zookeeper here
  */
 public class AutoRecoveryMain {
     private static final Logger LOG = LoggerFactory
             .getLogger(AutoRecoveryMain.class);
+}
 
-    private final ServerConfiguration conf;
-    final BookKeeper bkc;
+   /* private final ServerConfiguration conf;
+    //final BookKeeper bkc;
     final AuditorElector auditorElector;
     final ReplicationWorker replicationWorker;
     final AutoRecoveryDeathWatcher deathWatcher;
@@ -79,7 +78,7 @@ public class AutoRecoveryMain {
     private volatile boolean running = false;
 
     // Exception handler
-    private volatile UncaughtExceptionHandler uncaughtExceptionHandler = null;
+    /*private volatile UncaughtExceptionHandler uncaughtExceptionHandler = null;
 
     public AutoRecoveryMain(ServerConfiguration conf) throws IOException,
             InterruptedException, KeeperException, UnavailableException,
@@ -87,7 +86,7 @@ public class AutoRecoveryMain {
         this(conf, NullStatsLogger.INSTANCE);
     }
 
-    public AutoRecoveryMain(ServerConfiguration conf, StatsLogger statsLogger)
+    /*public AutoRecoveryMain(ServerConfiguration conf, StatsLogger statsLogger)
             throws IOException, InterruptedException, KeeperException, UnavailableException,
             CompatibilityException {
         this.conf = conf;
@@ -95,11 +94,7 @@ public class AutoRecoveryMain {
         MetadataClientDriver metadataClientDriver = bkc.getMetadataClientDriver();
         metadataClientDriver.setSessionStateListener(() -> {
             LOG.error("Client connection to the Metadata server has expired, so shutting down AutoRecoveryMain!");
-            // do not run "shutdown" in the main ZooKeeper client thread
-            // as it performs some blocking operations
-            CompletableFuture.runAsync(() -> {
-                shutdown(ExitCode.ZK_EXPIRED);
-            });
+            shutdown(ExitCode.ZK_EXPIRED);
         });
 
         auditorElector = new AuditorElector(
@@ -114,12 +109,12 @@ public class AutoRecoveryMain {
             false,
             statsLogger.scope(REPLICATION_WORKER_SCOPE));
         deathWatcher = new AutoRecoveryDeathWatcher(this);
-    }
+    }*/
 
     /*
      * Start daemons
      */
-    public void start() {
+    /*public void start() {
         auditorElector.start();
         replicationWorker.start();
         if (null != uncaughtExceptionHandler) {
@@ -132,14 +127,14 @@ public class AutoRecoveryMain {
     /*
      * Waits till all daemons joins
      */
-    public void join() throws InterruptedException {
+    /*public void join() throws InterruptedException {
         deathWatcher.join();
     }
 
     /*
      * Shutdown all daemons gracefully
      */
-    public void shutdown() {
+    /*public void shutdown() {
         shutdown(ExitCode.OK);
     }
 
@@ -182,7 +177,7 @@ public class AutoRecoveryMain {
      * so when those threads are dead, it will automatically trigger lifecycle management
      * to shutdown the process.
      */
-    public void setExceptionHandler(UncaughtExceptionHandler exceptionHandler) {
+    /*public void setExceptionHandler(UncaughtExceptionHandler exceptionHandler) {
         this.uncaughtExceptionHandler = exceptionHandler;
     }
 
@@ -191,20 +186,15 @@ public class AutoRecoveryMain {
         return auditorElector.getAuditor();
     }
 
-    @VisibleForTesting
-    public ReplicationWorker getReplicationWorker() {
-        return replicationWorker;
-    }
-
     /** Is auto-recovery service running? */
-    public boolean isAutoRecoveryRunning() {
+    /*public boolean isAutoRecoveryRunning() {
         return running;
     }
 
     /*
      * DeathWatcher for AutoRecovery daemons.
      */
-    private class AutoRecoveryDeathWatcher extends BookieCriticalThread {
+    /*private class AutoRecoveryDeathWatcher extends BookieCriticalThread {
         private int watchInterval;
         private AutoRecoveryMain autoRecoveryMain;
 
@@ -242,7 +232,7 @@ public class AutoRecoveryMain {
                      * handler to handle this "AutoRecovery not running"
                      * situation.
                      */
-                    throw new RuntimeException("AutoRecovery is not running any more");
+                    /*throw new RuntimeException("AutoRecovery is not running any more");
                 }
             }
         }
@@ -257,7 +247,7 @@ public class AutoRecoveryMain {
     /*
      * Print usage
      */
-    private static void printUsage() {
+    /*private static void printUsage() {
         HelpFormatter hf = new HelpFormatter();
         hf.printHelp("AutoRecoveryMain [options]\n", opts);
     }
@@ -265,7 +255,7 @@ public class AutoRecoveryMain {
     /*
      * load configurations from file.
      */
-    private static void loadConfFile(ServerConfiguration conf, String confFile)
+    /*private static void loadConfFile(ServerConfiguration conf, String confFile)
             throws IllegalArgumentException {
         try {
             conf.loadConf(new File(confFile).toURI().toURL());
@@ -282,7 +272,7 @@ public class AutoRecoveryMain {
     /*
      * Parse console args
      */
-    private static ServerConfiguration parseArgs(String[] args)
+    /*private static ServerConfiguration parseArgs(String[] args)
             throws IllegalArgumentException {
         try {
             BasicParser parser = new BasicParser();
@@ -387,4 +377,4 @@ public class AutoRecoveryMain {
 
         return serverBuilder.build();
     }
-}
+}*/

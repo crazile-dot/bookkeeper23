@@ -32,7 +32,7 @@ import lombok.Getter;
 import lombok.extern.slf4j.Slf4j;
 import org.apache.bookkeeper.clients.impl.internal.api.StorageServerClientManager;
 import org.apache.bookkeeper.common.concurrent.FutureUtils;
-import org.apache.bookkeeper.common.util.OrderedScheduler;
+/*import org.apache.bookkeeper.common.util.OrderedScheduler;
 import org.apache.bookkeeper.stream.proto.kv.rpc.DeleteRangeRequest;
 import org.apache.bookkeeper.stream.proto.kv.rpc.DeleteRangeResponse;
 import org.apache.bookkeeper.stream.proto.kv.rpc.IncrementRequest;
@@ -59,7 +59,7 @@ import org.apache.bookkeeper.stream.proto.storage.GetNamespaceRequest;
 import org.apache.bookkeeper.stream.proto.storage.GetNamespaceResponse;
 import org.apache.bookkeeper.stream.proto.storage.GetStreamRequest;
 import org.apache.bookkeeper.stream.proto.storage.GetStreamResponse;
-import org.apache.bookkeeper.stream.proto.storage.StatusCode;
+import org.apache.bookkeeper.stream.proto.storage.StatusCode;*/
 import org.apache.bookkeeper.stream.protocol.RangeId;
 import org.apache.bookkeeper.stream.protocol.util.StorageContainerPlacementPolicy;
 import org.apache.bookkeeper.stream.storage.api.kv.TableStore;
@@ -75,12 +75,11 @@ import org.apache.bookkeeper.stream.storage.impl.metadata.RootRangeStoreFactory;
 import org.apache.bookkeeper.stream.storage.impl.metadata.RootRangeStoreImpl;
 import org.apache.bookkeeper.stream.storage.impl.store.MVCCStoreFactory;
 
-
 /**
  * The service implementation running in a storage container.
  */
 @Slf4j
-class RangeStoreServiceImpl implements RangeStoreService, AutoCloseable {
+abstract class RangeStoreServiceImpl implements RangeStoreService, AutoCloseable {
 
     private final long scId;
 
@@ -102,48 +101,36 @@ class RangeStoreServiceImpl implements RangeStoreService, AutoCloseable {
     @Getter(value = AccessLevel.PACKAGE)
     private final TableStoreFactory tableStoreFactory;
 
-    private final StorageServerClientManager clientManager;
-
     RangeStoreServiceImpl(long scId,
                           StorageContainerPlacementPolicy rangePlacementPolicy,
-                          OrderedScheduler scheduler,
+                          Object scheduler,
                           MVCCStoreFactory storeFactory,
                           StorageServerClientManager clientManager) {
         this(
             scId,
-            scheduler,
+            null,
             storeFactory,
-            clientManager,
-            store -> new RootRangeStoreImpl(
-                store, rangePlacementPolicy, scheduler.chooseThread(scId)),
-            store -> new MetaRangeStoreImpl(store, rangePlacementPolicy, scheduler.chooseThread(scId), clientManager),
+            null,
+            null,
             store -> new TableStoreImpl(store));
     }
 
     RangeStoreServiceImpl(long scId,
-                          OrderedScheduler scheduler,
+                          Object scheduler,
                           MVCCStoreFactory storeFactory,
-                          StorageServerClientManager clientManager,
                           RootRangeStoreFactory rrStoreFactory,
                           MetaRangeStoreFactory mrStoreFactory,
                           TableStoreFactory tableStoreFactory) {
         this.scId = scId;
         RangeStoreService failRequestStorageContainer =
-            FailRequestRangeStoreService.of(scheduler);
+            FailRequestRangeStoreService.of(null);
         this.rootRange = failRequestStorageContainer;
         this.mgStore = failRequestStorageContainer;
         this.storeFactory = storeFactory;
-        this.clientManager = clientManager;
         this.rrStoreFactory = rrStoreFactory;
         this.mrStoreFactory = mrStoreFactory;
         this.tableStoreFactory = tableStoreFactory;
         this.tableStoreCache = new TableStoreCache(storeFactory, tableStoreFactory);
-    }
-
-    private CompletableFuture<Integer> getStreamTtl(long streamId) {
-        return (streamId == ROOT_STREAM_ID || streamId == CONTAINER_META_STREAM_ID)
-            ? FutureUtils.value(0)
-            : clientManager.getStreamProperties(streamId).thenApply(r -> r.getStreamConf().getTtlSeconds());
     }
 
     //
@@ -161,8 +148,7 @@ class RangeStoreServiceImpl implements RangeStoreService, AutoCloseable {
         return storeFactory.openStore(
             ROOT_STORAGE_CONTAINER_ID,
             ROOT_STREAM_ID,
-            ROOT_RANGE_ID,
-            0
+            ROOT_RANGE_ID
         ).thenApply(store -> {
             rootRange = rrStoreFactory.createStore(store);
             return null;
@@ -173,8 +159,7 @@ class RangeStoreServiceImpl implements RangeStoreService, AutoCloseable {
         return storeFactory.openStore(
             scId,
             CONTAINER_META_STREAM_ID,
-            CONTAINER_META_RANGE_ID,
-            0
+            CONTAINER_META_RANGE_ID
         ).thenApply(store -> {
             mgStore = mrStoreFactory.createStore(store);
             return null;
@@ -208,70 +193,53 @@ class RangeStoreServiceImpl implements RangeStoreService, AutoCloseable {
     // Namespace API
     //
 
-    @Override
-    public CompletableFuture<CreateNamespaceResponse> createNamespace(CreateNamespaceRequest request) {
-        return rootRange.createNamespace(request);
+    //@Override
+    public CompletableFuture<Object> createNamespace(Object request) {
+        //return rootRange.createNamespace(request);
+        return null;
     }
 
-    @Override
-    public CompletableFuture<DeleteNamespaceResponse> deleteNamespace(DeleteNamespaceRequest request) {
-        return rootRange.deleteNamespace(request);
+    //@Override
+    public CompletableFuture<Object> deleteNamespace(Object request) {
+        //return rootRange.deleteNamespace(request);
+        return null;
     }
 
-    @Override
-    public CompletableFuture<GetNamespaceResponse> getNamespace(GetNamespaceRequest request) {
-        return rootRange.getNamespace(request);
+    //@Override
+    public CompletableFuture<Object> getNamespace(Object request) {
+        //return rootRange.getNamespace(request);
+        return null;
     }
 
     //
     // Stream API.
     //
 
-    @Override
-    public CompletableFuture<CreateStreamResponse> createStream(CreateStreamRequest request) {
-        return rootRange.createStream(request);
+    //@Override
+    public CompletableFuture<Object> createStream(Object request) {
+        //return rootRange.createStream(request);
+        return null;
     }
 
-    @Override
-    public CompletableFuture<DeleteStreamResponse> deleteStream(DeleteStreamRequest request) {
-        return rootRange.deleteStream(request);
-    }
 
-    @Override
-    public CompletableFuture<GetStreamResponse> getStream(GetStreamRequest request) {
-        return rootRange.getStream(request);
-    }
 
     //
     // Stream Meta Range API.
     //
 
-    @Override
-    public CompletableFuture<GetActiveRangesResponse> getActiveRanges(GetActiveRangesRequest request) {
-        return mgStore.getActiveRanges(request);
-    }
+
 
     //
     // Table API
     //
 
-    private CompletableFuture<TableStore> getTableStore(long scId, final RangeId rid) {
-        final TableStore store = tableStoreCache.getTableStore(rid);
 
-        if (store != null) {
-            return FutureUtils.value(store);
-        }
-
-        return getStreamTtl(rid.getStreamId())
-                .thenCompose(ttl -> tableStoreCache.openTableStore(scId, rid, ttl));
-    }
-
-    @Override
-    public CompletableFuture<RangeResponse> range(RangeRequest request) {
-        RoutingHeader header = request.getHeader();
+    //@Override
+    public CompletableFuture<Object> range(Object request) {
+        /*RoutingHeader header = request.getHeader();
 
         if (header.getRangeId() <= 0L) {
-            return FutureUtils.value(RangeResponse.newBuilder()
+            return CompletableFuture.completedFuture(RangeResponse.newBuilder()
                 .setHeader(ResponseHeader.newBuilder()
                     .setCode(StatusCode.BAD_REQUEST)
                     .setRoutingHeader(request.getHeader())
@@ -280,13 +248,19 @@ class RangeStoreServiceImpl implements RangeStoreService, AutoCloseable {
         }
 
         RangeId rid = RangeId.of(header.getStreamId(), header.getRangeId());
-        return getTableStore(scId, rid)
+        TableStore store = tableStoreCache.getTableStore(rid);
+        if (null != store) {
+            return store.range(request);
+        } else {
+            return tableStoreCache.openTableStore(scId, rid)
                 .thenCompose(s -> s.range(request));
+        }*/
+        return null;
     }
 
-    @Override
-    public CompletableFuture<PutResponse> put(PutRequest request) {
-        RoutingHeader header = request.getHeader();
+    //@Override
+    public CompletableFuture<Object> put(Object request) {
+        /*RoutingHeader header = request.getHeader();
 
         if (header.getRangeId() <= 0L) {
             return CompletableFuture.completedFuture(PutResponse.newBuilder()
@@ -298,13 +272,19 @@ class RangeStoreServiceImpl implements RangeStoreService, AutoCloseable {
         }
 
         RangeId rid = RangeId.of(header.getStreamId(), header.getRangeId());
-        return getTableStore(scId, rid)
+        TableStore store = tableStoreCache.getTableStore(rid);
+        if (null != store) {
+            return store.put(request);
+        } else {
+            return tableStoreCache.openTableStore(scId, rid)
                 .thenCompose(s -> s.put(request));
+        }*/
+        return null;
     }
 
-    @Override
-    public CompletableFuture<DeleteRangeResponse> delete(DeleteRangeRequest request) {
-        RoutingHeader header = request.getHeader();
+    //@Override
+    public CompletableFuture<Object> delete(Object request) {
+        /*RoutingHeader header = request.getHeader();
 
         if (header.getRangeId() <= 0L) {
             return CompletableFuture.completedFuture(DeleteRangeResponse.newBuilder()
@@ -316,13 +296,19 @@ class RangeStoreServiceImpl implements RangeStoreService, AutoCloseable {
         }
 
         RangeId rid = RangeId.of(header.getStreamId(), header.getRangeId());
-        return getTableStore(scId, rid)
-            .thenCompose(s -> s.delete(request));
+        TableStore store = tableStoreCache.getTableStore(rid);
+        if (null != store) {
+            return store.delete(request);
+        } else {
+            return tableStoreCache.openTableStore(scId, rid)
+                .thenCompose(s -> s.delete(request));
+        }*/
+        return null;
     }
 
-    @Override
-    public CompletableFuture<TxnResponse> txn(TxnRequest request) {
-        RoutingHeader header = request.getHeader();
+    //@Override
+    public CompletableFuture<Object> txn(Object request) {
+       /* RoutingHeader header = request.getHeader();
 
         if (header.getRangeId() <= 0L) {
             return CompletableFuture.completedFuture(TxnResponse.newBuilder()
@@ -334,13 +320,19 @@ class RangeStoreServiceImpl implements RangeStoreService, AutoCloseable {
         }
 
         RangeId rid = RangeId.of(header.getStreamId(), header.getRangeId());
-        return getTableStore(scId, rid)
-            .thenCompose(s -> s.txn(request));
+        TableStore store = tableStoreCache.getTableStore(rid);
+        if (null != store) {
+            return store.txn(request);
+        } else {
+            return tableStoreCache.openTableStore(scId, rid)
+                .thenCompose(s -> s.txn(request));
+        }*/
+        return null;
     }
 
-    @Override
-    public CompletableFuture<IncrementResponse> incr(IncrementRequest request) {
-        RoutingHeader header = request.getHeader();
+    //@Override
+    public CompletableFuture<Object> incr(Object request) {
+        /*RoutingHeader header = request.getHeader();
 
         if (header.getRangeId() <= 0L) {
             return CompletableFuture.completedFuture(IncrementResponse.newBuilder()
@@ -352,8 +344,14 @@ class RangeStoreServiceImpl implements RangeStoreService, AutoCloseable {
         }
 
         RangeId rid = RangeId.of(header.getStreamId(), header.getRangeId());
-        return getTableStore(scId, rid)
-            .thenCompose(s -> s.incr(request));
+        TableStore store = tableStoreCache.getTableStore(rid);
+        if (null != store) {
+            return store.incr(request);
+        } else {
+            return tableStoreCache.openTableStore(scId, rid)
+                .thenCompose(s -> s.incr(request));
+        }*/
+        return null;
     }
 
 }

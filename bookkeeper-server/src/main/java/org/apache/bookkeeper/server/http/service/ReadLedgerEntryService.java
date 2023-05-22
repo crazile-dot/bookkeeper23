@@ -22,9 +22,10 @@ import static com.google.common.base.Preconditions.checkNotNull;
 import static java.nio.charset.StandardCharsets.US_ASCII;
 
 import com.google.common.collect.Maps;
+
 import java.util.Iterator;
 import java.util.Map;
-import org.apache.bookkeeper.client.BookKeeperAdmin;
+//import org.apache.bookkeeper.client.BookKeeperAdmin;
 import org.apache.bookkeeper.client.LedgerEntry;
 import org.apache.bookkeeper.common.util.JsonUtil;
 import org.apache.bookkeeper.conf.ServerConfiguration;
@@ -47,12 +48,12 @@ public class ReadLedgerEntryService implements HttpEndpointService {
     static final Logger LOG = LoggerFactory.getLogger(ReadLedgerEntryService.class);
 
     protected ServerConfiguration conf;
-    protected BookKeeperAdmin bka;
+   // protected BookKeeperAdmin bka;
 
-    public ReadLedgerEntryService(ServerConfiguration conf, BookKeeperAdmin bka) {
+    public ReadLedgerEntryService(ServerConfiguration conf, Object bka) {
         checkNotNull(conf);
         this.conf = conf;
-        this.bka = bka;
+        //this.bka = bka;
     }
 
     static final Long ENTRIES_PER_PAE = 1000L;
@@ -99,16 +100,14 @@ public class ReadLedgerEntryService implements HttpEndpointService {
                 return response;
             }
 
-            Iterator<LedgerEntry> entries = bka.readEntries(ledgerId, startEntryId, endEntryId).iterator();
+            Iterator<LedgerEntry> entries = null;
             while (entries.hasNext()) {
                 LedgerEntry entry = entries.next();
                 output.put(Long.valueOf(entry.getEntryId()).toString(), new String(entry.getEntry(), US_ASCII));
             }
 
             String jsonResponse = JsonUtil.toJson(output);
-            if (LOG.isDebugEnabled()) {
-                LOG.debug("output body:" + jsonResponse);
-            }
+            LOG.debug("output body:" + jsonResponse);
             response.setBody(jsonResponse);
             response.setCode(HttpServer.StatusCode.OK);
             return response;

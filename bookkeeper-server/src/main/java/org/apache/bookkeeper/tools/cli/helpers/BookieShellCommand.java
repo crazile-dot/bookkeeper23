@@ -19,7 +19,7 @@
 
 package org.apache.bookkeeper.tools.cli.helpers;
 
-import org.apache.bookkeeper.bookie.BookieShell.Command;
+//import org.apache.bookkeeper.bookie.BookieShell.Command;
 import org.apache.bookkeeper.tools.common.BKCommand;
 import org.apache.bookkeeper.tools.framework.CliFlags;
 import org.apache.commons.configuration.CompositeConfiguration;
@@ -27,7 +27,7 @@ import org.apache.commons.configuration.CompositeConfiguration;
 /**
  * This is a util class that converts new cli command to old shell command.
  */
-public class BookieShellCommand<CliFlagsT extends CliFlags> implements Command {
+public class BookieShellCommand<CliFlagsT extends CliFlags>{
 
     protected final String shellCmdName;
     protected final BKCommand<CliFlagsT> bkCmd;
@@ -41,7 +41,7 @@ public class BookieShellCommand<CliFlagsT extends CliFlags> implements Command {
         this.conf = conf;
     }
 
-    @Override
+    /*@Override
     public int runCmd(String[] args) throws Exception {
         return bkCmd.apply(
             shellCmdName,
@@ -50,7 +50,7 @@ public class BookieShellCommand<CliFlagsT extends CliFlags> implements Command {
         );
     }
 
-    @Override
+    /*@Override
     public String description() {
         return shellCmdName + " [options]";
     }
@@ -58,5 +58,5 @@ public class BookieShellCommand<CliFlagsT extends CliFlags> implements Command {
     @Override
     public void printUsage() {
         bkCmd.usage();
-    }
+    }*/
 }

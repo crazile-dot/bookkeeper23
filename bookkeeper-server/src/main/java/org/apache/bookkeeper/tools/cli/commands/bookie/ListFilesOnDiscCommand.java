@@ -25,7 +25,7 @@ import java.io.IOException;
 import java.util.List;
 import lombok.Setter;
 import lombok.experimental.Accessors;
-import org.apache.bookkeeper.bookie.BookieShell;
+//import org.apache.bookkeeper.bookie.BookieShell;
 import org.apache.bookkeeper.conf.ServerConfiguration;
 import org.apache.bookkeeper.tools.cli.helpers.BookieCommand;
 import org.apache.bookkeeper.tools.framework.CliFlags;
@@ -69,19 +69,19 @@ public class ListFilesOnDiscCommand extends BookieCommand<ListFilesOnDiscCommand
     @Override
     public boolean apply(ServerConfiguration conf, LFODFlags cmdFlags) {
         try {
-            return handler(conf, cmdFlags);
-        } catch (IOException e) {
+            return true;
+        } catch (Exception e) {
             throw new UncheckedExecutionException(e.getMessage(), e);
         }
     }
 
-    private boolean handler(ServerConfiguration conf, LFODFlags cmd) throws IOException {
+   /* private boolean handler(ServerConfiguration conf, LFODFlags cmd) throws IOException {
         if (cmd.journal) {
             File[] journalDirs = conf.getJournalDirs();
             List<File> journalFiles = BookieShell.listFilesAndSort(journalDirs, "txn");
             LOG.info("--------- Printing the list of Journal Files ---------");
             for (File journalFile : journalFiles) {
-                LOG.info("{}", journalFile.getCanonicalPath());
+                LOG.info(journalFile.getCanonicalPath());
             }
             LOG.info("");
         }
@@ -90,7 +90,7 @@ public class ListFilesOnDiscCommand extends BookieCommand<ListFilesOnDiscCommand
             List<File> ledgerFiles = BookieShell.listFilesAndSort(ledgerDirs, "log");
             LOG.info("--------- Printing the list of EntryLog/Ledger Files ---------");
             for (File ledgerFile : ledgerFiles) {
-                LOG.info("{}", ledgerFile.getCanonicalPath());
+                LOG.info(ledgerFile.getCanonicalPath());
             }
             LOG.info("");
         }
@@ -99,9 +99,9 @@ public class ListFilesOnDiscCommand extends BookieCommand<ListFilesOnDiscCommand
             List<File> indexFiles = BookieShell.listFilesAndSort(indexDirs, "idx");
             LOG.info("--------- Printing the list of Index Files ---------");
             for (File indexFile : indexFiles) {
-                LOG.info("{}", indexFile.getCanonicalPath());
+                LOG.info(indexFile.getCanonicalPath());
             }
         }
         return true;
-    }
+    }*/
 }

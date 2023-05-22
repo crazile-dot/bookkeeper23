@@ -1,4 +1,4 @@
-/*
+/**
  *
  * Licensed to the Apache Software Foundation (ASF) under one
  * or more contributor license agreements.  See the NOTICE file
@@ -32,6 +32,7 @@ import java.util.List;
 import java.util.Set;
 import java.util.SortedSet;
 import java.util.TreeSet;
+
 import lombok.experimental.UtilityClass;
 import lombok.extern.slf4j.Slf4j;
 
@@ -54,7 +55,7 @@ public class CpuAffinityImpl {
 
     private static ProcessorsInfo processorsInfo = null;
 
-    public static synchronized void acquireCore() {
+    /*public static synchronized void acquireCore() {
         if (!isInitialized) {
             init();
         }
@@ -87,7 +88,7 @@ public class CpuAffinityImpl {
      * <p>We use file-locks to ensure that other processes are aware of which CPUs are taken and that these locks are
      * automatically released if the process crashes.
      */
-    private static synchronized int pickAvailableCpu() throws IOException {
+    /*private static synchronized int pickAvailableCpu() throws IOException {
         if (isolatedProcessors == null) {
             isolatedProcessors = IsolatedProcessors.get();
         }
@@ -114,7 +115,7 @@ public class CpuAffinityImpl {
                 "There is no available isolated CPU to acquire for thread " + Thread.currentThread().getName());
     }
 
-    private static boolean tryAcquireCpu(int targetCpu) throws IOException {
+    /*private static boolean tryAcquireCpu(int targetCpu) throws IOException {
         // First, acquire lock on all the cpus that share the same core as target cpu
         if (processorsInfo == null) {
             processorsInfo = ProcessorsInfo.parseCpuInfo();
@@ -154,7 +155,7 @@ public class CpuAffinityImpl {
             acquiredProcessors.add(cpu);
         }
         return true;
-    }
+    }*/
 
     /**
      * Try to acquire a lock on a particular cpu.
@@ -162,7 +163,7 @@ public class CpuAffinityImpl {
      * @return null if the lock was not available
      * @return a {@link Closeable} lock object if the lock was acquired
      */
-    private static Closeable tryAcquireFileLock(int cpu) throws IOException {
+    /*private static Closeable tryAcquireFileLock(int cpu) throws IOException {
         String lockPath = LOCK_FILE_PREFIX + cpu;
 
         RandomAccessFile file = null;
@@ -198,7 +199,7 @@ public class CpuAffinityImpl {
                 }
             }
         }
-    }
+    }*/
 
     private static void init() {
         try {

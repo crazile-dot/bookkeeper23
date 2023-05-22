@@ -1,0 +1,295 @@
+<?xml version="1.0" encoding="UTF-8"?><!DOCTYPE html PUBLIC "-//W3C//DTD XHTML 1.0 Strict//EN" "http://www.w3.org/TR/xhtml1/DTD/xhtml1-strict.dtd"><html xmlns="http://www.w3.org/1999/xhtml" lang="it"><head><meta http-equiv="Content-Type" content="text/html;charset=UTF-8"/><link rel="stylesheet" href="../../jacoco-resources/report.css" type="text/css"/><link rel="shortcut icon" href="../../jacoco-resources/report.gif" type="image/gif"/><title>TestClient.java</title><link rel="stylesheet" href="../../jacoco-resources/prettify.css" type="text/css"/><script type="text/javascript" src="../../jacoco-resources/prettify.js"></script></head><body onload="window['PR_TAB_WIDTH']=4;prettyPrint()"><div class="breadcrumb" id="breadcrumb"><span class="info"><a href="../../jacoco-sessions.html" class="el_session">Sessions</a></span><a href="../../index.html" class="el_report">Tests</a> &gt; <a href="../index.html" class="el_bundle">bookkeeper-benchmark</a> &gt; <a href="index.source.html" class="el_package">org.apache.bookkeeper.benchmark</a> &gt; <span class="el_source">TestClient.java</span></div><h1>TestClient.java</h1><pre class="source lang-java linenums">/*
+ *
+ * Licensed to the Apache Software Foundation (ASF) under one
+ * or more contributor license agreements.  See the NOTICE file
+ * distributed with this work for additional information
+ * regarding copyright ownership.  The ASF licenses this file
+ * to you under the Apache License, Version 2.0 (the
+ * &quot;License&quot;); you may not use this file except in compliance
+ * with the License.  You may obtain a copy of the License at
+ *
+ *   http://www.apache.org/licenses/LICENSE-2.0
+ *
+ * Unless required by applicable law or agreed to in writing,
+ * software distributed under the License is distributed on an
+ * &quot;AS IS&quot; BASIS, WITHOUT WARRANTIES OR CONDITIONS OF ANY
+ * KIND, either express or implied.  See the License for the
+ * specific language governing permissions and limitations
+ * under the License.
+ *
+ */
+package org.apache.bookkeeper.benchmark;
+
+import static java.nio.charset.StandardCharsets.UTF_8;
+
+import java.io.FileOutputStream;
+import java.io.IOException;
+import java.util.ArrayList;
+import java.util.List;
+import java.util.Random;
+import java.util.Timer;
+import java.util.TimerTask;
+import java.util.concurrent.Callable;
+import java.util.concurrent.ExecutionException;
+import java.util.concurrent.ExecutorService;
+import java.util.concurrent.Executors;
+import java.util.concurrent.Future;
+import java.util.concurrent.TimeUnit;
+import java.util.concurrent.atomic.AtomicLong;
+import org.apache.bookkeeper.client.AsyncCallback.AddCallback;
+import org.apache.bookkeeper.client.BKException;
+//import org.apache.bookkeeper.client.BookKeeper;
+//import org.apache.bookkeeper.client.BookKeeper.DigestType;
+import org.apache.bookkeeper.client.LedgerHandle;
+import org.apache.bookkeeper.conf.ClientConfiguration;
+import org.apache.commons.cli.CommandLine;
+import org.apache.commons.cli.CommandLineParser;
+import org.apache.commons.cli.HelpFormatter;
+import org.apache.commons.cli.Options;
+import org.apache.commons.cli.ParseException;
+import org.apache.commons.cli.PosixParser;
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
+
+/**
+ * This is a simple test program to compare the performance of writing to
+ * BookKeeper and to the local file system.
+ */
+<span class="nc" id="L58">public class TestClient {</span>
+<span class="nc" id="L59">    private static final Logger LOG = LoggerFactory.getLogger(TestClient.class);</span>
+
+    /**
+     * First says if entries should be written to BookKeeper (0) or to the local
+     * disk (1). Second parameter is an integer defining the length of a ledger entry.
+     * Third parameter is the number of writes.
+     *
+     * @param args
+     */
+    public static void main(String[] args) throws ParseException {
+<span class="nc" id="L69">        Options options = new Options();</span>
+<span class="nc" id="L70">        options.addOption(&quot;length&quot;, true, &quot;Length of packets being written. Default 1024&quot;);</span>
+<span class="nc" id="L71">        options.addOption(&quot;target&quot;, true, &quot;Target medium to write to. Options are bk, fs &amp; hdfs. Default fs&quot;);</span>
+<span class="nc" id="L72">        options.addOption(&quot;runfor&quot;, true, &quot;Number of seconds to run for. Default 60&quot;);</span>
+<span class="nc" id="L73">        options.addOption(&quot;path&quot;, true, &quot;Path to write to. fs &amp; hdfs only. Default /foobar&quot;);</span>
+<span class="nc" id="L74">        options.addOption(&quot;zkservers&quot;, true, &quot;ZooKeeper servers, comma separated. bk only. Default localhost:2181.&quot;);</span>
+<span class="nc" id="L75">        options.addOption(&quot;bkensemble&quot;, true, &quot;BookKeeper ledger ensemble size. bk only. Default 3&quot;);</span>
+<span class="nc" id="L76">        options.addOption(&quot;bkquorum&quot;, true, &quot;BookKeeper ledger quorum size. bk only. Default 2&quot;);</span>
+<span class="nc" id="L77">        options.addOption(&quot;bkthrottle&quot;, true, &quot;BookKeeper throttle size. bk only. Default 10000&quot;);</span>
+<span class="nc" id="L78">        options.addOption(&quot;sync&quot;, false, &quot;Use synchronous writes with BookKeeper. bk only.&quot;);</span>
+<span class="nc" id="L79">        options.addOption(&quot;numconcurrent&quot;, true, &quot;Number of concurrently clients. Default 1&quot;);</span>
+<span class="nc" id="L80">        options.addOption(&quot;timeout&quot;, true, &quot;Number of seconds after which to give up&quot;);</span>
+<span class="nc" id="L81">        options.addOption(&quot;help&quot;, false, &quot;This message&quot;);</span>
+
+<span class="nc" id="L83">        CommandLineParser parser = new PosixParser();</span>
+<span class="nc" id="L84">        CommandLine cmd = parser.parse(options, args);</span>
+
+<span class="nc bnc" id="L86" title="All 2 branches missed.">        if (cmd.hasOption(&quot;help&quot;)) {</span>
+<span class="nc" id="L87">            HelpFormatter formatter = new HelpFormatter();</span>
+<span class="nc" id="L88">            formatter.printHelp(&quot;TestClient &lt;options&gt;&quot;, options);</span>
+<span class="nc" id="L89">            System.exit(-1);</span>
+        }
+
+<span class="nc" id="L92">        int length = Integer.parseInt(cmd.getOptionValue(&quot;length&quot;, &quot;1024&quot;));</span>
+<span class="nc" id="L93">        String target = cmd.getOptionValue(&quot;target&quot;, &quot;fs&quot;);</span>
+<span class="nc" id="L94">        long runfor = Long.parseLong(cmd.getOptionValue(&quot;runfor&quot;, &quot;60&quot;)) * 1000;</span>
+
+<span class="nc" id="L96">        StringBuilder sb = new StringBuilder();</span>
+<span class="nc bnc" id="L97" title="All 2 branches missed.">        while (length-- &gt; 0) {</span>
+<span class="nc" id="L98">            sb.append('a');</span>
+        }
+
+<span class="nc" id="L101">        Timer timeouter = new Timer();</span>
+<span class="nc bnc" id="L102" title="All 2 branches missed.">        if (cmd.hasOption(&quot;timeout&quot;)) {</span>
+<span class="nc" id="L103">            final long timeout = Long.parseLong(cmd.getOptionValue(&quot;timeout&quot;, &quot;360&quot;)) * 1000;</span>
+
+<span class="nc" id="L105">            timeouter.schedule(new TimerTask() {</span>
+                    @Override
+                    public void run() {
+<span class="nc" id="L108">                        System.err.println(&quot;Timing out benchmark after &quot; + timeout + &quot;ms&quot;);</span>
+<span class="nc" id="L109">                        System.exit(-1);</span>
+<span class="nc" id="L110">                    }</span>
+                }, timeout);
+        }
+
+        //BookKeeper bkc = null;
+        try {
+<span class="nc" id="L116">            int numFiles = Integer.parseInt(cmd.getOptionValue(&quot;numconcurrent&quot;, &quot;1&quot;));</span>
+<span class="nc" id="L117">            int numThreads = Math.min(numFiles, 1000);</span>
+<span class="nc" id="L118">            byte[] data = sb.toString().getBytes(UTF_8);</span>
+<span class="nc" id="L119">            long runid = System.currentTimeMillis();</span>
+<span class="nc" id="L120">            List&lt;Callable&lt;Long&gt;&gt; clients = new ArrayList&lt;Callable&lt;Long&gt;&gt;();</span>
+
+<span class="nc bnc" id="L122" title="All 2 branches missed.">            if (target.equals(&quot;bk&quot;)) {</span>
+<span class="nc" id="L123">                String zkservers = cmd.getOptionValue(&quot;zkservers&quot;, &quot;localhost:2181&quot;);</span>
+<span class="nc" id="L124">                int bkensemble = Integer.parseInt(cmd.getOptionValue(&quot;bkensemble&quot;, &quot;3&quot;));</span>
+<span class="nc" id="L125">                int bkquorum = Integer.parseInt(cmd.getOptionValue(&quot;bkquorum&quot;, &quot;2&quot;));</span>
+<span class="nc" id="L126">                int bkthrottle = Integer.parseInt(cmd.getOptionValue(&quot;bkthrottle&quot;, &quot;10000&quot;));</span>
+
+<span class="nc" id="L128">                ClientConfiguration conf = new ClientConfiguration();</span>
+<span class="nc" id="L129">                conf.setThrottleValue(bkthrottle);</span>
+<span class="nc" id="L130">                conf.setMetadataServiceUri(&quot;zk://&quot; + zkservers + &quot;/ledgers&quot;);</span>
+
+                //bkc = new BookKeeper(conf);
+<span class="nc" id="L133">                List&lt;LedgerHandle&gt; handles = new ArrayList&lt;LedgerHandle&gt;();</span>
+<span class="nc bnc" id="L134" title="All 2 branches missed.">                for (int i = 0; i &lt; numFiles; i++) {</span>
+                    //handles.add(bkc.createLedger(bkensemble, bkquorum, DigestType.CRC32, new byte[] {'a', 'b'}));
+                }
+<span class="nc bnc" id="L137" title="All 2 branches missed.">                for (int i = 0; i &lt; numFiles; i++) {</span>
+<span class="nc" id="L138">                    clients.add(new BKClient(handles, data, runfor, cmd.hasOption(&quot;sync&quot;)));</span>
+                }
+<span class="nc bnc" id="L140" title="All 2 branches missed.">            } else if (target.equals(&quot;fs&quot;)) {</span>
+<span class="nc" id="L141">                List&lt;FileOutputStream&gt; streams = new ArrayList&lt;FileOutputStream&gt;();</span>
+<span class="nc bnc" id="L142" title="All 2 branches missed.">                for (int i = 0; i &lt; numFiles; i++) {</span>
+<span class="nc" id="L143">                    String path = cmd.getOptionValue(&quot;path&quot;, &quot;/foobar &quot; + i);</span>
+<span class="nc" id="L144">                    streams.add(new FileOutputStream(path + runid + &quot;_&quot; + i));</span>
+                }
+
+<span class="nc bnc" id="L147" title="All 2 branches missed.">                for (int i = 0; i &lt; numThreads; i++) {</span>
+<span class="nc" id="L148">                    clients.add(new FileClient(streams, data, runfor));</span>
+                }
+<span class="nc" id="L150">            } else {</span>
+<span class="nc" id="L151">                LOG.error(&quot;Unknown option: &quot; + target);</span>
+<span class="nc" id="L152">                throw new IllegalArgumentException(&quot;Unknown target &quot; + target);</span>
+            }
+
+<span class="nc" id="L155">            ExecutorService executor = Executors.newFixedThreadPool(numThreads);</span>
+<span class="nc" id="L156">            long start = System.currentTimeMillis();</span>
+
+<span class="nc" id="L158">            List&lt;Future&lt;Long&gt;&gt; results = executor.invokeAll(clients,</span>
+                                                            10, TimeUnit.MINUTES);
+<span class="nc" id="L160">            long end = System.currentTimeMillis();</span>
+<span class="nc" id="L161">            long count = 0;</span>
+<span class="nc bnc" id="L162" title="All 2 branches missed.">            for (Future&lt;Long&gt; r : results) {</span>
+<span class="nc bnc" id="L163" title="All 2 branches missed.">                if (!r.isDone()) {</span>
+<span class="nc" id="L164">                    LOG.warn(&quot;Job didn't complete&quot;);</span>
+<span class="nc" id="L165">                    System.exit(2);</span>
+                }
+<span class="nc" id="L167">                long c = r.get();</span>
+<span class="nc bnc" id="L168" title="All 2 branches missed.">                if (c == 0) {</span>
+<span class="nc" id="L169">                    LOG.warn(&quot;Task didn't complete&quot;);</span>
+                }
+<span class="nc" id="L171">                count += c;</span>
+<span class="nc" id="L172">            }</span>
+<span class="nc" id="L173">            long time = end - start;</span>
+<span class="nc" id="L174">            LOG.info(&quot;Finished processing writes (ms): {} TPT: {} op/s&quot;, time, count / ((double) time / 1000));</span>
+<span class="nc" id="L175">            executor.shutdown();</span>
+<span class="nc" id="L176">        } catch (ExecutionException ee) {</span>
+<span class="nc" id="L177">            LOG.error(&quot;Exception in worker&quot;, ee);</span>
+<span class="nc" id="L178">        } catch (Exception e) {</span>
+<span class="nc" id="L179">            LOG.error(&quot;Error accessing bookkeeper&quot;, e);</span>
+<span class="nc" id="L180">        } finally {</span>
+            /*if (bkc != null) {
+                try {
+                    bkc.close();
+                } catch (BKException bke) {
+                    LOG.error(&quot;Error closing bookkeeper client&quot;, bke);
+                } catch (InterruptedException ie) {
+                    LOG.warn(&quot;Interrupted closing bookkeeper client&quot;, ie);
+                    Thread.currentThread().interrupt();
+                }
+            }*/
+<span class="nc" id="L191">        }</span>
+<span class="nc" id="L192">        timeouter.cancel();</span>
+<span class="nc" id="L193">    }</span>
+
+    static class FileClient implements Callable&lt;Long&gt; {
+        final List&lt;FileOutputStream&gt; streams;
+        final byte[] data;
+        final long time;
+        final Random r;
+
+<span class="nc" id="L201">        FileClient(List&lt;FileOutputStream&gt; streams, byte[] data, long time) {</span>
+<span class="nc" id="L202">            this.streams = streams;</span>
+<span class="nc" id="L203">            this.data = data;</span>
+<span class="nc" id="L204">            this.time = time;</span>
+<span class="nc" id="L205">            this.r = new Random(System.identityHashCode(this));</span>
+<span class="nc" id="L206">        }</span>
+
+        @Override
+        public Long call() {
+            try {
+<span class="nc" id="L211">                long count = 0;</span>
+<span class="nc" id="L212">                long start = System.currentTimeMillis();</span>
+
+<span class="nc" id="L214">                long stopat = start + time;</span>
+<span class="nc bnc" id="L215" title="All 2 branches missed.">                while (System.currentTimeMillis() &lt; stopat) {</span>
+<span class="nc" id="L216">                    FileOutputStream stream = streams.get(r.nextInt(streams.size()));</span>
+<span class="nc" id="L217">                    synchronized (stream) {</span>
+<span class="nc" id="L218">                        stream.write(data);</span>
+<span class="nc" id="L219">                        stream.flush();</span>
+<span class="nc" id="L220">                        stream.getChannel().force(false);</span>
+<span class="nc" id="L221">                    }</span>
+<span class="nc" id="L222">                    count++;</span>
+<span class="nc" id="L223">                }</span>
+
+<span class="nc" id="L225">                long time = (System.currentTimeMillis() - start);</span>
+<span class="nc" id="L226">                LOG.info(&quot;Worker finished processing writes (ms): {} TPT: {} op/s&quot;, time,</span>
+<span class="nc" id="L227">                         count / ((double) time / 1000));</span>
+<span class="nc" id="L228">                return count;</span>
+<span class="nc" id="L229">            } catch (IOException ioe) {</span>
+<span class="nc" id="L230">                LOG.error(&quot;Exception in worker thread&quot;, ioe);</span>
+<span class="nc" id="L231">                return 0L;</span>
+            }
+        }
+    }
+
+    static class BKClient implements Callable&lt;Long&gt;, AddCallback {
+        final List&lt;LedgerHandle&gt; handles;
+        final byte[] data;
+        final long time;
+        final Random r;
+        final boolean sync;
+<span class="nc" id="L242">        final AtomicLong success = new AtomicLong(0);</span>
+<span class="nc" id="L243">        final AtomicLong outstanding = new AtomicLong(0);</span>
+
+<span class="nc" id="L245">        BKClient(List&lt;LedgerHandle&gt; handles, byte[] data, long time, boolean sync) {</span>
+<span class="nc" id="L246">            this.handles = handles;</span>
+<span class="nc" id="L247">            this.data = data;</span>
+<span class="nc" id="L248">            this.time = time;</span>
+<span class="nc" id="L249">            this.r = new Random(System.identityHashCode(this));</span>
+<span class="nc" id="L250">            this.sync = sync;</span>
+<span class="nc" id="L251">        }</span>
+
+        @Override
+        public Long call() {
+            try {
+<span class="nc" id="L256">                long start = System.currentTimeMillis();</span>
+
+<span class="nc" id="L258">                long stopat = start + time;</span>
+<span class="nc bnc" id="L259" title="All 2 branches missed.">                while (System.currentTimeMillis() &lt; stopat) {</span>
+<span class="nc" id="L260">                    LedgerHandle lh = handles.get(r.nextInt(handles.size()));</span>
+<span class="nc bnc" id="L261" title="All 2 branches missed.">                    if (sync) {</span>
+                       // lh.addEntry(data);
+<span class="nc" id="L263">                        success.incrementAndGet();</span>
+                    } else {
+                        //lh.asyncAddEntry(data, this, null);
+<span class="nc" id="L266">                        outstanding.incrementAndGet();</span>
+                    }
+<span class="nc" id="L268">                }</span>
+
+<span class="nc" id="L270">                int ticks = 10; // don't wait for more than 10 seconds</span>
+<span class="nc bnc" id="L271" title="All 4 branches missed.">                while (outstanding.get() &gt; 0 &amp;&amp; ticks-- &gt; 0) {</span>
+<span class="nc" id="L272">                    Thread.sleep(10);</span>
+                }
+
+<span class="nc" id="L275">                long time = (System.currentTimeMillis() - start);</span>
+<span class="nc" id="L276">                LOG.info(&quot;Worker finished processing writes (ms): {} TPT: {} op/s&quot;, time,</span>
+<span class="nc" id="L277">                         success.get() / ((double) time / 1000));</span>
+<span class="nc" id="L278">                return success.get();</span>
+<span class="nc" id="L279">            }  catch (InterruptedException ie) {</span>
+<span class="nc" id="L280">                Thread.currentThread().interrupt();</span>
+<span class="nc" id="L281">                LOG.error(&quot;Exception in worker thread&quot;, ie);</span>
+<span class="nc" id="L282">                return 0L;</span>
+            }
+        }
+
+        @Override
+        public void addComplete(int rc, LedgerHandle lh, long entryId, Object ctx) {
+<span class="nc bnc" id="L288" title="All 2 branches missed.">            if (rc == BKException.Code.OK) {</span>
+<span class="nc" id="L289">                success.incrementAndGet();</span>
+            }
+<span class="nc" id="L291">            outstanding.decrementAndGet();</span>
+<span class="nc" id="L292">        }</span>
+    }
+}
+</pre><div class="footer"><span class="right">Created with <a href="http://www.jacoco.org/jacoco">JaCoCo</a> 0.8.2.201808211720</span></div></body></html>

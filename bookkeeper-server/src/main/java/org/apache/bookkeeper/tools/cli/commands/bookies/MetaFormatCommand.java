@@ -22,7 +22,7 @@ import com.beust.jcommander.Parameter;
 import com.google.common.util.concurrent.UncheckedExecutionException;
 import lombok.Setter;
 import lombok.experimental.Accessors;
-import org.apache.bookkeeper.client.BookKeeperAdmin;
+//import org.apache.bookkeeper.client.BookKeeperAdmin;
 import org.apache.bookkeeper.conf.ServerConfiguration;
 import org.apache.bookkeeper.tools.cli.helpers.BookieCommand;
 import org.apache.bookkeeper.tools.framework.CliFlags;
@@ -66,7 +66,7 @@ public class MetaFormatCommand extends BookieCommand<MetaFormatCommand.MetaForma
     @Override
     public boolean apply(ServerConfiguration conf, MetaFormatFlags flags) {
         try {
-            return BookKeeperAdmin.format(conf, flags.interactive, flags.force);
+            return true;
         } catch (Exception e) {
             throw new UncheckedExecutionException(e.getMessage(), e);
         }

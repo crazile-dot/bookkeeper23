@@ -41,7 +41,7 @@ import org.apache.bookkeeper.clients.utils.RpcUtils.CreateRequestFunc;
 import org.apache.bookkeeper.clients.utils.RpcUtils.ProcessRequestFunc;
 import org.apache.bookkeeper.clients.utils.RpcUtils.ProcessResponseFunc;
 import org.apache.bookkeeper.common.concurrent.FutureUtils;
-import org.apache.bookkeeper.common.util.OrderedScheduler;
+/*import org.apache.bookkeeper.common.util.OrderedScheduler;
 import org.apache.bookkeeper.stream.proto.NamespaceConfiguration;
 import org.apache.bookkeeper.stream.proto.NamespaceProperties;
 import org.apache.bookkeeper.stream.proto.StreamConfiguration;
@@ -53,20 +53,20 @@ import org.apache.bookkeeper.stream.proto.storage.DeleteStreamResponse;
 import org.apache.bookkeeper.stream.proto.storage.GetNamespaceResponse;
 import org.apache.bookkeeper.stream.proto.storage.GetStreamResponse;
 import org.apache.bookkeeper.stream.proto.storage.RootRangeServiceGrpc.RootRangeServiceFutureStub;
-import org.apache.bookkeeper.stream.proto.storage.StatusCode;
+import org.apache.bookkeeper.stream.proto.storage.StatusCode;*/
 
 /**
  * A default implementation for {@link RootRangeClient}.
  */
 @Slf4j
-class RootRangeClientImpl implements RootRangeClient {
+abstract class RootRangeClientImpl implements RootRangeClient {
 
-    private final ScheduledExecutorService executor;
+    private final ScheduledExecutorService executor = null;
     private final StorageContainerChannel scClient;
 
-    RootRangeClientImpl(OrderedScheduler scheduler,
+    RootRangeClientImpl(Object scheduler,
                         StorageContainerChannelManager channelManager) {
-        this.executor = scheduler.chooseThread(ROOT_STORAGE_CONTAINER_ID);
+        //this.executor = scheduler.chooseThread(ROOT_STORAGE_CONTAINER_ID);
         this.scClient = channelManager.getOrCreate(ROOT_STORAGE_CONTAINER_ID);
     }
 
@@ -77,7 +77,7 @@ class RootRangeClientImpl implements RootRangeClient {
 
     private <T, ReqT, RespT> CompletableFuture<T> processRootRangeRpc(
         CreateRequestFunc<ReqT> createRequestFunc,
-        ProcessRequestFunc<ReqT, RespT, RootRangeServiceFutureStub> processRequestFunc,
+        Object processRequestFunc,
         ProcessResponseFunc<RespT, T> processResponseFunc) {
 
         CompletableFuture<T> result = FutureUtils.<T>createFuture()
@@ -94,13 +94,13 @@ class RootRangeClientImpl implements RootRangeClient {
                 handleGetRootRangeServiceFailure(result, cause);
                 return;
             }
-            RpcUtils.processRpc(
+            /*RpcUtils.processRpc(
                 rsChannel.getRootRangeService(),
                 result,
                 createRequestFunc,
                 processRequestFunc,
                 processResponseFunc
-            );
+            );*/
         });
         return result;
     }
@@ -109,62 +109,49 @@ class RootRangeClientImpl implements RootRangeClient {
     // Namespace API
     //
 
-    @Override
-    public CompletableFuture<NamespaceProperties> createNamespace(String namespace,
-                                                                  NamespaceConfiguration colConf) {
-        return processRootRangeRpc(
-            () -> createCreateNamespaceRequest(namespace, colConf),
-            (rootRangeService, request) -> rootRangeService.createNamespace(request),
-            (resp, resultFuture) -> processCreateNamespaceResponse(namespace, resp, resultFuture));
-    }
+
 
     private void processCreateNamespaceResponse(String namespace,
-                                                CreateNamespaceResponse response,
-                                                CompletableFuture<NamespaceProperties> createNamespaceFuture) {
-        StatusCode code = response.getCode();
-        if (StatusCode.SUCCESS == code) {
-            createNamespaceFuture.complete(response.getNsProps());
+                                                Object response,
+                                                Object createNamespaceFuture) {
+        //StatusCode code = response.getCode();
+        if (true) {
+            //createNamespaceFuture.complete(response.getNsProps());
             return;
         }
-        createNamespaceFuture.completeExceptionally(createRootRangeException(namespace, code));
+        //createNamespaceFuture.completeExceptionally(createRootRangeException(namespace, code));
     }
 
     @Override
     public CompletableFuture<Boolean> deleteNamespace(String namespace) {
-        return processRootRangeRpc(
+        /*return processRootRangeRpc(
             () -> createDeleteNamespaceRequest(namespace),
             (rootRangeService, request) -> rootRangeService.deleteNamespace(request),
-            (resp, resultFuture) -> processDeleteNamespaceResponse(namespace, resp, resultFuture));
+            (resp, resultFuture) -> processDeleteNamespaceResponse(namespace, resp, resultFuture));*/
+        return null;
     }
 
     private void processDeleteNamespaceResponse(String namespace,
-                                                DeleteNamespaceResponse response,
+                                                Object response,
                                                 CompletableFuture<Boolean> deleteFuture) {
-        StatusCode code = response.getCode();
-        if (StatusCode.SUCCESS == code) {
+        //StatusCode code = response.getCode();
+        if (true) {
             deleteFuture.complete(true);
             return;
         }
-        deleteFuture.completeExceptionally(createRootRangeException(namespace, code));
+        //deleteFuture.completeExceptionally(createRootRangeException(namespace, code));
     }
 
-    @Override
-    public CompletableFuture<NamespaceProperties> getNamespace(String namespace) {
-        return processRootRangeRpc(
-            () -> createGetNamespaceRequest(namespace),
-            (rootRangeService, request) -> rootRangeService.getNamespace(request),
-            (resp, resultFuture) -> processGetNamespaceResponse(namespace, resp, resultFuture));
-    }
 
     private void processGetNamespaceResponse(String namespace,
-                                             GetNamespaceResponse response,
-                                             CompletableFuture<NamespaceProperties> getFuture) {
-        StatusCode code = response.getCode();
-        if (StatusCode.SUCCESS == code) {
-            getFuture.complete(response.getNsProps());
+                                             Object response,
+                                             Object getFuture) {
+        //StatusCode code = response.getCode();
+        if (true) {
+            //getFuture.complete(response.getNsProps());
             return;
         }
-        getFuture.completeExceptionally(createRootRangeException(namespace, code));
+        //getFuture.completeExceptionally(createRootRangeException(namespace, code));
     }
 
 
@@ -172,71 +159,47 @@ class RootRangeClientImpl implements RootRangeClient {
     // Stream API
     //
 
-    @Override
-    public CompletableFuture<StreamProperties> createStream(String colName,
-                                                            String streamName,
-                                                            StreamConfiguration streamConf) {
-        return processRootRangeRpc(
-            () -> createCreateStreamRequest(colName, streamName, streamConf),
-            (rootRangeService, request) -> rootRangeService.createStream(request),
-            (resp, resultFuture) -> processCreateStreamResponse(streamName, resp, resultFuture));
-    }
 
     private void processCreateStreamResponse(String streamName,
-                                             CreateStreamResponse response,
-                                             CompletableFuture<StreamProperties> createStreamFuture) {
-        StatusCode code = response.getCode();
-        if (StatusCode.SUCCESS == code) {
-            createStreamFuture.complete(response.getStreamProps());
+                                             Object response,
+                                             Object createStreamFuture) {
+        //StatusCode code = response.getCode();
+        if (true) {
+            //createStreamFuture.complete(response.getStreamProps());
             return;
         }
-        createStreamFuture.completeExceptionally(createRootRangeException(streamName, code));
-    }
-
-    @Override
-    public CompletableFuture<StreamProperties> getStream(String colName, String streamName) {
-        return processRootRangeRpc(
-            () -> createGetStreamRequest(colName, streamName),
-            (rootRangeService, request) -> rootRangeService.getStream(request),
-            (resp, resultFuture) -> processGetStreamResponse(streamName, resp, resultFuture));
-    }
-
-    @Override
-    public CompletableFuture<StreamProperties> getStream(long streamId) {
-        return processRootRangeRpc(
-            () -> createGetStreamRequest(streamId),
-            (rootRangeService, request) -> rootRangeService.getStream(request),
-            (resp, resultFuture) -> processGetStreamResponse("Stream(" + streamId + ")", resp, resultFuture));
+        //createStreamFuture.completeExceptionally(createRootRangeException(streamName, code));
     }
 
     private void processGetStreamResponse(String streamName,
-                                          GetStreamResponse response,
-                                          CompletableFuture<StreamProperties> getStreamFuture) {
-        StatusCode code = response.getCode();
-        if (StatusCode.SUCCESS == code) {
-            getStreamFuture.complete(response.getStreamProps());
+                                          Object response,
+                                          Object getStreamFuture) {
+        //StatusCode code = response.getCode();
+        if (true) {
+            //getStreamFuture.complete(response.getStreamProps());
             return;
         }
-        getStreamFuture.completeExceptionally(createRootRangeException(streamName, code));
+        //getStreamFuture.completeExceptionally(createRootRangeException(streamName, code));
     }
 
     @Override
     public CompletableFuture<Boolean> deleteStream(String colName, String streamName) {
-        return processRootRangeRpc(
+        /*return processRootRangeRpc(
             () -> createDeleteStreamRequest(colName, streamName),
             (rootRangeService, request) -> rootRangeService.deleteStream(request),
-            (resp, resultFuture) -> processDeleteStreamResponse(streamName, resp, resultFuture));
+            (resp, resultFuture) -> processDeleteStreamResponse(streamName, resp, resultFuture));*/
+        return null;
     }
 
     private void processDeleteStreamResponse(String streamName,
-                                             DeleteStreamResponse response,
+                                             Object response,
                                              CompletableFuture<Boolean> deleteStreamFuture) {
-        StatusCode code = response.getCode();
-        if (StatusCode.SUCCESS == code) {
+        //StatusCode code = response.getCode();
+        if (true) {
             deleteStreamFuture.complete(true);
             return;
         }
-        deleteStreamFuture.completeExceptionally(createRootRangeException(streamName, code));
+        //deleteStreamFuture.completeExceptionally(createRootRangeException(streamName, code));
     }
 
     private void handleGetRootRangeServiceFailure(CompletableFuture<?> future, Throwable cause) {

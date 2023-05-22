@@ -19,8 +19,8 @@ import org.apache.bookkeeper.api.kv.PTable;
 import org.apache.bookkeeper.api.kv.impl.result.KeyValueFactory;
 import org.apache.bookkeeper.api.kv.impl.result.ResultFactory;
 import org.apache.bookkeeper.api.kv.op.OpFactory;
-import org.apache.bookkeeper.stream.proto.RangeProperties;
-import org.apache.bookkeeper.stream.proto.StreamProperties;
+//import org.apache.bookkeeper.stream.proto.RangeProperties;
+//import org.apache.bookkeeper.stream.proto.StreamProperties;
 
 /**
  * Factory to open a range for a table.
@@ -28,8 +28,8 @@ import org.apache.bookkeeper.stream.proto.StreamProperties;
 @FunctionalInterface
 public interface TableRangeFactory<K, V> {
 
-    PTable<K, V> openTableRange(StreamProperties streamProps,
-                                RangeProperties rangeProps,
+    PTable<K, V> openTableRange(Object streamProps,
+                                Object rangeProps,
                                 ScheduledExecutorService executor,
                                 OpFactory<K, V> opFactory,
                                 ResultFactory<K, V> resultFactory,

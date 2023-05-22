@@ -20,7 +20,7 @@ import java.util.concurrent.CompletableFuture;
 import java.util.concurrent.ConcurrentMap;
 import org.apache.bookkeeper.clients.impl.internal.api.RootRangeClient;
 import org.apache.bookkeeper.common.concurrent.FutureUtils;
-import org.apache.bookkeeper.stream.proto.StreamProperties;
+//import org.apache.bookkeeper.stream.proto.StreamProperties;
 
 /**
  * Build the stream metadata cache.
@@ -28,32 +28,33 @@ import org.apache.bookkeeper.stream.proto.StreamProperties;
 public class StreamMetadataCache {
 
     private final RootRangeClient scClient;
-    private final ConcurrentMap<Long, StreamProperties> streams;
+    //private final ConcurrentMap<Long, StreamProperties> streams;
 
     public StreamMetadataCache(RootRangeClient scClient) {
         this.scClient = scClient;
-        this.streams = Maps.newConcurrentMap();
+        //this.streams = Maps.newConcurrentMap();
     }
 
     @VisibleForTesting
-    ConcurrentMap<Long, StreamProperties> getStreams() {
+    /*ConcurrentMap<Long, StreamProperties> getStreams() {
         return streams;
-    }
+    }*/
 
-    CompletableFuture<StreamProperties> getStreamProperties(long streamId) {
-        StreamProperties props = streams.get(streamId);
-        if (null != props) {
+    Object getStreamProperties(long streamId) {
+        //StreamProperties props = streams.get(streamId);
+        /*if (null != props) {
             return FutureUtils.value(props);
-        }
+        }*/
 
-        return scClient.getStream(streamId).thenApply(propsReturned -> {
+        /*return scClient.getStream(streamId).thenApply(propsReturned -> {
             streams.put(streamId, propsReturned);
             return propsReturned;
-        });
+        });*/
+        return null;
     }
 
-    boolean putStreamProperties(long streamId, StreamProperties props) {
-        return null == streams.putIfAbsent(streamId, props);
+    boolean putStreamProperties(long streamId, Object props) {
+        return true;
     }
 
 }

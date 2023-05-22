@@ -24,14 +24,14 @@ import java.util.Optional;
 import java.util.concurrent.Executor;
 import java.util.function.Consumer;
 import lombok.Data;
-import org.apache.bookkeeper.stream.proto.cluster.ClusterAssignmentData;
-import org.apache.bookkeeper.stream.proto.cluster.ClusterMetadata;
+/*import org.apache.bookkeeper.stream.proto.cluster.ClusterAssignmentData;
+import org.apache.bookkeeper.stream.proto.cluster.ClusterMetadata;*/
 import org.apache.bookkeeper.stream.storage.api.cluster.ClusterMetadataStore;
 
 /**
  * An in-memory implementation of {@link ClusterMetadataStore}.
  */
-public class InMemClusterMetadataStore implements ClusterMetadataStore {
+public abstract class InMemClusterMetadataStore implements ClusterMetadataStore {
 
     @Data
     private static class WatcherAndExecutor {
@@ -41,8 +41,8 @@ public class InMemClusterMetadataStore implements ClusterMetadataStore {
 
     private final Map<Consumer<Void>, WatcherAndExecutor> watchers;
 
-    private ClusterMetadata metadata;
-    private ClusterAssignmentData assignmentData;
+    private Object metadata;
+    private Object assignmentData;
 
     InMemClusterMetadataStore(int numStorageContainers) {
         this.watchers = Maps.newHashMap();
@@ -56,20 +56,17 @@ public class InMemClusterMetadataStore implements ClusterMetadataStore {
     @Override
     public synchronized boolean initializeCluster(int numStorageContainers,
                                                Optional<String> segmentStorePath) {
-        this.metadata = ClusterMetadata.newBuilder()
+        /*this.metadata = ClusterMetadata.newBuilder()
             .setNumStorageContainers(numStorageContainers)
-            .build();
-        this.assignmentData = ClusterAssignmentData.newBuilder().build();
+            .build();*/
+        //this.assignmentData = ClusterAssignmentData.newBuilder().build();
         return true;
     }
 
-    @Override
-    public synchronized ClusterAssignmentData getClusterAssignmentData() {
-        return assignmentData;
-    }
 
-    @Override
-    public synchronized void updateClusterAssignmentData(ClusterAssignmentData assignmentData) {
+
+    //@Override
+    public synchronized void updateClusterAssignmentData(Object assignmentData) {
         this.assignmentData = assignmentData;
         watchers.values().forEach(wae -> wae.executor.execute(() -> wae.watcher.accept(null)));
     }
@@ -88,15 +85,9 @@ public class InMemClusterMetadataStore implements ClusterMetadataStore {
         watchers.remove(watcher);
     }
 
-    @Override
-    public synchronized ClusterMetadata getClusterMetadata() {
-        return metadata;
-    }
 
-    @Override
-    public synchronized void updateClusterMetadata(ClusterMetadata clusterMetadata) {
-        this.metadata = clusterMetadata;
-    }
+
+
 
     @Override
     public void close() {

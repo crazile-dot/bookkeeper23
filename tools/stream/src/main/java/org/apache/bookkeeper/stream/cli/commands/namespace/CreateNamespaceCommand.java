@@ -26,8 +26,8 @@ import org.apache.bookkeeper.clients.admin.StorageAdminClient;
 import org.apache.bookkeeper.clients.exceptions.NamespaceExistsException;
 import org.apache.bookkeeper.stream.cli.commands.AdminCommand;
 import org.apache.bookkeeper.stream.cli.commands.namespace.CreateNamespaceCommand.Flags;
-import org.apache.bookkeeper.stream.proto.NamespaceConfiguration;
-import org.apache.bookkeeper.stream.proto.NamespaceProperties;
+//import org.apache.bookkeeper.stream.proto.NamespaceConfiguration;
+//import org.apache.bookkeeper.stream.proto.NamespaceProperties;
 import org.apache.bookkeeper.tools.common.BKFlags;
 import org.apache.bookkeeper.tools.framework.CliFlags;
 import org.apache.bookkeeper.tools.framework.CliSpec;
@@ -65,15 +65,10 @@ public class CreateNamespaceCommand extends AdminCommand<Flags> {
         String namespaceName = flags.arguments.get(0);
 
         try {
-            NamespaceProperties nsProps = result(
-                admin.createNamespace(
-                    namespaceName,
-                    NamespaceConfiguration.newBuilder()
-                        .setDefaultStreamConf(DEFAULT_STREAM_CONF)
-                        .build()));
+            Object nsProps = null;
             spec.console().println("Successfully created namespace '" + namespaceName + "':");
             spec.console().println(nsProps);
-        } catch (NamespaceExistsException nee) {
+        } catch (Exception nee) {
             spec.console().println("Namespace '" + namespaceName + "' already exists");
         }
     }

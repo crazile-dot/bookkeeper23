@@ -1,0 +1,165 @@
+<?xml version="1.0" encoding="UTF-8"?><!DOCTYPE html PUBLIC "-//W3C//DTD XHTML 1.0 Strict//EN" "http://www.w3.org/TR/xhtml1/DTD/xhtml1-strict.dtd"><html xmlns="http://www.w3.org/1999/xhtml" lang="it"><head><meta http-equiv="Content-Type" content="text/html;charset=UTF-8"/><link rel="stylesheet" href="../../jacoco-resources/report.css" type="text/css"/><link rel="shortcut icon" href="../../jacoco-resources/report.gif" type="image/gif"/><title>SharedResourceManager.java</title><link rel="stylesheet" href="../../jacoco-resources/prettify.css" type="text/css"/><script type="text/javascript" src="../../jacoco-resources/prettify.js"></script></head><body onload="window['PR_TAB_WIDTH']=4;prettyPrint()"><div class="breadcrumb" id="breadcrumb"><span class="info"><a href="../../jacoco-sessions.html" class="el_session">Sessions</a></span><a href="../../index.html" class="el_report">Tests</a> &gt; <a href="../index.html" class="el_bundle">bookkeeper-common</a> &gt; <a href="index.source.html" class="el_package">org.apache.bookkeeper.common.util</a> &gt; <span class="el_source">SharedResourceManager.java</span></div><h1>SharedResourceManager.java</h1><pre class="source lang-java linenums">/*
+ * Licensed to the Apache Software Foundation (ASF) under one
+ * or more contributor license agreements.  See the NOTICE file
+ * distributed with this work for additional information
+ * regarding copyright ownership.  The ASF licenses this file
+ * to you under the Apache License, Version 2.0 (the
+ * &quot;License&quot;); you may not use this file except in compliance
+ * with the License.  You may obtain a copy of the License at
+ *
+ *      http://www.apache.org/licenses/LICENSE-2.0
+ *
+ * Unless required by applicable law or agreed to in writing, software
+ * distributed under the License is distributed on an &quot;AS IS&quot; BASIS,
+ * WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+ * See the License for the specific language governing permissions and
+ * limitations under the License.
+ */
+
+package org.apache.bookkeeper.common.util;
+
+import static com.google.common.base.Preconditions.checkArgument;
+import static com.google.common.base.Preconditions.checkState;
+
+import java.util.IdentityHashMap;
+import java.util.concurrent.Executors;
+import java.util.concurrent.ScheduledExecutorService;
+import java.util.concurrent.ScheduledFuture;
+import java.util.concurrent.TimeUnit;
+import java.util.function.Supplier;
+
+/**
+ * A holder for shared resource singletons.
+ *
+ * &lt;p&gt;Components like clients and servers need certain resources, e.g. a scheduler,
+ * to run. If the user has not provided such resources, these components will use
+ * a default one, which is shared as a static resource. This class holds these default
+ * resources and manages their lifecycles.
+ *
+ * &lt;p&gt;A resource is identified by the reference of a {@link Resource} object, which
+ * is typically a singleton, provided to the get() and release() methods. Each resource
+ * object (not its class) maps to an object cached in the holder.
+ *
+ * &lt;p&gt;Resources are ref-counted and shut down after a delay when the refcount reaches zero.
+ */
+public class SharedResourceManager {
+
+    static final long DESTROY_DELAY_SECONDS = 1;
+
+<span class="nc" id="L49">    private static final SharedResourceManager SHARED = create();</span>
+
+    public static SharedResourceManager shared() {
+<span class="nc" id="L52">        return SHARED;</span>
+    }
+
+    public static SharedResourceManager create() {
+<span class="nc" id="L56">        return create(() -&gt; Executors.newSingleThreadScheduledExecutor(</span>
+<span class="nc" id="L57">            ExecutorUtils.getThreadFactory(&quot;bookkeeper-shared-destroyer-%d&quot;, true)));</span>
+    }
+
+    public static SharedResourceManager create(Supplier&lt;ScheduledExecutorService&gt; destroyerFactory) {
+<span class="nc" id="L61">        return new SharedResourceManager(destroyerFactory);</span>
+    }
+
+    /**
+     * Defines a resource, and the way to create and destroy instances of it.
+     *
+     * @param &lt;T&gt; resource type.
+     */
+    public interface Resource&lt;T&gt; {
+        /**
+         * Create a new instance of the resource.
+         *
+         * @return a new instance of the resource.
+         */
+        T create();
+
+        /**
+         * Destroy the given instance.
+         *
+         * @param instance the instance to destroy.
+         */
+        void close(T instance);
+    }
+
+    private static class Instance implements ReferenceCounted {
+
+        private final Object instance;
+        private int refCount;
+        ScheduledFuture&lt;?&gt; destroyTask;
+
+<span class="nc" id="L91">        Instance(Object instance) {</span>
+<span class="nc" id="L92">            this.instance = instance;</span>
+<span class="nc" id="L93">        }</span>
+
+        @Override
+        public void retain() {
+<span class="nc" id="L97">            ++refCount;</span>
+<span class="nc" id="L98">        }</span>
+
+        @Override
+        public void release() {
+<span class="nc" id="L102">            --refCount;</span>
+<span class="nc" id="L103">        }</span>
+
+        void cancelDestroyTask() {
+<span class="nc bnc" id="L106" title="All 2 branches missed.">            if (null != destroyTask) {</span>
+<span class="nc" id="L107">                destroyTask.cancel(false);</span>
+<span class="nc" id="L108">                destroyTask = null;</span>
+            }
+<span class="nc" id="L110">        }</span>
+
+    }
+
+<span class="nc" id="L114">    private final IdentityHashMap&lt;Resource&lt;?&gt;, Instance&gt; instances =</span>
+        new IdentityHashMap&lt;&gt;();
+    private final Supplier&lt;ScheduledExecutorService&gt; destroyerFactory;
+    private ScheduledExecutorService destroyer;
+
+<span class="nc" id="L119">    private SharedResourceManager(Supplier&lt;ScheduledExecutorService&gt; destroyerFactory) {</span>
+<span class="nc" id="L120">        this.destroyerFactory = destroyerFactory;</span>
+<span class="nc" id="L121">    }</span>
+
+    @SuppressWarnings(&quot;unchecked&quot;)
+    public synchronized &lt;T&gt; T get(Resource&lt;T&gt; resource) {
+<span class="nc" id="L125">        Instance instance = instances.get(resource);</span>
+<span class="nc bnc" id="L126" title="All 2 branches missed.">        if (null == instance) {</span>
+<span class="nc" id="L127">            instance = new Instance(resource.create());</span>
+<span class="nc" id="L128">            instances.put(resource, instance);</span>
+        }
+<span class="nc" id="L130">        instance.cancelDestroyTask();</span>
+<span class="nc" id="L131">        instance.retain();</span>
+<span class="nc" id="L132">        return (T) instance.instance;</span>
+    }
+
+    public synchronized &lt;T&gt; void release(final Resource&lt;T&gt; resource,
+                                         final T instance) {
+<span class="nc" id="L137">        final Instance cached = instances.get(resource);</span>
+<span class="nc bnc" id="L138" title="All 2 branches missed.">        checkArgument(null != cached, &quot;No cached instance found for %s&quot;, resource);</span>
+<span class="nc bnc" id="L139" title="All 2 branches missed.">        checkArgument(instance == cached.instance, &quot;Release the wrong instance for %s&quot;, resource);</span>
+<span class="nc bnc" id="L140" title="All 2 branches missed.">        checkState(cached.refCount &gt; 0, &quot;Refcount has already reached zero for %s&quot;, resource);</span>
+<span class="nc" id="L141">        cached.release();</span>
+<span class="nc bnc" id="L142" title="All 2 branches missed.">        if (0 == cached.refCount) {</span>
+<span class="nc bnc" id="L143" title="All 2 branches missed.">            checkState(null == cached.destroyTask, &quot;Destroy task already scheduled for %s&quot;, resource);</span>
+<span class="nc bnc" id="L144" title="All 2 branches missed.">            if (null == destroyer) {</span>
+<span class="nc" id="L145">                destroyer = destroyerFactory.get();</span>
+            }
+<span class="nc" id="L147">            cached.destroyTask = destroyer.schedule(new LogExceptionRunnable(() -&gt; {</span>
+<span class="nc" id="L148">                synchronized (SharedResourceManager.this) {</span>
+                    // Refcount may have gone up since the task was scheduled. Re-check it.
+<span class="nc bnc" id="L150" title="All 2 branches missed.">                    if (cached.refCount == 0) {</span>
+<span class="nc" id="L151">                        resource.close(instance);</span>
+<span class="nc" id="L152">                        instances.remove(resource);</span>
+<span class="nc bnc" id="L153" title="All 2 branches missed.">                        if (instances.isEmpty()) {</span>
+<span class="nc" id="L154">                            destroyer.shutdown();</span>
+<span class="nc" id="L155">                            destroyer = null;</span>
+                        }
+                    }
+<span class="nc" id="L158">                }</span>
+<span class="nc" id="L159">            }), DESTROY_DELAY_SECONDS, TimeUnit.SECONDS);</span>
+        }
+<span class="nc" id="L161">    }</span>
+
+
+}
+</pre><div class="footer"><span class="right">Created with <a href="http://www.jacoco.org/jacoco">JaCoCo</a> 0.8.2.201808211720</span></div></body></html>

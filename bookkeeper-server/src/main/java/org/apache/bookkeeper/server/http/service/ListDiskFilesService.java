@@ -19,12 +19,14 @@
 package org.apache.bookkeeper.server.http.service;
 
 import static com.google.common.base.Preconditions.checkNotNull;
-import static org.apache.bookkeeper.bookie.BookieShell.listFilesAndSort;
+//import static org.apache.bookkeeper.bookie.BookieShell.listFilesAndSort;
 
 import com.google.common.collect.Maps;
+
 import java.io.File;
 import java.util.List;
 import java.util.Map;
+
 import org.apache.bookkeeper.common.util.JsonUtil;
 import org.apache.bookkeeper.conf.ServerConfiguration;
 import org.apache.bookkeeper.http.HttpServer;
@@ -45,7 +47,7 @@ import org.slf4j.LoggerFactory;
  *    "index files" : "filename1 \t ..."
  *  }
  */
-public class ListDiskFilesService implements HttpEndpointService {
+/*public class ListDiskFilesService implements HttpEndpointService {
 
     static final Logger LOG = LoggerFactory.getLogger(ListDiskFilesService.class);
 
@@ -56,7 +58,7 @@ public class ListDiskFilesService implements HttpEndpointService {
         this.conf = conf;
     }
 
-    @Override
+   /* @Override
     public HttpServiceResponse handle(HttpServiceRequest request) throws Exception {
         HttpServiceResponse response = new HttpServiceResponse();
         Map<String, String> params = request.getParams();
@@ -70,7 +72,7 @@ public class ListDiskFilesService implements HttpEndpointService {
              *    "index files" : "filename \t ..."
              *  }
              */
-            Map<String, String> output = Maps.newHashMap();
+            /*Map<String, String> output = Maps.newHashMap();
 
             boolean journal = params != null
                 && params.containsKey("file_type")
@@ -118,9 +120,7 @@ public class ListDiskFilesService implements HttpEndpointService {
             }
 
             String jsonResponse = JsonUtil.toJson(output);
-            if (LOG.isDebugEnabled()) {
-                LOG.debug("output body:" + jsonResponse);
-            }
+            LOG.debug("output body:" + jsonResponse);
             response.setBody(jsonResponse);
             response.setCode(HttpServer.StatusCode.OK);
             return response;
@@ -130,4 +130,4 @@ public class ListDiskFilesService implements HttpEndpointService {
             return response;
         }
     }
-}
+}*/

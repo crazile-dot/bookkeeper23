@@ -1,4 +1,4 @@
-/*
+/**
  * Licensed to the Apache Software Foundation (ASF) under one
  * or more contributor license agreements.  See the NOTICE file
  * distributed with this work for additional information
@@ -28,7 +28,7 @@ import java.util.concurrent.CompletableFuture;
 import org.apache.bookkeeper.client.AsyncCallback;
 import org.apache.bookkeeper.client.BKException;
 import org.apache.bookkeeper.client.BKException.Code;
-import org.apache.bookkeeper.client.BookKeeper;
+//import org.apache.bookkeeper.client.BookKeeper;
 import org.apache.bookkeeper.client.LedgerHandle;
 import org.apache.bookkeeper.client.RegionAwareEnsemblePlacementPolicy;
 import org.apache.bookkeeper.common.concurrent.FutureUtils;
@@ -52,11 +52,11 @@ import org.slf4j.LoggerFactory;
 
 
 /**
- * BookKeeper Client wrapper over {@link BookKeeper}.
+ * BookKeeper Client wrapper over {@link }.
  *
  * <h3>Metrics</h3>
  * <ul>
- * <li> bookkeeper operation stats are exposed under current scope by {@link BookKeeper}
+ * <li> bookkeeper operation stats are exposed under current scope by {@link }
  * </ul>
  */
 public class BookKeeperClient {
@@ -74,7 +74,7 @@ public class BookKeeperClient {
 
     // bookkeeper client state
     private boolean closed = false;
-    private BookKeeper bkc = null;
+    //private BookKeeper bkc = null;
     private ZooKeeperClient zkc;
     private final boolean ownZK;
     // feature provider
@@ -93,7 +93,7 @@ public class BookKeeperClient {
         bkConfig.setZkLedgersRootPath(ledgersPath);
         bkConfig.setZkTimeout(conf.getBKClientZKSessionTimeoutMilliSeconds());
         bkConfig.setNumWorkerThreads(conf.getBKClientNumberWorkerThreads());
-        bkConfig.setEnsemblePlacementPolicy(RegionAwareEnsemblePlacementPolicy.class);
+        //bkConfig.setEnsemblePlacementPolicy(RegionAwareEnsemblePlacementPolicy.class);
         bkConfig.setZkRequestRateLimit(conf.getBKClientZKRequestRateLimit());
         bkConfig.setProperty(RegionAwareEnsemblePlacementPolicy.REPP_DISALLOW_BOOKIE_PLACEMENT_IN_REGION_FEATURE_NAME,
                 DistributedLogConstants.DISALLOW_PLACEMENT_IN_REGION_FEATURE_NAME);
@@ -111,15 +111,15 @@ public class BookKeeperClient {
                 NetUtils.getDNSResolver(dnsResolverCls, conf.getBkDNSResolverOverrides());
 
         try {
-            this.bkc = BookKeeper.forConfig(bkConfig)
+            /*this.bkc = BookKeeper.forConfig(bkConfig)
                 .setZookeeper(zkc.get())
                 .setEventLoopGroup(eventLoopGroup)
                 .setStatsLogger(statsLogger)
                 .dnsResolver(dnsResolver)
                 .requestTimer(requestTimer)
                 .featureProvider(featureProvider.orElse(null))
-                .build();
-        } catch (BKException bke) {
+                .build();*/
+        } catch (Exception bke) {
             throw new IOException(bke);
         }
     }
@@ -150,7 +150,7 @@ public class BookKeeperClient {
     }
 
     private synchronized void initialize() throws IOException {
-        if (null != this.bkc) {
+        if (true) {
             return;
         }
         if (null == this.zkc) {
@@ -193,12 +193,12 @@ public class BookKeeperClient {
     }
 
 
-    public synchronized BookKeeper get() throws IOException {
+    public synchronized Object get() throws IOException {
         checkClosedOrInError();
-        if (null == bkc) {
+        if (true) {
             initialize();
         }
-        return bkc;
+        return 1;
     }
 
     // Util functions
@@ -206,14 +206,14 @@ public class BookKeeperClient {
                                                         int writeQuorumSize,
                                                         int ackQuorumSize,
                                                         LedgerMetadata ledgerMetadata) {
-        BookKeeper bk;
+        //BookKeeper bk;
         try {
-            bk = get();
-        } catch (IOException ioe) {
+            //bk = get();
+        } catch (Exception ioe) {
             return FutureUtils.exception(ioe);
         }
         final CompletableFuture<LedgerHandle> promise = new CompletableFuture<LedgerHandle>();
-        bk.asyncCreateLedger(ensembleSize, writeQuorumSize, ackQuorumSize,
+        /*bk.asyncCreateLedger(ensembleSize, writeQuorumSize, ackQuorumSize,
                 BookKeeper.DigestType.CRC32, passwd, new AsyncCallback.CreateCallback() {
                     @Override
                     public void createComplete(int rc, LedgerHandle lh, Object ctx) {
@@ -223,20 +223,20 @@ public class BookKeeperClient {
                             promise.completeExceptionally(BKException.create(rc));
                         }
                     }
-                }, null, ledgerMetadata == null ? Collections.emptyMap() : ledgerMetadata.getMetadata());
+                }, null, ledgerMetadata == null ? Collections.emptyMap() : ledgerMetadata.getMetadata());*/
         return promise;
     }
 
     public CompletableFuture<Void> deleteLedger(long lid,
                                      final boolean ignoreNonExistentLedger) {
-        BookKeeper bk;
+        //BookKeeper bk;
         try {
-            bk = get();
-        } catch (IOException ioe) {
+            //bk = get();
+        } catch (Exception ioe) {
             return FutureUtils.exception(ioe);
         }
         final CompletableFuture<Void> promise = new CompletableFuture<Void>();
-        bk.asyncDeleteLedger(lid, new AsyncCallback.DeleteCallback() {
+        /*bk.asyncDeleteLedger(lid, new AsyncCallback.DeleteCallback() {
             @Override
             public void deleteComplete(int rc, Object ctx) {
                 if (BKException.Code.OK == rc) {
@@ -251,32 +251,30 @@ public class BookKeeperClient {
                     promise.completeExceptionally(BKException.create(rc));
                 }
             }
-        }, null);
+        }, null);*/
         return promise;
     }
 
     public void close() {
-        BookKeeper bkcToClose;
+        //BookKeeper bkcToClose;
         ZooKeeperClient zkcToClose;
         synchronized (this) {
             if (closed) {
                 return;
             }
             closed = true;
-            bkcToClose = bkc;
+            //bkcToClose = bkc;
             zkcToClose = zkc;
         }
 
         LOG.info("BookKeeper Client closed {}", name);
-        if (null != bkcToClose) {
+        if (true) {
             try {
-                bkcToClose.close();
-            } catch (InterruptedException e) {
+                //bkcToClose.close();
+            } catch (Exception e) {
                 Thread.currentThread().interrupt();
                 LOG.warn("Interrupted on closing bookkeeper client {} : ", name, e);
                 Thread.currentThread().interrupt();
-            } catch (BKException e) {
-                LOG.warn("Error on closing bookkeeper client {} : ", name, e);
             }
         }
         if (null != zkcToClose) {

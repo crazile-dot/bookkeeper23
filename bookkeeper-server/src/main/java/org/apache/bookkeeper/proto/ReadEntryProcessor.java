@@ -1,4 +1,4 @@
-/*
+/**
  * Licensed to the Apache Software Foundation (ASF) under one
  * or more contributor license agreements.  See the NOTICE file
  * distributed with this work for additional information
@@ -18,6 +18,7 @@
 package org.apache.bookkeeper.proto;
 
 import io.netty.buffer.ByteBuf;
+import io.netty.channel.Channel;
 import io.netty.util.Recycler;
 import io.netty.util.ReferenceCountUtil;
 import java.io.IOException;
@@ -43,15 +44,14 @@ class ReadEntryProcessor extends PacketProcessorBase<ReadRequest> {
     private boolean throttleReadResponses;
 
     public static ReadEntryProcessor create(ReadRequest request,
-                                            BookieRequestHandler requestHandler,
-                                            BookieRequestProcessor requestProcessor,
+                                            Channel channel,
+                                            Object requestProcessor,
                                             ExecutorService fenceThreadPool,
                                             boolean throttleReadResponses) {
         ReadEntryProcessor rep = RECYCLER.get();
-        rep.init(request, requestHandler, requestProcessor);
+        rep.init(request, channel, requestProcessor);
         rep.fenceThreadPool = fenceThreadPool;
         rep.throttleReadResponses = throttleReadResponses;
-        requestProcessor.onReadRequestStart(requestHandler.ctx().channel());
         return rep;
     }
 
@@ -60,32 +60,23 @@ class ReadEntryProcessor extends PacketProcessorBase<ReadRequest> {
         if (LOG.isDebugEnabled()) {
             LOG.debug("Received new read request: {}", request);
         }
-        if (!requestHandler.ctx().channel().isOpen()) {
-            if (LOG.isDebugEnabled()) {
-                LOG.debug("Dropping read request for closed channel: {}", requestHandler.ctx().channel());
-            }
-            requestProcessor.onReadRequestFinish();
-            recycle();
-            return;
-        }
         int errorCode = BookieProtocol.EOK;
         long startTimeNanos = MathUtils.nowInNano();
         ByteBuf data = null;
         try {
             CompletableFuture<Boolean> fenceResult = null;
             if (request.isFencing()) {
-                LOG.warn("Ledger: {}  fenced by: {}", request.getLedgerId(),
-                        requestHandler.ctx().channel().remoteAddress());
+                LOG.warn("Ledger: {}  fenced by: {}", request.getLedgerId(), channel.remoteAddress());
 
                 if (request.hasMasterKey()) {
-                    fenceResult = requestProcessor.getBookie().fenceLedger(request.getLedgerId(),
-                            request.getMasterKey());
+                    /*fenceResult = requestProcessor.getBookie().fenceLedger(request.getLedgerId(),
+                            request.getMasterKey());*/
                 } else {
                     LOG.error("Password not provided, Not safe to fence {}", request.getLedgerId());
                     throw BookieException.create(BookieException.Code.UnauthorizedAccessException);
                 }
             }
-            data = requestProcessor.getBookie().readEntry(request.getLedgerId(), request.getEntryId());
+            //data = requestProcessor.getBookie().readEntry(request.getLedgerId(), request.getEntryId());
             if (LOG.isDebugEnabled()) {
                 LOG.debug("##### Read entry ##### {} -- ref-count: {}", data.readableBytes(), data.refCnt());
             }
@@ -93,31 +84,11 @@ class ReadEntryProcessor extends PacketProcessorBase<ReadRequest> {
                 handleReadResultForFenceRead(fenceResult, data, startTimeNanos);
                 return;
             }
-        } catch (Bookie.NoLedgerException e) {
+        } catch (Exception e) {
             if (LOG.isDebugEnabled()) {
                 LOG.debug("Error reading {}", request, e);
             }
             errorCode = BookieProtocol.ENOLEDGER;
-        } catch (Bookie.NoEntryException e) {
-            if (LOG.isDebugEnabled()) {
-                LOG.debug("Error reading {}", request, e);
-            }
-            errorCode = BookieProtocol.ENOENTRY;
-        } catch (IOException e) {
-            if (LOG.isDebugEnabled()) {
-                LOG.debug("Error reading {}", request, e);
-            }
-            errorCode = BookieProtocol.EIO;
-        } catch (BookieException.DataUnknownException e) {
-            LOG.error("Ledger {} is in an unknown state", request.getLedgerId(), e);
-            errorCode = BookieProtocol.EUNKNOWNLEDGERSTATE;
-        } catch (BookieException e) {
-            LOG.error("Unauthorized access to ledger {}", request.getLedgerId(), e);
-            errorCode = BookieProtocol.EUA;
-        } catch (Throwable t) {
-            LOG.error("Unexpected exception reading at {}:{} : {}", request.getLedgerId(), request.getEntryId(),
-                      t.getMessage(), t);
-            errorCode = BookieProtocol.EBADREQ;
         }
 
         if (LOG.isTraceEnabled()) {
@@ -127,7 +98,7 @@ class ReadEntryProcessor extends PacketProcessorBase<ReadRequest> {
     }
 
     private void sendResponse(ByteBuf data, int errorCode, long startTimeNanos) {
-        final RequestStats stats = requestProcessor.getRequestStats();
+        final RequestStats stats = null;
         final OpStatsLogger logger = stats.getReadEntryStats();
         BookieProtocol.Response response;
         if (errorCode == BookieProtocol.EOK) {
@@ -141,7 +112,11 @@ class ReadEntryProcessor extends PacketProcessorBase<ReadRequest> {
             response = ResponseBuilder.buildErrorResponse(errorCode, request);
         }
 
-        sendReadReqResponse(errorCode, response, stats.getReadRequestStats(), throttleReadResponses);
+        if (throttleReadResponses) {
+            sendResponseAndWait(errorCode, response, stats.getReadRequestStats());
+        } else {
+            sendResponse(errorCode, response, stats.getReadRequestStats());
+        }
         recycle();
     }
 
@@ -190,7 +165,6 @@ class ReadEntryProcessor extends PacketProcessorBase<ReadRequest> {
     }
 
     private void recycle() {
-        request.recycle();
         super.reset();
         this.recyclerHandle.recycle(this);
     }

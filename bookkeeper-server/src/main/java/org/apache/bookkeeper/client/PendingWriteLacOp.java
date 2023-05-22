@@ -1,4 +1,4 @@
-/*
+/**
  * Licensed to the Apache Software Foundation (ASF) under one
  * or more contributor license agreements.  See the NOTICE file
  * distributed with this work for additional information
@@ -19,7 +19,8 @@ package org.apache.bookkeeper.client;
 
 import java.util.BitSet;
 import java.util.List;
-import org.apache.bookkeeper.client.AsyncCallback.AddLacCallback;
+
+//import org.apache.bookkeeper.client.AsyncCallback.AddLacCallback;
 import org.apache.bookkeeper.net.BookieId;
 import org.apache.bookkeeper.proto.BookkeeperInternalCallbacks.WriteLacCallback;
 import org.apache.bookkeeper.util.ByteBufList;
@@ -38,7 +39,7 @@ import org.slf4j.LoggerFactory;
 class PendingWriteLacOp implements WriteLacCallback {
     private static final Logger LOG = LoggerFactory.getLogger(PendingWriteLacOp.class);
     ByteBufList toSend;
-    AddLacCallback cb;
+    //AddLacCallback cb;
     long lac;
     Object ctx;
     BitSet receivedResponseSet;
@@ -53,36 +54,40 @@ class PendingWriteLacOp implements WriteLacCallback {
     final List<BookieId> currentEnsemble;
 
     PendingWriteLacOp(LedgerHandle lh, ClientContext clientCtx, List<BookieId> ensemble,
-                      AddLacCallback cb, Object ctx) {
+                      Object cb, Object ctx) {
         this.lh = lh;
         this.clientCtx = clientCtx;
-        this.cb = cb;
+        //this.cb = cb;
         this.ctx = ctx;
         this.lac = LedgerHandle.INVALID_ENTRY_ID;
-        ackSet = lh.distributionSchedule.getAckSet();
+        //ackSet = lh.distributionSchedule.getAckSet();
         currentEnsemble = ensemble;
     }
 
     void setLac(long lac) {
         this.lac = lac;
 
-        this.receivedResponseSet = new BitSet(
+        /*this.receivedResponseSet = new BitSet(
                 lh.getLedgerMetadata().getWriteQuorumSize());
         this.receivedResponseSet.set(0,
-                lh.getLedgerMetadata().getWriteQuorumSize());
+                lh.getLedgerMetadata().getWriteQuorumSize());*/
     }
 
     void sendWriteLacRequest(int bookieIndex) {
-        clientCtx.getBookieClient().writeLac(currentEnsemble.get(bookieIndex),
-                                             lh.ledgerId, lh.ledgerKey, lac, toSend, this, bookieIndex);
+       /* clientCtx.getBookieClient().writeLac(currentEnsemble.get(bookieIndex),
+                                             lh.ledgerId, lh.ledgerKey, lac, toSend, this, bookieIndex);*/
     }
 
     void initiate(ByteBufList toSend) {
         this.toSend = toSend;
-
-        for (int i = 0; i < lh.distributionSchedule.getWriteQuorumSize(); i++) {
-            sendWriteLacRequest(lh.distributionSchedule.getWriteSetBookieIndex(lac, i));
-        }
+        /*DistributionSchedule.WriteSet writeSet = lh.distributionSchedule.getWriteSet(lac);
+        try {
+            for (int i = 0; i < writeSet.size(); i++) {
+                sendWriteLacRequest(writeSet.get(i));
+            }
+        } finally {
+            writeSet.recycle();
+        }*/
     }
 
     @Override
@@ -103,7 +108,7 @@ class PendingWriteLacOp implements WriteLacCallback {
         if (rc == BKException.Code.OK) {
             if (ackSet.completeBookieAndCheck(bookieIndex) && !completed) {
                 completed = true;
-                cb.addLacComplete(rc, lh, ctx);
+                //cb.addLacComplete(rc, lh, ctx);
                 return;
             }
         } else {
@@ -112,7 +117,7 @@ class PendingWriteLacOp implements WriteLacCallback {
 
         if (receivedResponseSet.isEmpty()){
             completed = true;
-            cb.addLacComplete(lastSeenError, lh, ctx);
+            //cb.addLacComplete(lastSeenError, lh, ctx);
         }
     }
 }

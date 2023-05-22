@@ -1,4 +1,4 @@
-/*
+/**
  * Licensed to the Apache Software Foundation (ASF) under one
  * or more contributor license agreements.  See the NOTICE file
  * distributed with this work for additional information
@@ -33,38 +33,37 @@ import org.apache.bookkeeper.net.BookieId;
  */
 public class LedgerFragment {
     private final Set<Integer> bookieIndexes;
-    private final List<BookieId> ensemble;
+    private final List<BookieId> ensemble = null;
     private final long firstEntryId;
     private final long lastKnownEntryId;
-    private final long ledgerId;
-    private final DistributionSchedule schedule;
-    private final boolean isLedgerClosed;
-    private ReplicateType replicateType = ReplicateType.DATA_LOSS;
+    private final long ledgerId = 0;
+    private final DistributionSchedule schedule = null;
+    private final boolean isLedgerClosed = false;
 
-    public LedgerFragment(LedgerHandle lh,
+    LedgerFragment(LedgerHandle lh,
                    long firstEntryId,
                    long lastKnownEntryId,
                    Set<Integer> bookieIndexes) {
-        this.ledgerId = lh.getId();
+        //this.ledgerId = lh.getId();
         this.firstEntryId = firstEntryId;
         this.lastKnownEntryId = lastKnownEntryId;
         this.bookieIndexes = bookieIndexes;
-        this.ensemble = lh.getLedgerMetadata().getEnsembleAt(firstEntryId);
-        this.schedule = lh.getDistributionSchedule();
-        SortedMap<Long, ? extends List<BookieId>> ensembles = lh
+        //this.ensemble = lh.getLedgerMetadata().getEnsembleAt(firstEntryId);
+        //this.schedule = lh.getDistributionSchedule();
+        /*SortedMap<Long, ? extends List<BookieId>> ensembles = lh
                 .getLedgerMetadata().getAllEnsembles();
         this.isLedgerClosed = lh.getLedgerMetadata().isClosed()
-                || !ensemble.equals(ensembles.get(ensembles.lastKey()));
+                || !ensemble.equals(ensembles.get(ensembles.lastKey()));*/
     }
 
-    public LedgerFragment(LedgerFragment lf, Set<Integer> subset) {
-        this.ledgerId = lf.ledgerId;
+    LedgerFragment(LedgerFragment lf, Set<Integer> subset) {
+        //this.ledgerId = lf.ledgerId;
         this.firstEntryId = lf.firstEntryId;
         this.lastKnownEntryId = lf.lastKnownEntryId;
         this.bookieIndexes = subset;
-        this.ensemble = lf.ensemble;
-        this.schedule = lf.schedule;
-        this.isLedgerClosed = lf.isLedgerClosed;
+        //this.ensemble = lf.ensemble;
+        //this.schedule = lf.schedule;
+        //this.isLedgerClosed = lf.isLedgerClosed;
     }
 
     /**
@@ -92,7 +91,7 @@ public class LedgerFragment {
         return isLedgerClosed;
     }
 
-    public long getLedgerId() {
+    long getLedgerId() {
         return ledgerId;
     }
 
@@ -218,27 +217,11 @@ public class LedgerFragment {
         return this.ensemble;
     }
 
-    public ReplicateType getReplicateType() {
-        return replicateType;
-    }
-
-    public void setReplicateType(ReplicateType replicateType) {
-        this.replicateType = replicateType;
-    }
-
     @Override
     public String toString() {
         return String.format("Fragment(LedgerID: %d, FirstEntryID: %d[%d], "
-                        + "LastKnownEntryID: %d[%d], Host: %s, Closed: %s, Type: %s)", ledgerId, firstEntryId,
+                + "LastKnownEntryID: %d[%d], Host: %s, Closed: %s)", ledgerId, firstEntryId,
                 getFirstStoredEntryId(), lastKnownEntryId, getLastStoredEntryId(),
-                getAddresses(), isLedgerClosed, replicateType);
-    }
-
-    /**
-     * ReplicateType.
-     */
-    public enum ReplicateType {
-        DATA_LOSS,
-        DATA_NOT_ADHERING_PLACEMENT
+                getAddresses(), isLedgerClosed);
     }
 }

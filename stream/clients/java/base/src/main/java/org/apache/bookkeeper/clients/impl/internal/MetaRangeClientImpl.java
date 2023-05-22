@@ -31,41 +31,37 @@ import org.apache.bookkeeper.clients.impl.internal.api.MetaRangeClient;
 import org.apache.bookkeeper.clients.impl.internal.mr.MetaRangeRequestProcessor;
 import org.apache.bookkeeper.clients.utils.ClientConstants;
 import org.apache.bookkeeper.common.util.Backoff;
-import org.apache.bookkeeper.common.util.OrderedScheduler;
-import org.apache.bookkeeper.stream.proto.StreamProperties;
+//import org.apache.bookkeeper.common.util.OrderedScheduler;
+//import org.apache.bookkeeper.stream.proto.StreamProperties;
 
 /**
  * A default implementation for {@link MetaRangeClient}.
  */
 @Slf4j
-class MetaRangeClientImpl implements MetaRangeClient {
+abstract class MetaRangeClientImpl implements MetaRangeClient {
 
-    private final StreamProperties streamProps;
-    private final ScheduledExecutorService executor;
-    private final StorageContainerChannel scClient;
+    private final Object streamProps;
+    private final ScheduledExecutorService executor = null;
+    private final StorageContainerChannel scClient = null;
     private final Backoff.Policy backoffPolicy;
 
-    MetaRangeClientImpl(StreamProperties streamProps,
-                        OrderedScheduler scheduler,
+    MetaRangeClientImpl(Object streamProps,
+                        Object scheduler,
                         StorageContainerChannelManager channelManager) {
-        this(streamProps, scheduler, channelManager, ClientConstants.DEFAULT_INFINIT_BACKOFF_POLICY);
+        this(null, null, channelManager, ClientConstants.DEFAULT_INFINIT_BACKOFF_POLICY);
 
     }
 
-    MetaRangeClientImpl(StreamProperties streamProps,
-                        OrderedScheduler scheduler,
+    MetaRangeClientImpl(Object streamProps,
+                        Object scheduler,
                         StorageContainerChannelManager channelManager,
                         Backoff.Policy backoffPolicy) {
         this.streamProps = streamProps;
-        this.executor = scheduler.chooseThread(streamProps.getStreamId());
-        this.scClient = channelManager.getOrCreate(streamProps.getStorageContainerId());
+        //this.executor = scheduler.chooseThread(streamProps.getStreamId());
+        //this.scClient = channelManager.getOrCreate(streamProps.getStorageContainerId());
         this.backoffPolicy = backoffPolicy;
     }
 
-    @Override
-    public StreamProperties getStreamProps() {
-        return streamProps;
-    }
 
     StorageContainerChannel getStorageContainerClient() {
         return scClient;
@@ -77,13 +73,14 @@ class MetaRangeClientImpl implements MetaRangeClient {
 
     @Override
     public CompletableFuture<HashStreamRanges> getActiveDataRanges() {
-        return MetaRangeRequestProcessor.of(
-            createGetActiveRangesRequest(streamProps),
-            (response) -> createActiveRanges(response),
+        /*return MetaRangeRequestProcessor.of(
+            createGetActiveRangesRequest(null),
+            (response) -> createActiveRanges(null),
             scClient,
             executor,
             backoffPolicy
-        ).process();
+        ).process();*/
+        return null;
     }
 
 }

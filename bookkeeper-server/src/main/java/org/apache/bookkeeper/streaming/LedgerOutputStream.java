@@ -87,12 +87,10 @@ public class LedgerOutputStream extends OutputStream {
             LOG.info("Comment: flushing with params " + " " + bytebuff.position());
             System.arraycopy(bbytes, 0, b, 0, bytebuff.position());
             try {
-                lh.addEntry(b);
-            } catch (InterruptedException ie) {
+                //lh.addEntry(b);
+            } catch (Exception ie) {
                 LOG.warn("Interrupted while flusing " + ie);
                 Thread.currentThread().interrupt();
-            } catch (BKException bke) {
-                LOG.warn("BookKeeper exception ", bke);
             }
         }
     }
@@ -118,12 +116,10 @@ public class LedgerOutputStream extends OutputStream {
             bytebuff.put(b);
         } else {
             try {
-                lh.addEntry(b);
-            } catch (InterruptedException ie) {
+                //lh.addEntry(b);
+            } catch (Exception ie) {
                 LOG.warn("Interrupted while writing", ie);
                 Thread.currentThread().interrupt();
-            } catch (BKException bke) {
-                LOG.warn("BookKeeper exception", bke);
             }
         }
     }

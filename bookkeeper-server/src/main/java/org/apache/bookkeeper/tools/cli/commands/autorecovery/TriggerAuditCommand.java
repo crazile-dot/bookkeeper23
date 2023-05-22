@@ -19,7 +19,7 @@
 package org.apache.bookkeeper.tools.cli.commands.autorecovery;
 
 import com.google.common.util.concurrent.UncheckedExecutionException;
-import org.apache.bookkeeper.client.BookKeeperAdmin;
+//import org.apache.bookkeeper.client.BookKeeperAdmin;
 import org.apache.bookkeeper.conf.ClientConfiguration;
 import org.apache.bookkeeper.conf.ServerConfiguration;
 import org.apache.bookkeeper.tools.cli.helpers.BookieCommand;
@@ -52,7 +52,7 @@ public class TriggerAuditCommand extends BookieCommand<CliFlags> {
     }
 
     public boolean handler(ServerConfiguration configuration) throws Exception {
-        ClientConfiguration adminConf = new ClientConfiguration(configuration);
+        /*ClientConfiguration adminConf = new ClientConfiguration(configuration);
         BookKeeperAdmin admin = new BookKeeperAdmin(adminConf);
 
         try {
@@ -61,7 +61,7 @@ public class TriggerAuditCommand extends BookieCommand<CliFlags> {
             if (admin != null) {
                 admin.close();
             }
-        }
+        }*/
 
         return true;
     }

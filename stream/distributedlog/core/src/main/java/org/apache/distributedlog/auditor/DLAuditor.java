@@ -1,4 +1,4 @@
-/*
+/**
  * Licensed to the Apache Software Foundation (ASF) under one
  * or more contributor license agreements.  See the NOTICE file
  * distributed with this work for additional information
@@ -41,7 +41,7 @@ import java.util.concurrent.LinkedBlockingQueue;
 import java.util.concurrent.atomic.AtomicInteger;
 import java.util.concurrent.atomic.AtomicLong;
 import org.apache.bookkeeper.client.BKException;
-import org.apache.bookkeeper.client.BookKeeper;
+//import org.apache.bookkeeper.client.BookKeeper;
 import org.apache.bookkeeper.client.BookKeeperAccessor;
 import org.apache.bookkeeper.client.LedgerHandle;
 import org.apache.bookkeeper.common.concurrent.FutureUtils;
@@ -444,15 +444,12 @@ public class DLAuditor {
             List<LogSegmentMetadata> segments = dlm.getLogSegments();
             for (LogSegmentMetadata segment : segments) {
                 try {
-                    LedgerHandle lh =
+                    /*LedgerHandle lh =
                             getBookKeeperClient(namespace).get().openLedgerNoRecovery(segment.getLogSegmentId(),
                             BookKeeper.DigestType.CRC32, conf.getBKDigestPW().getBytes(UTF_8));
                     totalBytes += lh.getLength();
-                    lh.close();
-                } catch (BKException e) {
-                    logger.error("Failed to open ledger {} : ", segment.getLogSegmentId(), e);
-                    throw new IOException("Failed to open ledger " + segment.getLogSegmentId(), e);
-                } catch (InterruptedException e) {
+                    lh.close();*/
+                } catch (Exception e) {
                     logger.warn("Interrupted on opening ledger {} : ", segment.getLogSegmentId(), e);
                     Thread.currentThread().interrupt();
                     throw new DLInterruptedException("Interrupted on opening ledger " + segment.getLogSegmentId(), e);
@@ -510,7 +507,7 @@ public class DLAuditor {
         LedgerManager lm = BookKeeperAccessor.getLedgerManager(bkc.get());
 
         final CompletableFuture<Void> doneFuture = FutureUtils.createFuture();
-        final BookKeeper bk = bkc.get();
+        //final BookKeeper bk = bkc.get();
 
         BookkeeperInternalCallbacks.Processor<Long> collector =
                 new BookkeeperInternalCallbacks.Processor<Long>() {
@@ -521,7 +518,7 @@ public class DLAuditor {
                 executorService.submit(new Runnable() {
                     @Override
                     public void run() {
-                        bk.asyncOpenLedgerNoRecovery(lid,
+                        /*bk.asyncOpenLedgerNoRecovery(lid,
                                 BookKeeper.DigestType.CRC32, conf.getBKDigestPW().getBytes(UTF_8),
                                 new org.apache.bookkeeper.client.AsyncCallback.OpenCallback() {
                             @Override
@@ -541,7 +538,7 @@ public class DLAuditor {
                                     }
                                 });
                             }
-                        }, null);
+                        }, null);*/
                     }
                 });
             }

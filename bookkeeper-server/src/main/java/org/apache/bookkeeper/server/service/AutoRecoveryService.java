@@ -20,6 +20,7 @@ package org.apache.bookkeeper.server.service;
 
 import java.io.IOException;
 import java.lang.Thread.UncaughtExceptionHandler;
+
 import org.apache.bookkeeper.replication.AutoRecoveryMain;
 import org.apache.bookkeeper.server.component.ServerLifecycleComponent;
 import org.apache.bookkeeper.server.conf.BookieConfiguration;
@@ -32,19 +33,19 @@ public class AutoRecoveryService extends ServerLifecycleComponent {
 
     public static final String NAME = "autorecovery";
 
-    private final AutoRecoveryMain main;
+    private final AutoRecoveryMain main = null;
 
     public AutoRecoveryService(BookieConfiguration conf, StatsLogger statsLogger) throws Exception {
         super(NAME, conf, statsLogger);
-        this.main = new AutoRecoveryMain(
+        /*this.main = new AutoRecoveryMain(
             conf.getServerConf(),
-            statsLogger);
+            statsLogger);*/
     }
 
     @Override
     public void setExceptionHandler(UncaughtExceptionHandler handler) {
         super.setExceptionHandler(handler);
-        main.setExceptionHandler(handler);
+        //main.setExceptionHandler(handler);
     }
 
     public AutoRecoveryMain getAutoRecoveryServer() {
@@ -53,7 +54,7 @@ public class AutoRecoveryService extends ServerLifecycleComponent {
 
     @Override
     protected void doStart() {
-        this.main.start();
+        //this.main.start();
     }
 
     @Override
@@ -63,6 +64,6 @@ public class AutoRecoveryService extends ServerLifecycleComponent {
 
     @Override
     protected void doClose() throws IOException {
-        this.main.shutdown();
+        //this.main.shutdown();
     }
 }

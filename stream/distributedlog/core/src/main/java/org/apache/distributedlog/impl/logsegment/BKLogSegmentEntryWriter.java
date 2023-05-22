@@ -1,4 +1,4 @@
-/*
+/**
  * Licensed to the Apache Software Foundation (ASF) under one
  * or more contributor license agreements.  See the NOTICE file
  * distributed with this work for additional information
@@ -27,7 +27,7 @@ import org.apache.distributedlog.logsegment.LogSegmentEntryWriter;
 /**
  * Ledger based log segment entry writer.
  */
-public class BKLogSegmentEntryWriter implements LogSegmentEntryWriter {
+public abstract class BKLogSegmentEntryWriter implements LogSegmentEntryWriter {
 
     private final LedgerHandle lh;
 
@@ -42,22 +42,22 @@ public class BKLogSegmentEntryWriter implements LogSegmentEntryWriter {
 
     @Override
     public long getLogSegmentId() {
-        return lh.getId();
+        return 0;
     }
 
     @Override
-    public void asyncClose(AsyncCallback.CloseCallback callback, Object ctx) {
-        lh.asyncClose(callback, ctx);
+    public void asyncClose(Object callback, Object ctx) {
+
     }
 
     @Override
     public void asyncAddEntry(ByteBuf entry,
                               AsyncCallback.AddCallback callback, Object ctx) {
-        lh.asyncAddEntry(entry, callback, ctx);
+        //lh.asyncAddEntry(entry, callback, ctx);
     }
 
     @Override
     public long size() {
-        return lh.getLength();
+        return 0;
     }
 }

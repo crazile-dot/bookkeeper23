@@ -19,7 +19,6 @@
 package org.apache.bookkeeper.tools.cli.commands.bookies;
 
 import static org.apache.bookkeeper.meta.MetadataDrivers.runFunctionWithRegistrationManager;
-
 import com.beust.jcommander.Parameter;
 import com.google.common.util.concurrent.UncheckedExecutionException;
 import java.io.IOException;
@@ -29,7 +28,7 @@ import org.apache.bookkeeper.bookie.BookieException;
 import org.apache.bookkeeper.bookie.BookieImpl;
 import org.apache.bookkeeper.bookie.Cookie;
 import org.apache.bookkeeper.client.BKException;
-import org.apache.bookkeeper.client.BookKeeperAdmin;
+//import org.apache.bookkeeper.client.BookKeeperAdmin;
 import org.apache.bookkeeper.conf.ClientConfiguration;
 import org.apache.bookkeeper.conf.ServerConfiguration;
 import org.apache.bookkeeper.net.BookieId;
@@ -88,13 +87,13 @@ public class DecommissionCommand extends BookieCommand<DecommissionCommand.Decom
     private boolean decommission(ServerConfiguration conf, DecommissionFlags flags)
         throws BKException, InterruptedException, IOException {
         ClientConfiguration adminConf = new ClientConfiguration(conf);
-        BookKeeperAdmin admin = new BookKeeperAdmin(adminConf);
+        //BookKeeperAdmin admin = new BookKeeperAdmin(adminConf);
         try {
             final String remoteBookieidToDecommission = flags.remoteBookieIdToDecommission;
             final BookieId bookieAddressToDecommission = (StringUtils.isBlank(remoteBookieidToDecommission)
                                                                   ? BookieImpl.getBookieId(conf)
                                                                   : BookieId.parse(remoteBookieidToDecommission));
-            admin.decommissionBookie(bookieAddressToDecommission);
+           // admin.decommissionBookie(bookieAddressToDecommission);
             LOG.info("The ledgers stored in the given decommissioning bookie: {} are properly replicated",
                      bookieAddressToDecommission);
             runFunctionWithRegistrationManager(conf, rm -> {
@@ -117,9 +116,7 @@ public class DecommissionCommand extends BookieCommand<DecommissionCommand.Decom
             LOG.error("Received exception in DecommissionBookieCmd ", e);
             return false;
         } finally {
-            if (admin != null) {
-                admin.close();
-            }
+            
         }
     }
 }

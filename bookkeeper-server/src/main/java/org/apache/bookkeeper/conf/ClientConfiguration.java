@@ -1,4 +1,4 @@
-/*
+/**
  * Licensed to the Apache Software Foundation (ASF) under one
  * or more contributor license agreements.  See the NOTICE file
  * distributed with this work for additional information
@@ -21,17 +21,18 @@ import static java.nio.charset.StandardCharsets.UTF_8;
 import static org.apache.bookkeeper.util.BookKeeperConstants.FEATURE_DISABLE_ENSEMBLE_CHANGE;
 
 import io.netty.buffer.ByteBuf;
-import java.util.NoSuchElementException;
+
 import java.util.concurrent.TimeUnit;
-import org.apache.bookkeeper.client.BookKeeper.DigestType;
+
+//import org.apache.bookkeeper.client.BookKeeper.DigestType;
 import org.apache.bookkeeper.client.EnsemblePlacementPolicy;
-import org.apache.bookkeeper.client.LedgerHandle;
-import org.apache.bookkeeper.client.RackawareEnsemblePlacementPolicy;
+//import org.apache.bookkeeper.client.LedgerHandle;
+//import org.apache.bookkeeper.client.RackawareEnsemblePlacementPolicy;
 import org.apache.bookkeeper.client.api.BookKeeperBuilder;
 import org.apache.bookkeeper.common.util.ReflectionUtils;
 import org.apache.bookkeeper.discover.RegistrationClient;
 import org.apache.bookkeeper.discover.ZKRegistrationClient;
-import org.apache.bookkeeper.replication.Auditor;
+//import org.apache.bookkeeper.replication.Auditor;
 import org.apache.commons.configuration.ConfigurationException;
 
 
@@ -95,7 +96,6 @@ public class ClientConfiguration extends AbstractConfiguration<ClientConfigurati
     protected static final String CLIENT_WRITEBUFFER_LOW_WATER_MARK = "clientWriteBufferLowWaterMark";
     protected static final String CLIENT_WRITEBUFFER_HIGH_WATER_MARK = "clientWriteBufferHighWaterMark";
     protected static final String CLIENT_CONNECT_TIMEOUT_MILLIS = "clientConnectTimeoutMillis";
-    protected static final String CLIENT_TCP_USER_TIMEOUT_MILLIS = "clientTcpUserTimeoutMillis";
     protected static final String NUM_CHANNELS_PER_BOOKIE = "numChannelsPerBookie";
     protected static final String USE_V2_WIRE_PROTOCOL = "useV2WireProtocol";
     protected static final String NETTY_USE_POOLED_BUFFERS = "nettyUsePooledBuffers";
@@ -160,7 +160,6 @@ public class ClientConfiguration extends AbstractConfiguration<ClientConfigurati
     protected static final String READ_REORDER_THRESHOLD_PENDING_REQUESTS = "readReorderThresholdPendingRequests";
     protected static final String ENSEMBLE_PLACEMENT_POLICY_ORDER_SLOW_BOOKIES =
         "ensemblePlacementPolicyOrderSlowBookies";
-    protected static final String BOOKIE_ADDRESS_RESOLVER_ENABLED = "bookieAddressResolverEnabled";
 
     // Stats
     protected static final String ENABLE_TASK_EXECUTION_STATS = "enableTaskExecutionStats";
@@ -272,13 +271,13 @@ public class ClientConfiguration extends AbstractConfiguration<ClientConfigurati
         return this;
     }
 
-    /**
+    /*/**
      * Get digest type used in bookkeeper admin.
      *
      * @return digest type
-     * @see #setBookieRecoveryDigestType
+     * @see
      */
-    public DigestType getBookieRecoveryDigestType() {
+    /*public DigestType getBookieRecoveryDigestType() {
         return DigestType.valueOf(this.getString(DIGEST_TYPE, DigestType.CRC32.toString()));
     }
 
@@ -296,7 +295,7 @@ public class ClientConfiguration extends AbstractConfiguration<ClientConfigurati
      *          Digest Type
      * @return client configuration
      */
-    public ClientConfiguration setBookieRecoveryDigestType(DigestType digestType) {
+    /*public ClientConfiguration setBookieRecoveryDigestType(DigestType digestType) {
         this.setProperty(DIGEST_TYPE, digestType.toString());
         return this;
     }
@@ -528,28 +527,6 @@ public class ClientConfiguration extends AbstractConfiguration<ClientConfigurati
      */
     public ClientConfiguration setClientConnectTimeoutMillis(int connectTimeoutMillis) {
         setProperty(CLIENT_CONNECT_TIMEOUT_MILLIS, connectTimeoutMillis);
-        return this;
-    }
-
-    /**
-     * Get client netty TCP user timeout in millis (only for Epoll channels).
-     *
-     * @return client netty Epoll user tcp timeout in millis.
-     * @throws NoSuchElementException if the property is not set.
-     */
-    public int getTcpUserTimeoutMillis() {
-        return getInt(CLIENT_TCP_USER_TIMEOUT_MILLIS);
-    }
-
-    /**
-     * Set client netty TCP user timeout in millis (only for Epoll channels).
-     *
-     * @param tcpUserTimeoutMillis
-     *          client netty TCP user timeout in millis.
-     * @return client configuration.
-     */
-    public ClientConfiguration setTcpUserTimeoutMillis(int tcpUserTimeoutMillis) {
-        setProperty(CLIENT_TCP_USER_TIMEOUT_MILLIS, tcpUserTimeoutMillis);
         return this;
     }
 
@@ -928,7 +905,7 @@ public class ClientConfiguration extends AbstractConfiguration<ClientConfigurati
      * in the case that a bookie has failed. It induces higher load on the network and on
      * bookies. This should be taken into account before changing this configuration value.
      *
-     * @see org.apache.bookkeeper.client.LedgerHandle#asyncReadEntries
+     * @see
      * @return the speculative read timeout in milliseconds. Default 2000.
      */
     public int getSpeculativeReadTimeout() {
@@ -1152,10 +1129,10 @@ public class ClientConfiguration extends AbstractConfiguration<ClientConfigurati
      * Enable/disable reordering read sequence on reading entries.
      *
      * <p>If this flag is enabled, the client will use
-     * {@link EnsemblePlacementPolicy#reorderReadSequence(java.util.List,
+     * {@link (java.util.ArrayList,
      * org.apache.bookkeeper.client.BookiesHealthInfo, org.apache.bookkeeper.client.DistributionSchedule.WriteSet)}
      * to figure out a better read sequence to attempt reads from replicas and use
-     * {@link EnsemblePlacementPolicy#reorderReadLACSequence(java.util.List,
+     * {@link (java.util.ArrayList,
      * org.apache.bookkeeper.client.BookiesHealthInfo, org.apache.bookkeeper.client.DistributionSchedule.WriteSet)}
      * to figure out a better read sequence to attempt long poll reads from replicas.
      *
@@ -1202,7 +1179,7 @@ public class ClientConfiguration extends AbstractConfiguration<ClientConfigurati
      *
      * @return ensemble placement policy class.
      */
-    public Class<? extends EnsemblePlacementPolicy> getEnsemblePlacementPolicy()
+    /*public Class<? extends EnsemblePlacementPolicy> getEnsemblePlacementPolicy()
             throws ConfigurationException {
         return ReflectionUtils.getClass(this, ENSEMBLE_PLACEMENT_POLICY,
                 RackawareEnsemblePlacementPolicy.class,
@@ -1284,33 +1261,6 @@ public class ClientConfiguration extends AbstractConfiguration<ClientConfigurati
      */
     public ClientConfiguration setEnsemblePlacementPolicySlowBookies(boolean enabled) {
         setProperty(ENSEMBLE_PLACEMENT_POLICY_ORDER_SLOW_BOOKIES, enabled);
-        return this;
-    }
-
-    /**
-     * Whether to enable BookieAddressResolver.
-     *
-     * @return flag to enable/disable BookieAddressResolver.
-     */
-    public boolean getBookieAddressResolverEnabled() {
-        return getBoolean(BOOKIE_ADDRESS_RESOLVER_ENABLED, true);
-    }
-
-    /**
-     * Enable/Disable BookieAddressResolver.
-     *
-     * <p>
-     * If this flag is true, read bookie information from the metadata service (e.g. ZooKeeper) to resolve the address
-     * from each bookie ID. If all bookie IDs in the cluster are "address:port" or "hostname:port", you can set this
-     * flag to false to reduce requests to the metadata service.
-     * </p>
-     *
-     * @param enabled
-     *          flag to enable/disable BookieAddressResolver.
-     * @return client configuration.
-     */
-    public ClientConfiguration setBookieAddressResolverEnabled(boolean enabled) {
-        setProperty(BOOKIE_ADDRESS_RESOLVER_ENABLED, enabled);
         return this;
     }
 
@@ -1976,7 +1926,7 @@ public class ClientConfiguration extends AbstractConfiguration<ClientConfigurati
      *
      * @see #setUseV2WireProtocol(boolean)
      * @see ByteBuf#release()
-     * @see LedgerHandle#readEntries(long, long)
+     * @see
      */
     public ClientConfiguration setNettyUsePooledBuffers(boolean enabled) {
         setProperty(NETTY_USE_POOLED_BUFFERS, enabled);

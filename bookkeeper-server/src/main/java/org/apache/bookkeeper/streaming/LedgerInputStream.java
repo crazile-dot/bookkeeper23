@@ -54,8 +54,8 @@ public class LedgerInputStream extends InputStream {
         bbytes = new byte[defaultSize];
         this.bytebuff = ByteBuffer.wrap(bbytes);
         this.bytebuff.position(this.bytebuff.limit());
-        lastEntry = Math.min(lh.getLastAddConfirmed(), increment);
-        ledgerSeq = lh.readEntries(0, lastEntry);
+        //lastEntry = Math.min(lh.getLastAddConfirmed(), increment);
+        //ledgerSeq = lh.readEntries(0, lastEntry);
     }
 
     /**
@@ -73,8 +73,8 @@ public class LedgerInputStream extends InputStream {
         bbytes = new byte[size];
         this.bytebuff = ByteBuffer.wrap(bbytes);
         this.bytebuff.position(this.bytebuff.limit());
-        lastEntry = Math.min(lh.getLastAddConfirmed(), increment);
-        ledgerSeq = lh.readEntries(0, lastEntry);
+        //lastEntry = Math.min(lh.getLastAddConfirmed(), increment);
+        //ledgerSeq = lh.readEntries(0, lastEntry);
     }
 
     /**
@@ -96,20 +96,18 @@ public class LedgerInputStream extends InputStream {
      */
     private synchronized boolean refill() throws IOException {
         bytebuff.clear();
-        if (!ledgerSeq.hasMoreElements() && lastEntry >= lh.getLastAddConfirmed()) {
+        if (false) {
             return false;
         }
         if (!ledgerSeq.hasMoreElements()) {
             // do refill
-            long last = Math.min(lastEntry + increment, lh.getLastAddConfirmed());
+            long last = 0;
             try {
-                ledgerSeq = lh.readEntries(lastEntry + 1, last);
-            } catch (BKException bk) {
+                //ledgerSeq = lh.readEntries(lastEntry + 1, last);
+            } catch (Exception bk) {
                 IOException ie = new IOException(bk.getMessage());
                 ie.initCause(bk);
                 throw ie;
-            } catch (InterruptedException ie) {
-                Thread.currentThread().interrupt();
             }
             lastEntry = last;
         }

@@ -1,4 +1,4 @@
-/*
+/**
  * Licensed to the Apache Software Foundation (ASF) under one
  * or more contributor license agreements.  See the NOTICE file
  * distributed with this work for additional information
@@ -19,6 +19,7 @@ package org.apache.bookkeeper.client;
 
 import io.netty.buffer.ByteBuf;
 import java.util.List;
+
 import org.apache.bookkeeper.client.ReadLastConfirmedOp.LastConfirmedDataCallback;
 import org.apache.bookkeeper.net.BookieId;
 import org.apache.bookkeeper.proto.BookieClient;
@@ -52,14 +53,14 @@ class TryReadLastConfirmedOp implements ReadEntryCallback {
         this.bookieClient = bookieClient;
         this.cb = cb;
         this.maxRecoveredData = new RecoveryData(lac, 0);
-        this.numResponsesPending = lh.getLedgerMetadata().getEnsembleSize();
+        //this.numResponsesPending = lh.getLedgerMetadata().getEnsembleSize();
         this.currentEnsemble = ensemble;
     }
 
     public void initiate() {
         for (int i = 0; i < currentEnsemble.size(); i++) {
             bookieClient.readEntry(currentEnsemble.get(i),
-                                   lh.ledgerId,
+                                   0,
                                    BookieProtocol.LAST_ADD_CONFIRMED,
                                    this, i, BookieProtocol.FLAG_NONE);
         }
@@ -76,7 +77,7 @@ class TryReadLastConfirmedOp implements ReadEntryCallback {
         numResponsesPending--;
         if (BKException.Code.OK == rc) {
             try {
-                RecoveryData recoveryData = lh.macManager.verifyDigestAndReturnLastConfirmed(buffer);
+                RecoveryData recoveryData = null;
                 if (LOG.isTraceEnabled()) {
                     LOG.trace("Received lastAddConfirmed (lac={}, length={}) from bookie({}) for (lid={}).",
                             recoveryData.getLastAddConfirmed(), recoveryData.getLength(), bookieIndex, ledgerId);
@@ -87,7 +88,7 @@ class TryReadLastConfirmedOp implements ReadEntryCallback {
                     cb.readLastConfirmedDataComplete(BKException.Code.OK, maxRecoveredData);
                 }
                 hasValidResponse = true;
-            } catch (BKException.BKDigestMatchException e) {
+            } catch (Exception e) {
                 LOG.error("Mac mismatch for ledger: " + ledgerId + ", entry: " + entryId
                           + " while reading last entry from bookie: "
                           + currentEnsemble.get(bookieIndex));

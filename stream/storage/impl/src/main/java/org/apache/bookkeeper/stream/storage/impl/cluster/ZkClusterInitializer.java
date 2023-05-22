@@ -26,7 +26,7 @@ import java.net.URI;
 import java.util.Optional;
 import lombok.extern.slf4j.Slf4j;
 import org.apache.bookkeeper.meta.zk.ZKMetadataDriverBase;
-import org.apache.bookkeeper.stream.proto.cluster.ClusterMetadata;
+//import org.apache.bookkeeper.stream.proto.cluster.ClusterMetadata;
 import org.apache.bookkeeper.stream.storage.api.cluster.ClusterInitializer;
 import org.apache.bookkeeper.stream.storage.exceptions.StorageRuntimeException;
 import org.apache.curator.framework.CuratorFramework;
@@ -64,13 +64,11 @@ public class ZkClusterInitializer implements ClusterInitializer  {
         )) {
             client.start();
 
-            ZkClusterMetadataStore store =
-                new ZkClusterMetadataStore(client, zkInternalConnectString, ZK_METADATA_ROOT_PATH);
-
-            ClusterMetadata metadata;
+            ZkClusterMetadataStore store = null;
+            Object metadata;
             try {
-                metadata = store.getClusterMetadata();
-                log.info("Loaded cluster metadata : \n{}", metadata);
+                //metadata = store.getClusterMetadata();
+                //log.info("Loaded cluster metadata : \n{}", metadata);
                 return false;
             } catch (StorageRuntimeException sre) {
                 if (sre.getCause() instanceof KeeperException.NoNodeException) {
@@ -87,7 +85,7 @@ public class ZkClusterInitializer implements ClusterInitializer  {
                             numStorageContainers, segmentStorePath.orElse(getSegmentsRootPath(ZK_METADATA_ROOT_PATH)));
 
                     boolean initialized = store.initializeCluster(numStorageContainers, segmentStorePath);
-                    log.info("Successfully initialized the stream cluster : \n{}", store.getClusterMetadata());
+                    //log.info("Successfully initialized the stream cluster : \n{}", store.getClusterMetadata());
                     return initialized;
                 } else {
                     throw sre;

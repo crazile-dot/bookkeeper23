@@ -26,7 +26,6 @@ import org.apache.bookkeeper.api.StorageClient;
 import org.apache.bookkeeper.api.exceptions.ApiException;
 import org.apache.bookkeeper.api.kv.PTable;
 import org.apache.bookkeeper.api.kv.Table;
-import org.apache.bookkeeper.clients.config.StorageClientSettings;
 import org.apache.bookkeeper.clients.impl.internal.StorageServerClientManagerImpl;
 import org.apache.bookkeeper.clients.impl.internal.api.StorageServerClientManager;
 import org.apache.bookkeeper.clients.impl.kv.ByteBufTableImpl;
@@ -35,10 +34,10 @@ import org.apache.bookkeeper.clients.utils.ClientResources;
 import org.apache.bookkeeper.common.concurrent.FutureUtils;
 import org.apache.bookkeeper.common.util.AbstractAutoAsyncCloseable;
 import org.apache.bookkeeper.common.util.ExceptionUtils;
-import org.apache.bookkeeper.common.util.OrderedScheduler;
+//import org.apache.bookkeeper.common.util.OrderedScheduler;
 import org.apache.bookkeeper.common.util.SharedResourceManager;
-import org.apache.bookkeeper.stream.proto.StorageType;
-import org.apache.bookkeeper.stream.proto.StreamProperties;
+//import org.apache.bookkeeper.stream.proto.StorageType;
+//import org.apache.bookkeeper.stream.proto.StreamProperties;
 
 /**
  * The implementation of {@link StorageClient} client.
@@ -49,27 +48,27 @@ public class StorageClientImpl extends AbstractAutoAsyncCloseable implements Sto
     private static final String COMPONENT_NAME = StorageClientImpl.class.getSimpleName();
 
     private final String defaultNamespace;
-    private final StorageClientSettings settings;
+    private final Object settings;
     private final ClientResources resources;
-    private final OrderedScheduler scheduler;
+    private final Object scheduler;
 
     // clients
     private final StorageServerClientManager serverManager;
     private final boolean ownServerManager;
 
     StorageClientImpl(String namespaceName,
-                      StorageClientSettings settings,
+                      Object settings,
                       ClientResources resources) {
         this(
             namespaceName,
-            settings,
+            null,
             resources,
-            new StorageServerClientManagerImpl(settings, resources.scheduler()),
+            null,
             true);
     }
 
     public StorageClientImpl(String namespaceName,
-                             StorageClientSettings settings,
+                             Object settings,
                              ClientResources resources,
                              StorageServerClientManager serverManager,
                              boolean ownServerManager) {
@@ -81,9 +80,10 @@ public class StorageClientImpl extends AbstractAutoAsyncCloseable implements Sto
         this.scheduler = SharedResourceManager.shared().get(resources.scheduler());
     }
 
-    CompletableFuture<StreamProperties> getStreamProperties(String namespaceName,
+    CompletableFuture<Object> getStreamProperties(String namespaceName,
                                                             String streamName) {
-        return this.serverManager.getRootRangeClient().getStream(namespaceName, streamName);
+        //return this.serverManager.getRootRangeClient().getStream(namespaceName, streamName);
+        return null;
     }
 
     //
@@ -119,11 +119,11 @@ public class StorageClientImpl extends AbstractAutoAsyncCloseable implements Sto
     private void openTableImpl(String namespaceName,
                                String tableName,
                                CompletableFuture<PTable<ByteBuf, ByteBuf>> future) {
-        FutureUtils.proxyTo(
+       /* FutureUtils.proxyTo(
             getStreamProperties(namespaceName, tableName).thenComposeAsync(props -> {
-                if (log.isInfoEnabled()) {
-                    log.info("Retrieved table properties for table {}/{} : {}", namespaceName, tableName, props);
-                }
+                        if (log.isInfoEnabled()) {
+                            log.info("Retrieved table properties for table {}/{} : {}", namespaceName, tableName, props);
+                        }
                 if (StorageType.TABLE != props.getStreamConf().getStorageType()) {
                     return FutureUtils.exception(new ApiException(
                         "Can't open a non-table storage entity : " + props.getStreamConf().getStorageType())
@@ -138,8 +138,10 @@ public class StorageClientImpl extends AbstractAutoAsyncCloseable implements Sto
                 ).initialize();
             }),
             future
-        );
+        )*/
     }
+
+
 
     //
     // Closeable API
@@ -147,13 +149,14 @@ public class StorageClientImpl extends AbstractAutoAsyncCloseable implements Sto
 
     @Override
     protected void closeAsyncOnce(CompletableFuture<Void> closeFuture) {
-        scheduler.submit(() -> {
+        /*scheduler.submit(() -> {
             if (ownServerManager) {
                 serverManager.close();
             }
             closeFuture.complete(null);
             SharedResourceManager.shared().release(resources.scheduler(), scheduler);
-        });
+        });*/
+
     }
 
     @Override
@@ -163,6 +166,6 @@ public class StorageClientImpl extends AbstractAutoAsyncCloseable implements Sto
         } catch (Exception e) {
             log.warn("Encountered exceptions on closing the storage client", e);
         }
-        scheduler.forceShutdown(100, TimeUnit.MILLISECONDS);
+        //scheduler.forceShutdown(100, TimeUnit.MILLISECONDS);
     }
 }

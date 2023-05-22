@@ -1,4 +1,4 @@
-/*
+/**
  *
  * Licensed to the Apache Software Foundation (ASF) under one
  * or more contributor license agreements.  See the NOTICE file
@@ -37,9 +37,9 @@ import org.apache.bookkeeper.stats.StatsLogger;
  *
  * @since 4.6
  */
-public class BookKeeperBuilderImpl implements BookKeeperBuilder {
+//public class BookKeeperBuilderImpl implements BookKeeperBuilder { }
 
-    private final org.apache.bookkeeper.client.BookKeeper.Builder builder;
+    /*private final org.apache.bookkeeper.client.BookKeeper.Builder builder;
 
     public BookKeeperBuilderImpl(ClientConfiguration conf) {
         this.builder = org.apache.bookkeeper.client.BookKeeper.forConfig(conf);
@@ -86,4 +86,4 @@ public class BookKeeperBuilderImpl implements BookKeeperBuilder {
         return builder.build();
     }
 
-}
+}*/

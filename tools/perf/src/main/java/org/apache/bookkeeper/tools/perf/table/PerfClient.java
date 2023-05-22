@@ -25,7 +25,6 @@ import com.beust.jcommander.Parameter;
 import com.fasterxml.jackson.databind.ObjectMapper;
 import com.fasterxml.jackson.databind.ObjectWriter;
 import com.google.common.util.concurrent.RateLimiter;
-import edu.umd.cs.findbugs.annotations.SuppressFBWarnings;
 import io.netty.buffer.ByteBuf;
 import java.text.DecimalFormat;
 import java.util.ArrayList;
@@ -43,7 +42,6 @@ import org.HdrHistogram.Recorder;
 import org.apache.bookkeeper.api.StorageClient;
 import org.apache.bookkeeper.api.kv.Table;
 import org.apache.bookkeeper.clients.StorageClientBuilder;
-import org.apache.bookkeeper.clients.config.StorageClientSettings;
 import org.apache.bookkeeper.common.net.ServiceURI;
 import org.apache.bookkeeper.tools.framework.CliFlags;
 import org.apache.bookkeeper.tools.perf.utils.PaddingDecimalFormat;
@@ -232,11 +230,8 @@ public class PerfClient implements Runnable {
         runBenchmarkTasks();
     }
 
-    @SuppressFBWarnings("RCN_REDUNDANT_NULLCHECK_WOULD_HAVE_BEEN_A_NPE")
     private void runBenchmarkTasks() throws Exception {
-        StorageClientSettings settings = StorageClientSettings.newBuilder()
-            .serviceUri(serviceURI.getUri().toString())
-            .build();
+        Object settings = null;
         try (StorageClient client = StorageClientBuilder.newBuilder()
              .withSettings(settings)
              .withNamespace(flags.namespace)

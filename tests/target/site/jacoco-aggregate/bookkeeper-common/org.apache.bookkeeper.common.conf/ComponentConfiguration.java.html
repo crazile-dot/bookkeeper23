@@ -1,0 +1,322 @@
+<?xml version="1.0" encoding="UTF-8"?><!DOCTYPE html PUBLIC "-//W3C//DTD XHTML 1.0 Strict//EN" "http://www.w3.org/TR/xhtml1/DTD/xhtml1-strict.dtd"><html xmlns="http://www.w3.org/1999/xhtml" lang="it"><head><meta http-equiv="Content-Type" content="text/html;charset=UTF-8"/><link rel="stylesheet" href="../../jacoco-resources/report.css" type="text/css"/><link rel="shortcut icon" href="../../jacoco-resources/report.gif" type="image/gif"/><title>ComponentConfiguration.java</title><link rel="stylesheet" href="../../jacoco-resources/prettify.css" type="text/css"/><script type="text/javascript" src="../../jacoco-resources/prettify.js"></script></head><body onload="window['PR_TAB_WIDTH']=4;prettyPrint()"><div class="breadcrumb" id="breadcrumb"><span class="info"><a href="../../jacoco-sessions.html" class="el_session">Sessions</a></span><a href="../../index.html" class="el_report">Tests</a> &gt; <a href="../index.html" class="el_bundle">bookkeeper-common</a> &gt; <a href="index.source.html" class="el_package">org.apache.bookkeeper.common.conf</a> &gt; <span class="el_source">ComponentConfiguration.java</span></div><h1>ComponentConfiguration.java</h1><pre class="source lang-java linenums">/*
+ * Licensed to the Apache Software Foundation (ASF) under one
+ * or more contributor license agreements.  See the NOTICE file
+ * distributed with this work for additional information
+ * regarding copyright ownership.  The ASF licenses this file
+ * to you under the Apache License, Version 2.0 (the
+ * &quot;License&quot;); you may not use this file except in compliance
+ * with the License.  You may obtain a copy of the License at
+ *
+ *      http://www.apache.org/licenses/LICENSE-2.0
+ *
+ * Unless required by applicable law or agreed to in writing, software
+ * distributed under the License is distributed on an &quot;AS IS&quot; BASIS,
+ * WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+ * See the License for the specific language governing permissions and
+ * limitations under the License.
+ */
+
+package org.apache.bookkeeper.common.conf;
+
+import java.math.BigDecimal;
+import java.math.BigInteger;
+import java.net.URL;
+import java.util.HashMap;
+import java.util.Iterator;
+import java.util.List;
+import java.util.Map;
+import java.util.Properties;
+import org.apache.bookkeeper.common.util.JsonUtil;
+import org.apache.bookkeeper.common.util.JsonUtil.ParseJsonException;
+import org.apache.commons.configuration.CompositeConfiguration;
+import org.apache.commons.configuration.Configuration;
+import org.apache.commons.configuration.ConfigurationException;
+import org.apache.commons.configuration.PropertiesConfiguration;
+
+/**
+ * Component Configuration.
+ */
+public abstract class ComponentConfiguration implements Configuration {
+
+    protected static final String DELIMITER = &quot;.&quot;;
+
+    private final String componentPrefix;
+    private final CompositeConfiguration underlyingConf;
+    private final Configuration conf;
+
+    protected ComponentConfiguration(CompositeConfiguration underlyingConf,
+                                     String componentPrefix) {
+<span class="nc" id="L49">        super();</span>
+<span class="nc" id="L50">        this.underlyingConf = underlyingConf;</span>
+<span class="nc" id="L51">        this.conf = new ConcurrentConfiguration();</span>
+<span class="nc" id="L52">        this.componentPrefix = componentPrefix;</span>
+
+        // load the component keys
+<span class="nc" id="L55">        loadConf(underlyingConf);</span>
+<span class="nc" id="L56">    }</span>
+
+    protected String getKeyName(String name) {
+<span class="nc" id="L59">        return name;</span>
+    }
+
+    public CompositeConfiguration getUnderlyingConf() {
+<span class="nc" id="L63">        return underlyingConf;</span>
+    }
+
+    /**
+     * Load configuration from a given {@code confURL}.
+     *
+     * @param confURL the url points to the configuration.
+     * @throws ConfigurationException when failed to load configuration.
+     */
+    public void loadConf(URL confURL) throws ConfigurationException {
+<span class="nc" id="L73">        Configuration loadedConf = new PropertiesConfiguration(confURL);</span>
+<span class="nc" id="L74">        loadConf(loadedConf);</span>
+<span class="nc" id="L75">    }</span>
+
+    protected void loadConf(Configuration loadedConf) {
+<span class="nc" id="L78">        loadedConf.getKeys().forEachRemaining(fullKey -&gt; {</span>
+<span class="nc bnc" id="L79" title="All 2 branches missed.">            if (fullKey.startsWith(componentPrefix)) {</span>
+<span class="nc" id="L80">                String componentKey = fullKey.substring(componentPrefix.length());</span>
+<span class="nc" id="L81">                setProperty(componentKey, loadedConf.getProperty(fullKey));</span>
+            }
+<span class="nc" id="L83">        });</span>
+<span class="nc" id="L84">    }</span>
+
+    public void validate() throws ConfigurationException {
+        // do nothing by default.
+<span class="nc" id="L88">    }</span>
+
+    @Override
+    public Configuration subset(String prefix) {
+<span class="nc" id="L92">        return conf.subset(getKeyName(prefix));</span>
+    }
+
+    @Override
+    public boolean isEmpty() {
+<span class="nc" id="L97">        return conf.isEmpty();</span>
+    }
+
+    @Override
+    public boolean containsKey(String key) {
+<span class="nc" id="L102">        return conf.containsKey(getKeyName(key));</span>
+    }
+
+    @Override
+    public void addProperty(String key, Object value) {
+<span class="nc" id="L107">        conf.addProperty(getKeyName(key), value);</span>
+<span class="nc" id="L108">    }</span>
+
+    @Override
+    public void setProperty(String key, Object value) {
+<span class="nc" id="L112">        conf.setProperty(getKeyName(key), value);</span>
+<span class="nc" id="L113">    }</span>
+
+    @Override
+    public void clearProperty(String key) {
+<span class="nc" id="L117">        conf.clearProperty(getKeyName(key));</span>
+<span class="nc" id="L118">    }</span>
+
+    @Override
+    public void clear() {
+<span class="nc" id="L122">        conf.clear();</span>
+<span class="nc" id="L123">    }</span>
+
+    @Override
+    public Object getProperty(String key) {
+<span class="nc" id="L127">        return conf.getProperty(getKeyName(key));</span>
+    }
+
+    @Override
+    public Iterator&lt;String&gt; getKeys(String prefix) {
+<span class="nc" id="L132">        return conf.getKeys(getKeyName(prefix));</span>
+    }
+
+    @Override
+    public Iterator&lt;String&gt; getKeys() {
+<span class="nc" id="L137">        return conf.getKeys();</span>
+    }
+
+    @Override
+    public Properties getProperties(String key) {
+<span class="nc" id="L142">        return conf.getProperties(getKeyName(key));</span>
+    }
+
+    @Override
+    public boolean getBoolean(String key) {
+<span class="nc" id="L147">        return conf.getBoolean(getKeyName(key));</span>
+    }
+
+    @Override
+    public boolean getBoolean(String key, boolean defaultValue) {
+<span class="nc" id="L152">        return conf.getBoolean(getKeyName(key), defaultValue);</span>
+    }
+
+    @Override
+    public Boolean getBoolean(String key, Boolean defaultValue) {
+<span class="nc" id="L157">        return conf.getBoolean(getKeyName(key), defaultValue);</span>
+    }
+
+    @Override
+    public byte getByte(String key) {
+<span class="nc" id="L162">        return conf.getByte(getKeyName(key));</span>
+    }
+
+    @Override
+    public byte getByte(String key, byte defaultValue) {
+<span class="nc" id="L167">        return conf.getByte(getKeyName(key), defaultValue);</span>
+    }
+
+    @Override
+    public Byte getByte(String key, Byte defaultValue) {
+<span class="nc" id="L172">        return conf.getByte(getKeyName(key), defaultValue);</span>
+    }
+
+    @Override
+    public double getDouble(String key) {
+<span class="nc" id="L177">        return conf.getDouble(getKeyName(key));</span>
+    }
+
+    @Override
+    public double getDouble(String key, double defaultValue) {
+<span class="nc" id="L182">        return conf.getDouble(getKeyName(key), defaultValue);</span>
+    }
+
+    @Override
+    public Double getDouble(String key, Double defaultValue) {
+<span class="nc" id="L187">        return conf.getDouble(getKeyName(key), defaultValue);</span>
+    }
+
+    @Override
+    public float getFloat(String key) {
+<span class="nc" id="L192">        return conf.getFloat(getKeyName(key));</span>
+    }
+
+    @Override
+    public float getFloat(String key, float defaultValue) {
+<span class="nc" id="L197">        return conf.getFloat(getKeyName(key), defaultValue);</span>
+    }
+
+    @Override
+    public Float getFloat(String key, Float defaultValue) {
+<span class="nc" id="L202">        return conf.getFloat(getKeyName(key), defaultValue);</span>
+    }
+
+    @Override
+    public int getInt(String key) {
+<span class="nc" id="L207">        return conf.getInt(getKeyName(key));</span>
+    }
+
+    @Override
+    public int getInt(String key, int defaultValue) {
+<span class="nc" id="L212">        return conf.getInt(getKeyName(key), defaultValue);</span>
+    }
+
+    @Override
+    public Integer getInteger(String key, Integer defaultValue) {
+<span class="nc" id="L217">        return conf.getInt(getKeyName(key), defaultValue);</span>
+    }
+
+    @Override
+    public long getLong(String key) {
+<span class="nc" id="L222">        return conf.getLong(getKeyName(key));</span>
+    }
+
+    @Override
+    public long getLong(String key, long defaultValue) {
+<span class="nc" id="L227">        return conf.getLong(getKeyName(key), defaultValue);</span>
+    }
+
+    @Override
+    public Long getLong(String key, Long defaultValue) {
+<span class="nc" id="L232">        return conf.getLong(getKeyName(key), defaultValue);</span>
+    }
+
+    @Override
+    public short getShort(String key) {
+<span class="nc" id="L237">        return conf.getShort(getKeyName(key));</span>
+    }
+
+    @Override
+    public short getShort(String key, short defaultValue) {
+<span class="nc" id="L242">        return conf.getShort(getKeyName(key), defaultValue);</span>
+    }
+
+    @Override
+    public Short getShort(String key, Short defaultValue) {
+<span class="nc" id="L247">        return conf.getShort(getKeyName(key), defaultValue);</span>
+    }
+
+    @Override
+    public BigDecimal getBigDecimal(String key) {
+<span class="nc" id="L252">        return conf.getBigDecimal(getKeyName(key));</span>
+    }
+
+    @Override
+    public BigDecimal getBigDecimal(String key, BigDecimal defaultValue) {
+<span class="nc" id="L257">        return conf.getBigDecimal(getKeyName(key), defaultValue);</span>
+    }
+
+    @Override
+    public BigInteger getBigInteger(String key) {
+<span class="nc" id="L262">        return conf.getBigInteger(getKeyName(key));</span>
+    }
+
+    @Override
+    public BigInteger getBigInteger(String key, BigInteger defaultValue) {
+<span class="nc" id="L267">        return conf.getBigInteger(getKeyName(key), defaultValue);</span>
+    }
+
+    @Override
+    public String getString(String key) {
+<span class="nc" id="L272">        return conf.getString(getKeyName(key));</span>
+    }
+
+    @Override
+    public String getString(String key, String defaultValue) {
+<span class="nc" id="L277">        return conf.getString(getKeyName(key), defaultValue);</span>
+    }
+
+    @Override
+    public String[] getStringArray(String key) {
+<span class="nc" id="L282">        return conf.getStringArray(getKeyName(key));</span>
+    }
+
+    @Override
+    public List&lt;Object&gt; getList(String key) {
+<span class="nc" id="L287">        return conf.getList(getKeyName(key));</span>
+    }
+
+    @Override
+    public List&lt;Object&gt; getList(String key, List&lt;?&gt; defaultValue) {
+<span class="nc" id="L292">        return conf.getList(getKeyName(key), defaultValue);</span>
+    }
+
+    /**
+     * returns the string representation of json format of this config.
+     *
+     * @return
+     * @throws ParseJsonException
+     */
+    public String asJson() {
+        try {
+<span class="nc" id="L303">            return JsonUtil.toJson(toMap());</span>
+<span class="nc" id="L304">        } catch (ParseJsonException e) {</span>
+<span class="nc" id="L305">            throw new RuntimeException(&quot;Failed to serialize the configuration as json&quot;, e);</span>
+        }
+    }
+
+    private Map&lt;String, Object&gt; toMap() {
+<span class="nc" id="L310">        Map&lt;String, Object&gt; configMap = new HashMap&lt;&gt;();</span>
+<span class="nc" id="L311">        Iterator&lt;String&gt; iterator = this.getKeys();</span>
+<span class="nc bnc" id="L312" title="All 2 branches missed.">        while (iterator.hasNext()) {</span>
+<span class="nc" id="L313">            String key = iterator.next().toString();</span>
+<span class="nc" id="L314">            Object property = this.getProperty(key);</span>
+<span class="nc bnc" id="L315" title="All 2 branches missed.">            if (property != null) {</span>
+<span class="nc" id="L316">                configMap.put(key, property.toString());</span>
+            }
+<span class="nc" id="L318">        }</span>
+<span class="nc" id="L319">        return configMap;</span>
+    }
+}
+</pre><div class="footer"><span class="right">Created with <a href="http://www.jacoco.org/jacoco">JaCoCo</a> 0.8.2.201808211720</span></div></body></html>

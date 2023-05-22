@@ -1,4 +1,4 @@
-/*
+/**
  *
  * Licensed to the Apache Software Foundation (ASF) under one
  * or more contributor license agreements.  See the NOTICE file
@@ -22,6 +22,7 @@
 package org.apache.bookkeeper.common.util.affinity.impl;
 
 import edu.umd.cs.findbugs.annotations.SuppressFBWarnings;
+
 import java.io.IOException;
 import java.nio.charset.Charset;
 import java.nio.charset.StandardCharsets;
@@ -31,9 +32,10 @@ import java.nio.file.Paths;
 import java.nio.file.StandardOpenOption;
 import java.util.SortedSet;
 import java.util.TreeSet;
+
 import lombok.experimental.UtilityClass;
 import lombok.extern.slf4j.Slf4j;
-import org.apache.commons.lang3.StringUtils;
+
 
 @UtilityClass
 @Slf4j
@@ -43,12 +45,12 @@ class IsolatedProcessors {
 
     private static final String ISOLATED_CPU_PATH = "/sys/devices/system/cpu/isolated";
 
-    @SuppressFBWarnings("DMI_HARDCODED_ABSOLUTE_FILENAME")
+    /*@SuppressFBWarnings("DMI_HARDCODED_ABSOLUTE_FILENAME")
     static SortedSet<Integer> get() throws IOException {
         return parseProcessorRange(new String(Files.readAllBytes(Paths.get(ISOLATED_CPU_PATH)), ENCODING));
-    }
+    }*/
 
-    static SortedSet<Integer> parseProcessorRange(String range) {
+    /*static SortedSet<Integer> parseProcessorRange(String range) {
         SortedSet<Integer> processors = new TreeSet<>();
 
         for (String part : StringUtils.trim(range).split(",")) {
@@ -67,25 +69,25 @@ class IsolatedProcessors {
         }
 
         return processors;
-    }
+    }*/
 
     /**
      * Instruct Linux to disable a particular CPU. This is used to disable hyper-threading on a particular core, by
      * shutting down the cpu that shares the same core.
      */
-    static void disableCpu(int cpu) throws IOException {
+    /*static void disableCpu(int cpu) throws IOException {
         changeCpuStatus(cpu, false);
     }
 
     static void enableCpu(int cpu) throws IOException {
         changeCpuStatus(cpu, true);
-    }
+    }*/
 
     /**
      * Instruct Linux to disable a particular CPU. This is used to disable hyper-threading on a particular core, by
      * shutting down the cpu that shares the same core.
      */
-    private static void changeCpuStatus(int cpu, boolean enable) throws IOException {
+    /*private static void changeCpuStatus(int cpu, boolean enable) throws IOException {
         Path cpuPath = Paths.get(String.format("/sys/devices/system/cpu/cpu%d/online", cpu));
 
         boolean currentState = Integer
@@ -95,5 +97,5 @@ class IsolatedProcessors {
             Files.write(cpuPath, (enable ? "1\n" : "0\n").getBytes(ENCODING), StandardOpenOption.TRUNCATE_EXISTING);
             log.info("{} CPU {}", enable ? "Enabled" : "Disabled", cpu);
         }
-    }
+    }*/
 }

@@ -15,16 +15,16 @@
 package org.apache.bookkeeper.stream.storage.impl.metadata;
 
 import java.util.concurrent.CompletableFuture;
-import org.apache.bookkeeper.stream.proto.storage.DeleteNamespaceRequest;
+/*import org.apache.bookkeeper.stream.proto.storage.DeleteNamespaceRequest;
 import org.apache.bookkeeper.stream.proto.storage.DeleteNamespaceResponse;
-import org.apache.bookkeeper.stream.proto.storage.StatusCode;
+import org.apache.bookkeeper.stream.proto.storage.StatusCode;*/
 import org.apache.bookkeeper.stream.storage.impl.AsyncOperationProcessor;
 
 /**
  * The operation process for creating namespace.
  */
-class DeleteNamespaceProcessor
-    extends AsyncOperationProcessor<DeleteNamespaceRequest, DeleteNamespaceResponse, RootRangeStoreImpl> {
+class DeleteNamespaceProcessor {
+    //extends AsyncOperationProcessor<DeleteNamespaceRequest, DeleteNamespaceResponse, RootRangeStoreImpl> {
 
     public static DeleteNamespaceProcessor of() {
         return INSTANCE;
@@ -35,22 +35,25 @@ class DeleteNamespaceProcessor
     private DeleteNamespaceProcessor() {
     }
 
-    @Override
-    protected StatusCode verifyRequest(RootRangeStoreImpl state,
-                                       DeleteNamespaceRequest request) {
-        return state.verifyDeleteNamespaceRequest(request);
+   // @Override
+    protected Object verifyRequest(RootRangeStoreImpl state,
+                                       Object request) {
+        //return state.verifyDeleteNamespaceRequest(request);
+        return null;
     }
 
-    @Override
-    protected DeleteNamespaceResponse failRequest(StatusCode code) {
-        return DeleteNamespaceResponse.newBuilder()
+    //@Override
+    protected Object failRequest(Object code) {
+        /*return DeleteNamespaceResponse.newBuilder()
             .setCode(code)
-            .build();
+            .build();*/
+        return null;
     }
 
-    @Override
-    protected CompletableFuture<DeleteNamespaceResponse> doProcessRequest(RootRangeStoreImpl state,
-                                                                          DeleteNamespaceRequest request) {
-        return state.doProcessDeleteNamespaceRequest(request);
+    //@Override
+    protected CompletableFuture<Object> doProcessRequest(RootRangeStoreImpl state,
+                                                                          Object request) {
+        //return state.doProcessDeleteNamespaceRequest(request);
+        return null;
     }
 }

@@ -1,4 +1,4 @@
-/*
+/**
  * Licensed to the Apache Software Foundation (ASF) under one
  * or more contributor license agreements.  See the NOTICE file
  * distributed with this work for additional information
@@ -40,12 +40,12 @@ import java.util.concurrent.atomic.AtomicReferenceFieldUpdater;
 import java.util.concurrent.locks.ReentrantLock;
 import java.util.function.Function;
 import org.apache.bookkeeper.client.AsyncCallback.AddCallback;
-import org.apache.bookkeeper.client.AsyncCallback.CloseCallback;
+//import org.apache.bookkeeper.client.AsyncCallback.CloseCallback;
 import org.apache.bookkeeper.client.BKException;
 import org.apache.bookkeeper.client.LedgerHandle;
 import org.apache.bookkeeper.common.concurrent.FutureEventListener;
 import org.apache.bookkeeper.common.concurrent.FutureUtils;
-import org.apache.bookkeeper.common.util.OrderedScheduler;
+//import org.apache.bookkeeper.common.util.OrderedScheduler;
 import org.apache.bookkeeper.feature.Feature;
 import org.apache.bookkeeper.feature.FeatureProvider;
 import org.apache.bookkeeper.stats.AlertStatsLogger;
@@ -191,8 +191,8 @@ class BKLogSegmentWriter implements LogSegmentWriter, AddCallback, Runnable, Siz
     private int minDelayBetweenImmediateFlushMs = 0;
     private Stopwatch lastTransmit;
     private boolean streamEnded = false;
-    private final ScheduledFuture<?> periodicFlushSchedule;
-    private final ScheduledFuture<?> periodicKeepAliveSchedule;
+    private final ScheduledFuture<?> periodicFlushSchedule = null;
+    private final ScheduledFuture<?> periodicKeepAliveSchedule = null;
     private static final AtomicReferenceFieldUpdater<BKLogSegmentWriter, ScheduledFuture>
         transmitSchedFutureRefUpdater = AtomicReferenceFieldUpdater.newUpdater(
             BKLogSegmentWriter.class,
@@ -218,7 +218,7 @@ class BKLogSegmentWriter implements LogSegmentWriter, AddCallback, Runnable, Siz
     private final long logSegmentSequenceNumber;
     // Used only for values that *could* change (e.g. buffer size etc.)
     private final DistributedLogConfiguration conf;
-    private final OrderedScheduler scheduler;
+    //private final OrderedScheduler scheduler;
 
     // stats
     private final StatsLogger transmitOutstandingLogger;
@@ -262,7 +262,7 @@ class BKLogSegmentWriter implements LogSegmentWriter, AddCallback, Runnable, Siz
                                  DistributedLock lock, /** the lock needs to be acquired **/
                                  long startTxId,
                                  long logSegmentSequenceNumber,
-                                 OrderedScheduler scheduler,
+                                 Object scheduler,
                                  StatsLogger statsLogger,
                                  StatsLogger perLogStatsLogger,
                                  AlertStatsLogger alertStatsLogger,
@@ -353,7 +353,7 @@ class BKLogSegmentWriter implements LogSegmentWriter, AddCallback, Runnable, Siz
         this.enableRecordCounts = conf.getEnableRecordCounts();
         this.immediateFlushEnabled = conf.getImmediateFlushEnabled();
         this.isDurableWriteEnabled = dynConf.isDurableWriteEnabled();
-        this.scheduler = scheduler;
+        //this.scheduler = scheduler;
 
         // Failure injection
         if (conf.getEIInjectWriteDelay()) {
@@ -368,31 +368,31 @@ class BKLogSegmentWriter implements LogSegmentWriter, AddCallback, Runnable, Siz
         if (!immediateFlushEnabled || (0 != this.transmissionThreshold)) {
             int periodicFlushFrequency = configuredPeriodicFlushFrequency;
             if (periodicFlushFrequency > 0 && scheduler != null) {
-                periodicFlushSchedule = scheduler.scheduleAtFixedRate(this,
-                        periodicFlushFrequency / 2, periodicFlushFrequency / 2, TimeUnit.MILLISECONDS);
+                /*periodicFlushSchedule = scheduler.scheduleAtFixedRate(this,
+                        periodicFlushFrequency / 2, periodicFlushFrequency / 2, TimeUnit.MILLISECONDS);*/
             } else {
-                periodicFlushSchedule = null;
+                //periodicFlushSchedule = null;
             }
         } else {
             // Min delay heuristic applies only when immediate flush is enabled
             // and transmission threshold is zero
             minDelayBetweenImmediateFlushMs = conf.getMinDelayBetweenImmediateFlushMs();
-            periodicFlushSchedule = null;
+           // periodicFlushSchedule = null;
         }
         this.periodicKeepAliveMs = conf.getPeriodicKeepAliveMilliSeconds();
         if (periodicKeepAliveMs > 0 && scheduler != null) {
-            periodicKeepAliveSchedule = scheduler.scheduleAtFixedRate(new Runnable() {
+            /*periodicKeepAliveSchedule = scheduler.scheduleAtFixedRate(new Runnable() {
                 @Override
                 public void run() {
                     keepAlive();
                 }
-            }, periodicKeepAliveMs, periodicKeepAliveMs, TimeUnit.MILLISECONDS);
+            }, periodicKeepAliveMs, periodicKeepAliveMs, TimeUnit.MILLISECONDS);*/
         } else {
-            periodicKeepAliveSchedule = null;
+            //periodicKeepAliveSchedule = null;
         }
 
         this.conf = conf;
-        assert(!this.immediateFlushEnabled || (null != this.scheduler));
+        assert(!this.immediateFlushEnabled );
         this.lastTransmit = Stopwatch.createStarted();
     }
 
@@ -407,7 +407,7 @@ class BKLogSegmentWriter implements LogSegmentWriter, AddCallback, Runnable, Siz
 
     @VisibleForTesting
     ScheduledExecutorService getFuturePool() {
-        return scheduler.chooseThread(streamName);
+        return null;
     }
 
     @VisibleForTesting
@@ -652,7 +652,7 @@ class BKLogSegmentWriter implements LogSegmentWriter, AddCallback, Runnable, Siz
         if (null == throwExc.getValue() && !isLogSegmentInError()) {
             // Synchronous closing the ledger handle, if we couldn't close a ledger handle successfully.
             // we should throw the exception to #closeToFinalize, so it would fail completing a log segment.
-            entryWriter.asyncClose(new CloseCallback() {
+            /*entryWriter.asyncClose(new CloseCallback() {
                 @Override
                 public void closeComplete(int rc, LedgerHandle lh, Object ctx) {
                     if (BKException.Code.OK != rc && BKException.Code.LedgerClosedException != rc) {
@@ -663,7 +663,7 @@ class BKLogSegmentWriter implements LogSegmentWriter, AddCallback, Runnable, Siz
                     }
                     completeClosePromise(abort, throwExc, closePromise);
                 }
-            }, null);
+            }, null);*/
         } else {
             completeClosePromise(abort, throwExc, closePromise);
         }
@@ -1000,7 +1000,7 @@ class BKLogSegmentWriter implements LogSegmentWriter, AddCallback, Runnable, Siz
         final long delayMs = Math.max(0, minDelayBetweenImmediateFlushMs - lastTransmit.elapsed(TimeUnit.MILLISECONDS));
         final ScheduledFuture scheduledFuture = scheduledFutureRefUpdater.get(this);
         if ((null == scheduledFuture) || scheduledFuture.isDone()) {
-            scheduledFutureRefUpdater.set(this, scheduler.schedule(new Runnable() {
+            /*scheduledFutureRefUpdater.set(this, scheduler.schedule(new Runnable() {
                 @Override
                 public void run() {
                     synchronized (this) {
@@ -1016,7 +1016,7 @@ class BKLogSegmentWriter implements LogSegmentWriter, AddCallback, Runnable, Siz
                         }
                     }
                 }
-            }, delayMs, TimeUnit.MILLISECONDS));
+            }, delayMs, TimeUnit.MILLISECONDS));*/
         }
     }
 
@@ -1210,9 +1210,9 @@ class BKLogSegmentWriter implements LogSegmentWriter, AddCallback, Runnable, Siz
             }
         }
 
-        if (null != scheduler) {
+        if (true) {
             final Stopwatch queuedTime = Stopwatch.createStarted();
-            Futures.addCallback(scheduler.submitOrdered(streamName, new Callable<Void>() {
+            /*Futures.addCallback(scheduler.submitOrdered(streamName, new Callable<Void>() {
                 @Override
                 public Void call() {
                     final Stopwatch deferredTime = Stopwatch.createStarted();
@@ -1240,7 +1240,7 @@ class BKLogSegmentWriter implements LogSegmentWriter, AddCallback, Runnable, Siz
                         fullyQualifiedLogSegment, entryId,
                         transmitPacket.getRecordSet().getMaxTxId(), rc, cause);
                 }
-            }, directExecutor());
+            }, directExecutor());*/
             // Race condition if we notify before the addComplete is enqueued.
             transmitPacket.notifyTransmitComplete(effectiveRC);
             outstandingTransmitsUpdater.getAndDecrement(this);
@@ -1339,10 +1339,7 @@ class BKLogSegmentWriter implements LogSegmentWriter, AddCallback, Runnable, Siz
     private synchronized  void backgroundFlush(boolean controlFlushOnly)  {
         if (null != closeFuture) {
             // if the log segment is closing, skip any background flushing
-            if (LOG.isDebugEnabled()) {
-                LOG.debug("Skip background flushing since log segment {} is closing.",
-                        getFullyQualifiedLogSegment());
-            }
+            LOG.debug("Skip background flushing since log segment {} is closing.", getFullyQualifiedLogSegment());
             return;
         }
         try {
@@ -1369,10 +1366,8 @@ class BKLogSegmentWriter implements LogSegmentWriter, AddCallback, Runnable, Siz
     private synchronized  void keepAlive() {
         if (null != closeFuture) {
             // if the log segment is closing, skip sending any keep alive records.
-            if (LOG.isDebugEnabled()) {
-                LOG.debug("Skip sending keepAlive control record since log segment {} is closing.",
-                        getFullyQualifiedLogSegment());
-            }
+            LOG.debug("Skip sending keepAlive control record since log segment {} is closing.",
+                    getFullyQualifiedLogSegment());
             return;
         }
 

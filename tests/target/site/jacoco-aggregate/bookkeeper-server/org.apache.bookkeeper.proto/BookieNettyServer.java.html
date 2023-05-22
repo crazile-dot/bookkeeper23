@@ -1,0 +1,494 @@
+<?xml version="1.0" encoding="UTF-8"?><!DOCTYPE html PUBLIC "-//W3C//DTD XHTML 1.0 Strict//EN" "http://www.w3.org/TR/xhtml1/DTD/xhtml1-strict.dtd"><html xmlns="http://www.w3.org/1999/xhtml" lang="it"><head><meta http-equiv="Content-Type" content="text/html;charset=UTF-8"/><link rel="stylesheet" href="../../jacoco-resources/report.css" type="text/css"/><link rel="shortcut icon" href="../../jacoco-resources/report.gif" type="image/gif"/><title>BookieNettyServer.java</title><link rel="stylesheet" href="../../jacoco-resources/prettify.css" type="text/css"/><script type="text/javascript" src="../../jacoco-resources/prettify.js"></script></head><body onload="window['PR_TAB_WIDTH']=4;prettyPrint()"><div class="breadcrumb" id="breadcrumb"><span class="info"><a href="../../jacoco-sessions.html" class="el_session">Sessions</a></span><a href="../../index.html" class="el_report">Tests</a> &gt; <a href="../index.html" class="el_bundle">bookkeeper-server</a> &gt; <a href="index.source.html" class="el_package">org.apache.bookkeeper.proto</a> &gt; <span class="el_source">BookieNettyServer.java</span></div><h1>BookieNettyServer.java</h1><pre class="source lang-java linenums">/**
+ *
+ * Licensed to the Apache Software Foundation (ASF) under one
+ * or more contributor license agreements.  See the NOTICE file
+ * distributed with this work for additional information
+ * regarding copyright ownership.  The ASF licenses this file
+ * to you under the Apache License, Version 2.0 (the
+ * &quot;License&quot;); you may not use this file except in compliance
+ * with the License.  You may obtain a copy of the License at
+ *
+ *   http://www.apache.org/licenses/LICENSE-2.0
+ *
+ * Unless required by applicable law or agreed to in writing,
+ * software distributed under the License is distributed on an
+ * &quot;AS IS&quot; BASIS, WITHOUT WARRANTIES OR CONDITIONS OF ANY
+ * KIND, either express or implied.  See the License for the
+ * specific language governing permissions and limitations
+ * under the License.
+ *
+ */
+package org.apache.bookkeeper.proto;
+
+import com.google.common.annotations.VisibleForTesting;
+import com.google.protobuf.ExtensionRegistry;
+import io.netty.bootstrap.ServerBootstrap;
+import io.netty.buffer.ByteBufAllocator;
+import io.netty.buffer.PooledByteBufAllocator;
+import io.netty.channel.AdaptiveRecvByteBufAllocator;
+import io.netty.channel.Channel;
+import io.netty.channel.ChannelHandlerContext;
+import io.netty.channel.ChannelInboundHandler;
+import io.netty.channel.ChannelInboundHandlerAdapter;
+import io.netty.channel.ChannelInitializer;
+import io.netty.channel.ChannelOption;
+import io.netty.channel.ChannelPipeline;
+import io.netty.channel.DefaultEventLoop;
+import io.netty.channel.DefaultEventLoopGroup;
+import io.netty.channel.EventLoop;
+import io.netty.channel.EventLoopGroup;
+import io.netty.channel.WriteBufferWaterMark;
+import io.netty.channel.epoll.EpollEventLoopGroup;
+import io.netty.channel.epoll.EpollServerSocketChannel;
+import io.netty.channel.group.ChannelGroup;
+import io.netty.channel.group.ChannelGroupFuture;
+import io.netty.channel.group.DefaultChannelGroup;
+import io.netty.channel.local.LocalAddress;
+import io.netty.channel.local.LocalChannel;
+import io.netty.channel.local.LocalServerChannel;
+import io.netty.channel.socket.SocketChannel;
+import io.netty.channel.socket.nio.NioServerSocketChannel;
+import io.netty.handler.codec.LengthFieldBasedFrameDecoder;
+import io.netty.handler.codec.LengthFieldPrepender;
+import io.netty.handler.ssl.SslHandler;
+import io.netty.util.concurrent.DefaultThreadFactory;
+import java.io.IOException;
+import java.net.InetSocketAddress;
+import java.net.SocketAddress;
+import java.security.cert.Certificate;
+import java.util.ArrayList;
+import java.util.Arrays;
+import java.util.Collection;
+import java.util.Collections;
+import java.util.List;
+import java.util.Queue;
+import java.util.concurrent.Executor;
+import java.util.concurrent.TimeUnit;
+import java.util.concurrent.atomic.AtomicBoolean;
+import javax.net.ssl.SSLPeerUnverifiedException;
+import org.apache.bookkeeper.auth.AuthProviderFactoryFactory;
+import org.apache.bookkeeper.auth.BookKeeperPrincipal;
+import org.apache.bookkeeper.auth.BookieAuthProvider;
+import org.apache.bookkeeper.bookie.BookieException;
+import org.apache.bookkeeper.bookie.BookieImpl;
+import org.apache.bookkeeper.common.collections.BlockingMpscQueue;
+import org.apache.bookkeeper.common.util.affinity.CpuAffinity;
+import org.apache.bookkeeper.conf.ServerConfiguration;
+import org.apache.bookkeeper.net.BookieId;
+import org.apache.bookkeeper.net.BookieSocketAddress;
+import org.apache.bookkeeper.processor.RequestProcessor;
+import org.apache.bookkeeper.util.ByteBufList;
+import org.apache.bookkeeper.util.EventLoopUtil;
+import org.apache.zookeeper.KeeperException;
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
+
+/**
+ * Netty server for serving bookie requests.
+ */
+class BookieNettyServer {
+
+<span class="nc" id="L91">    private static final Logger LOG = LoggerFactory.getLogger(BookieNettyServer.class);</span>
+
+    final int maxFrameSize;
+    final ServerConfiguration conf;
+    final EventLoopGroup eventLoopGroup;
+    final EventLoopGroup jvmEventLoopGroup;
+    RequestProcessor requestProcessor;
+<span class="nc" id="L98">    final AtomicBoolean isRunning = new AtomicBoolean(false);</span>
+<span class="nc" id="L99">    final AtomicBoolean isClosed = new AtomicBoolean(false);</span>
+<span class="nc" id="L100">    final Object suspensionLock = new Object();</span>
+<span class="nc" id="L101">    volatile boolean suspended = false;</span>
+    ChannelGroup allChannels;
+    final BookieSocketAddress bookieAddress;
+    final BookieId bookieId;
+    final InetSocketAddress bindAddress;
+
+    final BookieAuthProvider.Factory authProviderFactory;
+<span class="nc" id="L108">    final ExtensionRegistry registry = ExtensionRegistry.newInstance();</span>
+
+    private final ByteBufAllocator allocator;
+
+    BookieNettyServer(ServerConfiguration conf, RequestProcessor processor, ByteBufAllocator allocator)
+<span class="nc" id="L113">        throws IOException, KeeperException, InterruptedException, BookieException {</span>
+<span class="nc" id="L114">        this.allocator = allocator;</span>
+<span class="nc" id="L115">        this.maxFrameSize = conf.getNettyMaxFrameSizeBytes();</span>
+<span class="nc" id="L116">        this.conf = conf;</span>
+<span class="nc" id="L117">        this.requestProcessor = processor;</span>
+<span class="nc" id="L118">        this.authProviderFactory = AuthProviderFactoryFactory.newBookieAuthProviderFactory(conf);</span>
+
+<span class="nc bnc" id="L120" title="All 2 branches missed.">        if (!conf.isDisableServerSocketBind()) {</span>
+<span class="nc" id="L121">            this.eventLoopGroup = EventLoopUtil.getServerEventLoopGroup(conf, new DefaultThreadFactory(&quot;bookie-io&quot;));</span>
+<span class="nc" id="L122">            allChannels = new CleanupChannelGroup(eventLoopGroup);</span>
+        } else {
+<span class="nc" id="L124">            this.eventLoopGroup = null;</span>
+        }
+
+<span class="nc bnc" id="L127" title="All 2 branches missed.">        if (conf.isEnableLocalTransport()) {</span>
+<span class="nc" id="L128">            jvmEventLoopGroup = new DefaultEventLoopGroup(conf.getServerNumIOThreads()) {</span>
+                @Override
+                protected EventLoop newChild(Executor executor, Object... args) throws Exception {
+<span class="nc" id="L131">                    return new DefaultEventLoop(this, executor) {</span>
+                        @Override
+                        protected Queue&lt;Runnable&gt; newTaskQueue(int maxPendingTasks) {
+<span class="nc bnc" id="L134" title="All 2 branches missed.">                            if (conf.isBusyWaitEnabled()) {</span>
+<span class="nc" id="L135">                                return new BlockingMpscQueue&lt;&gt;(Math.min(maxPendingTasks, 10_000));</span>
+                            } else {
+<span class="nc" id="L137">                                return super.newTaskQueue(maxPendingTasks);</span>
+                            }
+                        }
+                    };
+                }
+            };
+
+            // Enable CPU affinity on IO threads
+<span class="nc bnc" id="L145" title="All 2 branches missed.">            if (conf.isBusyWaitEnabled()) {</span>
+<span class="nc bnc" id="L146" title="All 2 branches missed.">                for (int i = 0; i &lt; conf.getServerNumIOThreads(); i++) {</span>
+<span class="nc" id="L147">                    jvmEventLoopGroup.next().submit(() -&gt; {</span>
+                        try {
+                            //CpuAffinity.acquireCore();
+                        } catch (Throwable t) {
+                            LOG.warn(&quot;Failed to acquire CPU core for thread {} {}&quot;,
+                                    Thread.currentThread().getName(), t.getMessage(), t);
+                        }
+<span class="nc" id="L154">                    });</span>
+                }
+            }
+
+<span class="nc" id="L158">            allChannels = new CleanupChannelGroup(jvmEventLoopGroup);</span>
+        } else {
+<span class="nc" id="L160">            jvmEventLoopGroup = null;</span>
+        }
+<span class="nc" id="L162">        bookieId = BookieImpl.getBookieId(conf);</span>
+<span class="nc" id="L163">        bookieAddress = BookieImpl.getBookieAddress(conf);</span>
+<span class="nc bnc" id="L164" title="All 2 branches missed.">        if (conf.getListeningInterface() == null) {</span>
+<span class="nc" id="L165">            bindAddress = new InetSocketAddress(conf.getBookiePort());</span>
+        } else {
+<span class="nc" id="L167">            bindAddress = bookieAddress.getSocketAddress();</span>
+        }
+<span class="nc" id="L169">        listenOn(bindAddress, bookieAddress);</span>
+<span class="nc" id="L170">    }</span>
+
+    public BookieNettyServer setRequestProcessor(RequestProcessor processor) {
+<span class="nc" id="L173">        this.requestProcessor = processor;</span>
+<span class="nc" id="L174">        return this;</span>
+    }
+
+    boolean isRunning() {
+<span class="nc" id="L178">        return isRunning.get();</span>
+    }
+
+    @VisibleForTesting
+    void suspendProcessing() {
+<span class="nc" id="L183">        synchronized (suspensionLock) {</span>
+<span class="nc" id="L184">            suspended = true;</span>
+<span class="nc bnc" id="L185" title="All 2 branches missed.">            for (Channel channel : allChannels) {</span>
+                // To suspend processing in the bookie, submit a task
+                // that keeps the event loop busy until resume is
+                // explicitly invoked
+<span class="nc" id="L189">                channel.eventLoop().submit(() -&gt; {</span>
+<span class="nc bnc" id="L190" title="All 4 branches missed.">                    while (suspended &amp;&amp; isRunning()) {</span>
+                        try {
+<span class="nc" id="L192">                            Thread.sleep(10);</span>
+<span class="nc" id="L193">                        } catch (InterruptedException e) {</span>
+<span class="nc" id="L194">                            Thread.currentThread().interrupt();</span>
+<span class="nc" id="L195">                        }</span>
+                    }
+<span class="nc" id="L197">                });</span>
+<span class="nc" id="L198">            }</span>
+<span class="nc" id="L199">        }</span>
+<span class="nc" id="L200">    }</span>
+
+    @VisibleForTesting
+    void resumeProcessing() {
+<span class="nc" id="L204">        synchronized (suspensionLock) {</span>
+<span class="nc" id="L205">            suspended = false;</span>
+<span class="nc bnc" id="L206" title="All 2 branches missed.">            for (Channel channel : allChannels) {</span>
+<span class="nc" id="L207">                channel.config().setAutoRead(true);</span>
+<span class="nc" id="L208">            }</span>
+<span class="nc" id="L209">            suspensionLock.notifyAll();</span>
+<span class="nc" id="L210">        }</span>
+<span class="nc" id="L211">    }</span>
+
+    class BookieSideConnectionPeerContextHandler extends ChannelInboundHandlerAdapter {
+
+        final BookieConnectionPeer connectionPeer;
+        volatile Channel channel;
+<span class="nc" id="L217">        volatile BookKeeperPrincipal authorizedId = BookKeeperPrincipal.ANONYMOUS;</span>
+
+<span class="nc" id="L219">        public BookieSideConnectionPeerContextHandler() {</span>
+<span class="nc" id="L220">            this.connectionPeer = new BookieConnectionPeer() {</span>
+                @Override
+                public SocketAddress getRemoteAddr() {
+<span class="nc" id="L223">                    Channel c = channel;</span>
+<span class="nc bnc" id="L224" title="All 2 branches missed.">                    if (c != null) {</span>
+<span class="nc" id="L225">                        return c.remoteAddress();</span>
+                    } else {
+<span class="nc" id="L227">                        return null;</span>
+                    }
+                }
+
+                @Override
+                public Collection&lt;Object&gt; getProtocolPrincipals() {
+<span class="nc" id="L233">                    Channel c = channel;</span>
+<span class="nc bnc" id="L234" title="All 2 branches missed.">                    if (c == null) {</span>
+<span class="nc" id="L235">                        return Collections.emptyList();</span>
+                    } else {
+<span class="nc" id="L237">                        SslHandler ssl = c.pipeline().get(SslHandler.class);</span>
+<span class="nc bnc" id="L238" title="All 2 branches missed.">                        if (ssl == null) {</span>
+<span class="nc" id="L239">                            return Collections.emptyList();</span>
+                        }
+                        try {
+<span class="nc" id="L242">                            Certificate[] certificates = ssl.engine().getSession().getPeerCertificates();</span>
+<span class="nc bnc" id="L243" title="All 2 branches missed.">                            if (certificates == null) {</span>
+<span class="nc" id="L244">                                return Collections.emptyList();</span>
+                            }
+<span class="nc" id="L246">                            List&lt;Object&gt; result = new ArrayList&lt;&gt;();</span>
+<span class="nc" id="L247">                            result.addAll(Arrays.asList(certificates));</span>
+<span class="nc" id="L248">                            return result;</span>
+<span class="nc" id="L249">                        } catch (SSLPeerUnverifiedException err) {</span>
+<span class="nc" id="L250">                            LOG.error(&quot;Failed to get peer certificates&quot;, err);</span>
+<span class="nc" id="L251">                            return Collections.emptyList();</span>
+                        }
+
+                    }
+                }
+
+                @Override
+                public void disconnect() {
+<span class="nc" id="L259">                    Channel c = channel;</span>
+<span class="nc bnc" id="L260" title="All 2 branches missed.">                    if (c != null) {</span>
+<span class="nc" id="L261">                        c.close();</span>
+                    }
+<span class="nc" id="L263">                    LOG.info(&quot;authplugin disconnected channel {}&quot;, channel);</span>
+<span class="nc" id="L264">                }</span>
+
+                @Override
+                public BookKeeperPrincipal getAuthorizedId() {
+<span class="nc" id="L268">                    return authorizedId;</span>
+                }
+
+                @Override
+                public void setAuthorizedId(BookKeeperPrincipal principal) {
+<span class="nc" id="L273">                    LOG.info(&quot;connection {} authenticated as {}&quot;, channel, principal);</span>
+<span class="nc" id="L274">                    authorizedId = principal;</span>
+<span class="nc" id="L275">                }</span>
+
+                @Override
+                public boolean isSecure() {
+<span class="nc" id="L279">                    Channel c = channel;</span>
+<span class="nc bnc" id="L280" title="All 2 branches missed.">                    if (c == null) {</span>
+<span class="nc" id="L281">                        return false;</span>
+                    } else {
+<span class="nc bnc" id="L283" title="All 2 branches missed.">                        return c.pipeline().get(&quot;tls&quot;) != null;</span>
+                    }
+                }
+            };
+<span class="nc" id="L287">        }</span>
+
+        public BookieConnectionPeer getConnectionPeer() {
+<span class="nc" id="L290">            return connectionPeer;</span>
+        }
+
+        @Override
+        public void channelActive(ChannelHandlerContext ctx) throws Exception {
+<span class="nc" id="L295">            channel = ctx.channel();</span>
+<span class="nc" id="L296">        }</span>
+    }
+
+    private void listenOn(InetSocketAddress address, BookieSocketAddress bookieAddress) throws InterruptedException {
+<span class="nc bnc" id="L300" title="All 2 branches missed.">        if (!conf.isDisableServerSocketBind()) {</span>
+<span class="nc" id="L301">            ServerBootstrap bootstrap = new ServerBootstrap();</span>
+<span class="nc" id="L302">            bootstrap.option(ChannelOption.ALLOCATOR, allocator);</span>
+<span class="nc" id="L303">            bootstrap.childOption(ChannelOption.ALLOCATOR, allocator);</span>
+<span class="nc" id="L304">            bootstrap.group(eventLoopGroup, eventLoopGroup);</span>
+<span class="nc" id="L305">            bootstrap.childOption(ChannelOption.TCP_NODELAY, conf.getServerTcpNoDelay());</span>
+<span class="nc" id="L306">            bootstrap.childOption(ChannelOption.SO_LINGER, conf.getServerSockLinger());</span>
+<span class="nc" id="L307">            bootstrap.childOption(ChannelOption.RCVBUF_ALLOCATOR,</span>
+<span class="nc" id="L308">                    new AdaptiveRecvByteBufAllocator(conf.getRecvByteBufAllocatorSizeMin(),</span>
+<span class="nc" id="L309">                            conf.getRecvByteBufAllocatorSizeInitial(), conf.getRecvByteBufAllocatorSizeMax()));</span>
+<span class="nc" id="L310">            bootstrap.option(ChannelOption.WRITE_BUFFER_WATER_MARK, new WriteBufferWaterMark(</span>
+<span class="nc" id="L311">                    conf.getServerWriteBufferLowWaterMark(), conf.getServerWriteBufferHighWaterMark()));</span>
+
+<span class="nc bnc" id="L313" title="All 2 branches missed.">            if (eventLoopGroup instanceof EpollEventLoopGroup) {</span>
+<span class="nc" id="L314">                bootstrap.channel(EpollServerSocketChannel.class);</span>
+            } else {
+<span class="nc" id="L316">                bootstrap.channel(NioServerSocketChannel.class);</span>
+            }
+
+<span class="nc" id="L319">            bootstrap.childHandler(new ChannelInitializer&lt;SocketChannel&gt;() {</span>
+                @Override
+                protected void initChannel(SocketChannel ch) throws Exception {
+<span class="nc" id="L322">                    synchronized (suspensionLock) {</span>
+<span class="nc bnc" id="L323" title="All 2 branches missed.">                        while (suspended) {</span>
+<span class="nc" id="L324">                            suspensionLock.wait();</span>
+                        }
+<span class="nc" id="L326">                    }</span>
+
+<span class="nc" id="L328">                    BookieSideConnectionPeerContextHandler contextHandler =</span>
+                        new BookieSideConnectionPeerContextHandler();
+<span class="nc" id="L330">                    ChannelPipeline pipeline = ch.pipeline();</span>
+
+                    // For ByteBufList, skip the usual LengthFieldPrepender and have the encoder itself to add it
+<span class="nc" id="L333">                    pipeline.addLast(&quot;bytebufList&quot;, ByteBufList.ENCODER_WITH_SIZE);</span>
+
+<span class="nc" id="L335">                    pipeline.addLast(&quot;lengthbaseddecoder&quot;, new LengthFieldBasedFrameDecoder(maxFrameSize, 0, 4, 0, 4));</span>
+<span class="nc" id="L336">                    pipeline.addLast(&quot;lengthprepender&quot;, new LengthFieldPrepender(4));</span>
+
+<span class="nc" id="L338">                    pipeline.addLast(&quot;bookieProtoDecoder&quot;, new BookieProtoEncoding.RequestDecoder(registry));</span>
+<span class="nc" id="L339">                    pipeline.addLast(&quot;bookieProtoEncoder&quot;, new BookieProtoEncoding.ResponseEncoder(registry));</span>
+<span class="nc" id="L340">                    pipeline.addLast(&quot;bookieAuthHandler&quot;, null);</span>
+
+<span class="nc bnc" id="L342" title="All 2 branches missed.">                    ChannelInboundHandler requestHandler = isRunning.get()</span>
+<span class="nc" id="L343">                            ? new BookieRequestHandler(conf, requestProcessor, allChannels)</span>
+<span class="nc" id="L344">                            : new RejectRequestHandler();</span>
+<span class="nc" id="L345">                    pipeline.addLast(&quot;bookieRequestHandler&quot;, requestHandler);</span>
+
+<span class="nc" id="L347">                    pipeline.addLast(&quot;contextHandler&quot;, contextHandler);</span>
+<span class="nc" id="L348">                }</span>
+            });
+
+            // Bind and start to accept incoming connections
+<span class="nc" id="L352">            LOG.info(&quot;Binding bookie-rpc endpoint to {}&quot;, address);</span>
+<span class="nc" id="L353">            Channel listen = bootstrap.bind(address.getAddress(), address.getPort()).sync().channel();</span>
+<span class="nc bnc" id="L354" title="All 2 branches missed.">            if (listen.localAddress() instanceof InetSocketAddress) {</span>
+<span class="nc bnc" id="L355" title="All 2 branches missed.">                if (conf.getBookiePort() == 0) {</span>
+<span class="nc" id="L356">                    conf.setBookiePort(((InetSocketAddress) listen.localAddress()).getPort());</span>
+                }
+            }
+        }
+
+<span class="nc bnc" id="L361" title="All 2 branches missed.">        if (conf.isEnableLocalTransport()) {</span>
+<span class="nc" id="L362">            ServerBootstrap jvmBootstrap = new ServerBootstrap();</span>
+<span class="nc" id="L363">            jvmBootstrap.childOption(ChannelOption.ALLOCATOR, new PooledByteBufAllocator(true));</span>
+<span class="nc" id="L364">            jvmBootstrap.group(jvmEventLoopGroup, jvmEventLoopGroup);</span>
+<span class="nc" id="L365">            jvmBootstrap.childOption(ChannelOption.TCP_NODELAY, conf.getServerTcpNoDelay());</span>
+<span class="nc" id="L366">            jvmBootstrap.childOption(ChannelOption.SO_KEEPALIVE, conf.getServerSockKeepalive());</span>
+<span class="nc" id="L367">            jvmBootstrap.childOption(ChannelOption.SO_LINGER, conf.getServerSockLinger());</span>
+<span class="nc" id="L368">            jvmBootstrap.childOption(ChannelOption.RCVBUF_ALLOCATOR,</span>
+<span class="nc" id="L369">                    new AdaptiveRecvByteBufAllocator(conf.getRecvByteBufAllocatorSizeMin(),</span>
+<span class="nc" id="L370">                            conf.getRecvByteBufAllocatorSizeInitial(), conf.getRecvByteBufAllocatorSizeMax()));</span>
+<span class="nc" id="L371">            jvmBootstrap.option(ChannelOption.WRITE_BUFFER_WATER_MARK, new WriteBufferWaterMark(</span>
+<span class="nc" id="L372">                    conf.getServerWriteBufferLowWaterMark(), conf.getServerWriteBufferHighWaterMark()));</span>
+
+<span class="nc bnc" id="L374" title="All 2 branches missed.">            if (jvmEventLoopGroup instanceof DefaultEventLoopGroup) {</span>
+<span class="nc" id="L375">                jvmBootstrap.channel(LocalServerChannel.class);</span>
+<span class="nc bnc" id="L376" title="All 2 branches missed.">            } else if (jvmEventLoopGroup instanceof EpollEventLoopGroup) {</span>
+<span class="nc" id="L377">                jvmBootstrap.channel(EpollServerSocketChannel.class);</span>
+            } else {
+<span class="nc" id="L379">                jvmBootstrap.channel(NioServerSocketChannel.class);</span>
+            }
+
+<span class="nc" id="L382">            jvmBootstrap.childHandler(new ChannelInitializer&lt;LocalChannel&gt;() {</span>
+                @Override
+                protected void initChannel(LocalChannel ch) throws Exception {
+<span class="nc" id="L385">                    synchronized (suspensionLock) {</span>
+<span class="nc bnc" id="L386" title="All 2 branches missed.">                        while (suspended) {</span>
+<span class="nc" id="L387">                            suspensionLock.wait();</span>
+                        }
+<span class="nc" id="L389">                    }</span>
+
+<span class="nc" id="L391">                    BookieSideConnectionPeerContextHandler contextHandler =</span>
+                        new BookieSideConnectionPeerContextHandler();
+<span class="nc" id="L393">                    ChannelPipeline pipeline = ch.pipeline();</span>
+
+<span class="nc" id="L395">                    pipeline.addLast(&quot;lengthbaseddecoder&quot;, new LengthFieldBasedFrameDecoder(maxFrameSize, 0, 4, 0, 4));</span>
+<span class="nc" id="L396">                    pipeline.addLast(&quot;lengthprepender&quot;, new LengthFieldPrepender(4));</span>
+
+<span class="nc" id="L398">                    pipeline.addLast(&quot;bookieProtoDecoder&quot;, new BookieProtoEncoding.RequestDecoder(registry));</span>
+<span class="nc" id="L399">                    pipeline.addLast(&quot;bookieProtoEncoder&quot;, new BookieProtoEncoding.ResponseEncoder(registry));</span>
+<span class="nc" id="L400">                    pipeline.addLast(&quot;bookieAuthHandler&quot;, null);</span>
+
+<span class="nc bnc" id="L402" title="All 2 branches missed.">                    ChannelInboundHandler requestHandler = isRunning.get()</span>
+<span class="nc" id="L403">                            ? new BookieRequestHandler(conf, requestProcessor, allChannels)</span>
+<span class="nc" id="L404">                            : new RejectRequestHandler();</span>
+<span class="nc" id="L405">                    pipeline.addLast(&quot;bookieRequestHandler&quot;, requestHandler);</span>
+
+<span class="nc" id="L407">                    pipeline.addLast(&quot;contextHandler&quot;, contextHandler);</span>
+<span class="nc" id="L408">                }</span>
+            });
+<span class="nc" id="L410">            LOG.info(&quot;Binding jvm bookie-rpc endpoint to {}&quot;, bookieId.toString());</span>
+            // use the same address 'name', so clients can find local Bookie still discovering them using ZK
+<span class="nc" id="L412">            jvmBootstrap.bind(new LocalAddress(bookieId.toString())).sync();</span>
+<span class="nc" id="L413">            LocalBookiesRegistry.registerLocalBookieAddress(bookieId);</span>
+        }
+<span class="nc" id="L415">    }</span>
+
+    void start() throws InterruptedException {
+<span class="nc" id="L418">        isRunning.set(true);</span>
+<span class="nc" id="L419">    }</span>
+
+    void shutdown() {
+<span class="nc" id="L422">        LOG.info(&quot;Shutting down BookieNettyServer&quot;);</span>
+<span class="nc" id="L423">        isRunning.set(false);</span>
+
+<span class="nc bnc" id="L425" title="All 2 branches missed.">        if (!isClosed.compareAndSet(false, true)) {</span>
+            // the netty server is already closed.
+<span class="nc" id="L427">            return;</span>
+        }
+
+<span class="nc" id="L430">        allChannels.close().awaitUninterruptibly();</span>
+
+<span class="nc bnc" id="L432" title="All 2 branches missed.">        if (eventLoopGroup != null) {</span>
+            try {
+<span class="nc" id="L434">                eventLoopGroup.shutdownGracefully(0, 10, TimeUnit.MILLISECONDS).await();</span>
+<span class="nc" id="L435">            } catch (InterruptedException e) {</span>
+<span class="nc" id="L436">                Thread.currentThread().interrupt();</span>
+                /// OK
+<span class="nc" id="L438">            }</span>
+        }
+<span class="nc bnc" id="L440" title="All 2 branches missed.">        if (jvmEventLoopGroup != null) {</span>
+<span class="nc" id="L441">            LocalBookiesRegistry.unregisterLocalBookieAddress(bookieAddress.toBookieId());</span>
+<span class="nc" id="L442">            jvmEventLoopGroup.shutdownGracefully();</span>
+        }
+
+<span class="nc" id="L445">        authProviderFactory.close();</span>
+<span class="nc" id="L446">    }</span>
+
+    private static class RejectRequestHandler extends ChannelInboundHandlerAdapter {
+        @Override
+        public void channelActive(ChannelHandlerContext ctx) throws Exception {
+<span class="nc" id="L451">            ctx.channel().close();</span>
+<span class="nc" id="L452">        }</span>
+    }
+
+    private static class CleanupChannelGroup extends DefaultChannelGroup {
+
+<span class="nc" id="L457">        private AtomicBoolean closed = new AtomicBoolean(false);</span>
+
+        public CleanupChannelGroup(EventLoopGroup eventLoopGroup) {
+<span class="nc" id="L460">            super(&quot;BookieChannelGroup&quot;, eventLoopGroup.next());</span>
+<span class="nc" id="L461">        }</span>
+
+        @Override
+        public boolean add(Channel channel) {
+<span class="nc" id="L465">            boolean ret = super.add(channel);</span>
+<span class="nc bnc" id="L466" title="All 2 branches missed.">            if (closed.get()) {</span>
+<span class="nc" id="L467">                channel.close();</span>
+            }
+<span class="nc" id="L469">            return ret;</span>
+        }
+
+        @Override
+        public ChannelGroupFuture close() {
+<span class="nc" id="L474">            closed.set(true);</span>
+<span class="nc" id="L475">            return super.close();</span>
+        }
+
+        @Override
+        public boolean equals(Object o) {
+<span class="nc bnc" id="L480" title="All 2 branches missed.">            if (!(o instanceof CleanupChannelGroup)) {</span>
+<span class="nc" id="L481">                return false;</span>
+            }
+<span class="nc" id="L483">            CleanupChannelGroup other = (CleanupChannelGroup) o;</span>
+<span class="nc bnc" id="L484" title="All 2 branches missed.">            return other.closed.get() == closed.get()</span>
+<span class="nc bnc" id="L485" title="All 2 branches missed.">                &amp;&amp; super.equals(other);</span>
+        }
+
+        @Override
+        public int hashCode() {
+<span class="nc bnc" id="L490" title="All 2 branches missed.">            return super.hashCode() * 17 + (closed.get() ? 1 : 0);</span>
+        }
+    }
+}
+</pre><div class="footer"><span class="right">Created with <a href="http://www.jacoco.org/jacoco">JaCoCo</a> 0.8.2.201808211720</span></div></body></html>

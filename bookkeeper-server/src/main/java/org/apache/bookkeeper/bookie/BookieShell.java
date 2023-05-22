@@ -1,4 +1,4 @@
-/*
+/**
  * Licensed to the Apache Software Foundation (ASF) under one
  * or more contributor license agreements.  See the NOTICE file
  * distributed with this work for additional information
@@ -17,9 +17,8 @@
  */
 
 package org.apache.bookkeeper.bookie;
-
+/*
 import static org.apache.bookkeeper.meta.MetadataDrivers.runFunctionWithLedgerManagerFactory;
-
 import com.google.common.annotations.VisibleForTesting;
 import java.io.File;
 import java.io.IOException;
@@ -39,20 +38,18 @@ import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
 import java.util.stream.Collectors;
-import org.apache.bookkeeper.bookie.storage.EntryLogger;
 import org.apache.bookkeeper.client.LedgerEntry;
 import org.apache.bookkeeper.client.api.LedgerMetadata;
 import org.apache.bookkeeper.common.annotation.InterfaceAudience.Private;
 import org.apache.bookkeeper.conf.ServerConfiguration;
 import org.apache.bookkeeper.meta.LedgerUnderreplicationManager;
+import org.apache.bookkeeper.net.BookieId;
 import org.apache.bookkeeper.replication.ReplicationException;
 import org.apache.bookkeeper.tools.cli.commands.autorecovery.ListUnderReplicatedCommand;
 import org.apache.bookkeeper.tools.cli.commands.autorecovery.LostBookieRecoveryDelayCommand;
-import org.apache.bookkeeper.tools.cli.commands.autorecovery.QueryAutoRecoveryStatusCommand;
 import org.apache.bookkeeper.tools.cli.commands.autorecovery.ToggleCommand;
 import org.apache.bookkeeper.tools.cli.commands.autorecovery.TriggerAuditCommand;
 import org.apache.bookkeeper.tools.cli.commands.autorecovery.WhoIsAuditorCommand;
-import org.apache.bookkeeper.tools.cli.commands.bookie.CheckDBLedgersIndexCommand;
 import org.apache.bookkeeper.tools.cli.commands.bookie.ConvertToDBStorageCommand;
 import org.apache.bookkeeper.tools.cli.commands.bookie.ConvertToInterleavedStorageCommand;
 import org.apache.bookkeeper.tools.cli.commands.bookie.FlipBookieIdCommand;
@@ -69,13 +66,12 @@ import org.apache.bookkeeper.tools.cli.commands.bookie.ReadLedgerCommand;
 import org.apache.bookkeeper.tools.cli.commands.bookie.ReadLogCommand;
 import org.apache.bookkeeper.tools.cli.commands.bookie.ReadLogMetadataCommand;
 import org.apache.bookkeeper.tools.cli.commands.bookie.RebuildDBLedgerLocationsIndexCommand;
-import org.apache.bookkeeper.tools.cli.commands.bookie.RebuildDBLedgersIndexCommand;
 import org.apache.bookkeeper.tools.cli.commands.bookie.RegenerateInterleavedStorageIndexFileCommand;
 import org.apache.bookkeeper.tools.cli.commands.bookie.SanityTestCommand;
 import org.apache.bookkeeper.tools.cli.commands.bookie.UpdateBookieInLedgerCommand;
 import org.apache.bookkeeper.tools.cli.commands.bookies.DecommissionCommand;
-import org.apache.bookkeeper.tools.cli.commands.bookies.EndpointInfoCommand;
-import org.apache.bookkeeper.tools.cli.commands.bookies.InfoCommand;
+//import org.apache.bookkeeper.tools.cli.commands.bookies.EndpointInfoCommand;
+//import org.apache.bookkeeper.tools.cli.commands.bookies.InfoCommand;
 import org.apache.bookkeeper.tools.cli.commands.bookies.InstanceIdCommand;
 import org.apache.bookkeeper.tools.cli.commands.bookies.ListBookiesCommand;
 import org.apache.bookkeeper.tools.cli.commands.bookies.MetaFormatCommand;
@@ -107,13 +103,14 @@ import org.apache.commons.configuration.CompositeConfiguration;
 import org.apache.commons.configuration.PropertiesConfiguration;
 import org.apache.commons.io.FileUtils;
 import org.apache.commons.lang.StringUtils;
+import org.apache.zookeeper.KeeperException;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
 /**
  * Bookie Shell is to provide utilities for users to administer a bookkeeper cluster.
  */
-public class BookieShell implements Tool {
+/*public class BookieShell implements Tool {
 
     static final Logger LOG = LoggerFactory.getLogger(BookieShell.class);
 
@@ -157,10 +154,7 @@ public class BookieShell implements Tool {
     static final String CMD_CONVERT_TO_DB_STORAGE = "convert-to-db-storage";
     static final String CMD_CONVERT_TO_INTERLEAVED_STORAGE = "convert-to-interleaved-storage";
     static final String CMD_REBUILD_DB_LEDGER_LOCATIONS_INDEX = "rebuild-db-ledger-locations-index";
-    static final String CMD_REBUILD_DB_LEDGERS_INDEX = "rebuild-db-ledgers-index";
-    static final String CMD_CHECK_DB_LEDGERS_INDEX = "check-db-ledgers-index";
     static final String CMD_REGENERATE_INTERLEAVED_STORAGE_INDEX_FILE = "regenerate-interleaved-storage-index-file";
-    static final String CMD_QUERY_AUTORECOVERY_STATUS = "queryautorecoverystatus";
 
     // cookie commands
     static final String CMD_CREATE_COOKIE = "cookie_create";
@@ -196,7 +190,7 @@ public class BookieShell implements Tool {
     /**
      * BookieShell command.
      */
-    @Private
+    /*@Private
     public interface Command {
         int runCmd(String[] args) throws Exception;
 
@@ -223,11 +217,9 @@ public class BookieShell implements Tool {
         abstract int runCmd(CommandLine cmdLine) throws Exception;
 
         String cmdName;
-        Options opts;
 
         MyCommand(String cmdName) {
             this.cmdName = cmdName;
-            opts = getOptionsWithHelp();
         }
 
         @Override
@@ -241,10 +233,6 @@ public class BookieShell implements Tool {
             try {
                 BasicParser parser = new BasicParser();
                 CommandLine cmdLine = parser.parse(getOptions(), args);
-                if (cmdLine.hasOption("help")) {
-                    printUsage();
-                    return 0;
-                }
                 return runCmd(cmdLine);
             } catch (ParseException e) {
                 LOG.error("Error parsing command line arguments : ", e);
@@ -259,18 +247,13 @@ public class BookieShell implements Tool {
             System.err.println(cmdName + ": " + getDescription());
             hf.printHelp(getUsage(), getOptions());
         }
-
-        private Options getOptionsWithHelp() {
-            Options opts = new Options();
-            opts.addOption("h", "help", false, "Show the help");
-            return opts;
-        }
     }
 
     /**
      * Format the bookkeeper metadata present in zookeeper.
      */
-    class MetaFormatCmd extends MyCommand {
+    /*class MetaFormatCmd extends MyCommand {
+        Options opts = new Options();
 
         MetaFormatCmd() {
             super(CMD_METAFORMAT);
@@ -319,7 +302,8 @@ public class BookieShell implements Tool {
      * of initnewcluster it would complain saying that ledgersrootpath is
      * already existing.
      */
-    class InitNewCluster extends MyCommand {
+    /*class InitNewCluster extends MyCommand {
+        Options opts = new Options();
 
         InitNewCluster() {
             super(CMD_INITNEWCLUSTER);
@@ -353,7 +337,8 @@ public class BookieShell implements Tool {
     /**
      * Nuke bookkeeper metadata of existing cluster in zookeeper.
      */
-    class NukeExistingCluster extends MyCommand {
+    /*class NukeExistingCluster extends MyCommand {
+        Options opts = new Options();
 
         NukeExistingCluster() {
             super(CMD_NUKEEXISTINGCLUSTER);
@@ -397,7 +382,8 @@ public class BookieShell implements Tool {
     /**
      * Formats the local data present in current bookie server.
      */
-    class BookieFormatCmd extends MyCommand {
+    /*class BookieFormatCmd extends MyCommand {
+        Options opts = new Options();
 
         public BookieFormatCmd() {
             super(CMD_BOOKIEFORMAT);
@@ -444,7 +430,8 @@ public class BookieShell implements Tool {
      * Initializes bookie, by making sure that the journalDir, ledgerDirs and
      * indexDirs are empty and there is no registered Bookie with this BookieId.
      */
-    class InitBookieCmd extends MyCommand {
+    /*class InitBookieCmd extends MyCommand {
+        Options opts = new Options();
 
         public InitBookieCmd() {
             super(CMD_INITBOOKIE);
@@ -477,7 +464,8 @@ public class BookieShell implements Tool {
     /**
      * Recover command for ledger data recovery for failed bookie.
      */
-    class RecoverCmd extends MyCommand {
+    /*class RecoverCmd extends MyCommand {
+        Options opts = new Options();
 
         public RecoverCmd() {
             super(CMD_RECOVER);
@@ -487,8 +475,6 @@ public class BookieShell implements Tool {
             opts.addOption("l", "ledger", true, "Recover a specific ledger");
             opts.addOption("sk", "skipOpenLedgers", false, "Skip recovering open ledgers");
             opts.addOption("d", "deleteCookie", false, "Delete cookie node for the bookie.");
-            opts.addOption("sku", "skipUnrecoverableLedgers", false, "Skip unrecoverable ledgers.");
-            opts.addOption("rate", "replicationRate", false, "Replication rate by bytes");
         }
 
         @Override
@@ -521,10 +507,8 @@ public class BookieShell implements Tool {
             boolean force = cmdLine.hasOption("f");
             boolean skipOpenLedgers = cmdLine.hasOption("sk");
             boolean removeCookies = !dryrun && cmdLine.hasOption("d");
-            boolean skipUnrecoverableLedgers = cmdLine.hasOption("sku");
 
             Long ledgerId = getOptionLedgerIdValue(cmdLine, "ledger", -1);
-            int replicationRate = getOptionIntValue(cmdLine, "replicationRate", -1);
 
             RecoverCommand cmd = new RecoverCommand();
             RecoverCommand.RecoverFlags flags = new RecoverCommand.RecoverFlags();
@@ -533,10 +517,8 @@ public class BookieShell implements Tool {
             flags.dryRun(dryrun);
             flags.force(force);
             flags.ledger(ledgerId);
-            flags.replicateRate(replicationRate);
             flags.skipOpenLedgers(skipOpenLedgers);
             flags.query(query);
-            flags.skipUnrecoverableLedgers(skipUnrecoverableLedgers);
             boolean result = cmd.apply(bkConf, flags);
             return (result) ? 0 : -1;
         }
@@ -545,11 +527,12 @@ public class BookieShell implements Tool {
     /**
      * Ledger Command Handles ledger related operations.
      */
-    class LedgerCmd extends MyCommand {
+    /*class LedgerCmd extends MyCommand {
+        Options lOpts = new Options();
 
         LedgerCmd() {
             super(CMD_LEDGER);
-            opts.addOption("m", "meta", false, "Print meta information");
+            lOpts.addOption("m", "meta", false, "Print meta information");
         }
 
         @Override
@@ -577,29 +560,30 @@ public class BookieShell implements Tool {
 
         @Override
         Options getOptions() {
-            return opts;
+            return lOpts;
         }
     }
 
     /**
      * Command for reading ledger entries.
      */
-    class ReadLedgerEntriesCmd extends MyCommand {
+    /*class ReadLedgerEntriesCmd extends MyCommand {
+        Options lOpts = new Options();
 
         ReadLedgerEntriesCmd() {
             super(CMD_READ_LEDGER_ENTRIES);
-            opts.addOption("m", "msg", false, "Print message body");
-            opts.addOption("l", "ledgerid", true, "Ledger ID");
-            opts.addOption("fe", "firstentryid", true, "First EntryID");
-            opts.addOption("le", "lastentryid", true, "Last EntryID");
-            opts.addOption("r", "force-recovery", false,
+            lOpts.addOption("m", "msg", false, "Print message body");
+            lOpts.addOption("l", "ledgerid", true, "Ledger ID");
+            lOpts.addOption("fe", "firstentryid", true, "First EntryID");
+            lOpts.addOption("le", "lastentryid", true, "Last EntryID");
+            lOpts.addOption("r", "force-recovery", false,
                 "Ensure the ledger is properly closed before reading");
-            opts.addOption("b", "bookie", true, "Only read from a specific bookie");
+            lOpts.addOption("b", "bookie", true, "Only read from a specific bookie");
         }
 
         @Override
         Options getOptions() {
-            return opts;
+            return lOpts;
         }
 
         @Override
@@ -622,6 +606,7 @@ public class BookieShell implements Tool {
 
             boolean printMsg = cmdLine.hasOption("m");
             boolean forceRecovery = cmdLine.hasOption("r");
+            final BookieId bookie;
             String bookieAddress;
             if (cmdLine.hasOption("b")) {
                 // A particular bookie was specified
@@ -647,19 +632,15 @@ public class BookieShell implements Tool {
     /**
      * Command for listing underreplicated ledgers.
      */
-    class ListUnderreplicatedCmd extends MyCommand {
+    /*class ListUnderreplicatedCmd extends MyCommand {
+        Options opts = new Options();
 
         public ListUnderreplicatedCmd() {
             super(CMD_LISTUNDERREPLICATED);
-            opts.addOption("mr", "missingreplica", true, "Bookie Id of missing replica");
-            opts.addOption("emr", "excludingmissingreplica", true,
-                "Bookie Id of missing replica to ignore");
-            opts.addOption("pmr", "printmissingreplica", false,
-                "Whether to print missingreplicas list?");
-            opts.addOption("prw", "printreplicationworkerid", false,
-                "Whether to print replicationworkerid?");
-            opts.addOption("c", "onlydisplayledgercount", false,
-                "Only display underreplicated ledger count");
+            opts.addOption("missingreplica", true, "Bookie Id of missing replica");
+            opts.addOption("excludingmissingreplica", true, "Bookie Id of missing replica to ignore");
+            opts.addOption("printmissingreplica", false, "Whether to print missingreplicas list?");
+            opts.addOption("printreplicationworkerid", false, "Whether to print replicationworkerid?");
         }
 
         @Override
@@ -686,14 +667,12 @@ public class BookieShell implements Tool {
             final String excludingBookieId = cmdLine.getOptionValue("excludingmissingreplica");
             final boolean printMissingReplica = cmdLine.hasOption("printmissingreplica");
             final boolean printReplicationWorkerId = cmdLine.hasOption("printreplicationworkerid");
-            final boolean onlyDisplayLedgerCount = cmdLine.hasOption("onlydisplayledgercount");
 
             ListUnderReplicatedCommand.LURFlags flags = new ListUnderReplicatedCommand.LURFlags()
                                                             .missingReplica(includingBookieId)
                                                             .excludingMissingReplica(excludingBookieId)
                                                             .printMissingReplica(printMissingReplica)
-                                                            .printReplicationWorkerId(printReplicationWorkerId)
-                                                            .onlyDisplayLedgerCount(onlyDisplayLedgerCount);
+                                                            .printReplicationWorkerId(printReplicationWorkerId);
             ListUnderReplicatedCommand cmd = new ListUnderReplicatedCommand(ledgerIdFormatter);
             cmd.apply(bkConf, flags);
             return 0;
@@ -705,12 +684,13 @@ public class BookieShell implements Tool {
     /**
      * Command to list all ledgers in the cluster.
      */
-    class ListLedgersCmd extends MyCommand {
+    /*class ListLedgersCmd extends MyCommand {
+        Options lOpts = new Options();
 
         ListLedgersCmd() {
             super(CMD_LISTLEDGERS);
-            opts.addOption("m", "meta", false, "Print metadata");
-            opts.addOption("bookieid", true, "List ledgers residing in this bookie");
+            lOpts.addOption("m", "meta", false, "Print metadata");
+            lOpts.addOption("bookieid", true, "List ledgers residing in this bookie");
         }
 
         @Override
@@ -738,19 +718,20 @@ public class BookieShell implements Tool {
 
         @Override
         Options getOptions() {
-            return opts;
+            return lOpts;
         }
     }
 
     /**
      * List active ledgers on entry log file.
      **/
-    class ListActiveLedgersCmd extends MyCommand {
+    /*class ListActiveLedgersCmd extends MyCommand {
+        Options lOpts = new Options();
 
         ListActiveLedgersCmd() {
             super(CMD_ACTIVE_LEDGERS_ON_ENTRY_LOG_FILE);
-            opts.addOption("l", "logId", true, "Entry log file id");
-            opts.addOption("t", "timeout", true, "Read timeout(ms)");
+            lOpts.addOption("l", "logId", true, "Entry log file id");
+            lOpts.addOption("t", "timeout", true, "Read timeout(ms)");
         }
 
         @Override
@@ -784,7 +765,7 @@ public class BookieShell implements Tool {
 
         @Override
         Options getOptions() {
-            return opts;
+            return lOpts;
         }
     }
 
@@ -798,14 +779,14 @@ public class BookieShell implements Tool {
     /**
      * Print the metadata for a ledger.
      */
-    class LedgerMetadataCmd extends MyCommand {
+    /*class LedgerMetadataCmd extends MyCommand {
+        Options lOpts = new Options();
 
         LedgerMetadataCmd() {
             super(CMD_LEDGERMETADATA);
-            opts.addOption("l", "ledgerid", true, "Ledger ID");
-            opts.addOption("dumptofile", true, "Dump metadata for ledger, to a file");
-            opts.addOption("restorefromfile", true, "Restore metadata for ledger, from a file");
-            opts.addOption("update", false, "Update metadata if ledger already exist");
+            lOpts.addOption("l", "ledgerid", true, "Ledger ID");
+            lOpts.addOption("dumptofile", true, "Dump metadata for ledger, to a file");
+            lOpts.addOption("restorefromfile", true, "Restore metadata for ledger, from a file");
         }
 
         @Override
@@ -815,7 +796,7 @@ public class BookieShell implements Tool {
                 System.err.println("Must specify a ledger id");
                 return -1;
             }
-            if (cmdLine.hasOption("dumptofile") && cmdLine.hasOption("restorefromfile")) {
+            if (cmdLine.hasOption("dumptofile") && cmdLine.hasOption("restorefromefile")) {
                 System.err.println("Only one of --dumptofile and --restorefromfile can be specified");
                 return -2;
             }
@@ -828,7 +809,6 @@ public class BookieShell implements Tool {
             if (cmdLine.hasOption("restorefromfile")) {
                 flag.restoreFromFile(cmdLine.getOptionValue("restorefromfile"));
             }
-            flag.update(cmdLine.hasOption("update"));
 
             LedgerMetaDataCommand cmd = new LedgerMetaDataCommand(ledgerIdFormatter);
             cmd.apply(bkConf, flag);
@@ -842,19 +822,20 @@ public class BookieShell implements Tool {
 
         @Override
         String getUsage() {
-            return "ledgermetadata -ledgerid <ledgerid> [--dumptofile FILENAME|--restorefromfile FILENAME]";
+            return "ledgermetadata -ledgerid <ledgerid> [--dump-to-file FILENAME|--restore-from-file FILENAME]";
         }
 
         @Override
         Options getOptions() {
-            return opts;
+            return lOpts;
         }
     }
 
     /**
      * Check local storage for inconsistencies.
      */
-    class LocalConsistencyCheck extends MyCommand {
+    /*class LocalConsistencyCheck extends MyCommand {
+        Options lOpts = new Options();
 
         LocalConsistencyCheck() {
             super(CMD_LOCALCONSISTENCYCHECK);
@@ -879,21 +860,22 @@ public class BookieShell implements Tool {
 
         @Override
         Options getOptions() {
-            return opts;
+            return lOpts;
         }
     }
 
     /**
      * Simple test to create a ledger and write to it.
      */
-    class SimpleTestCmd extends MyCommand {
+    /*class SimpleTestCmd extends MyCommand {
+        Options lOpts = new Options();
 
         SimpleTestCmd() {
             super(CMD_SIMPLETEST);
-            opts.addOption("e", "ensemble", true, "Ensemble size (default 3)");
-            opts.addOption("w", "writeQuorum", true, "Write quorum size (default 2)");
-            opts.addOption("a", "ackQuorum", true, "Ack quorum size (default 2)");
-            opts.addOption("n", "numEntries", true, "Entries to write (default 1000)");
+            lOpts.addOption("e", "ensemble", true, "Ensemble size (default 3)");
+            lOpts.addOption("w", "writeQuorum", true, "Write quorum size (default 2)");
+            lOpts.addOption("a", "ackQuorum", true, "Ack quorum size (default 2)");
+            lOpts.addOption("n", "numEntries", true, "Entries to write (default 1000)");
         }
 
         @Override
@@ -927,24 +909,25 @@ public class BookieShell implements Tool {
 
         @Override
         Options getOptions() {
-            return opts;
+            return lOpts;
         }
     }
 
     /**
      * Command to run a bookie sanity test.
      */
-    class BookieSanityTestCmd extends MyCommand {
+    /*class BookieSanityTestCmd extends MyCommand {
+        Options lOpts = new Options();
 
         BookieSanityTestCmd() {
             super(CMD_BOOKIESANITYTEST);
-            opts.addOption("e", "entries", true, "Total entries to be added for the test (default 10)");
-            opts.addOption("t", "timeout", true, "Timeout for write/read operations in seconds (default 1)");
+            lOpts.addOption("e", "entries", true, "Total entries to be added for the test (default 10)");
+            lOpts.addOption("t", "timeout", true, "Timeout for write/read operations in seconds (default 1)");
         }
 
         @Override
         Options getOptions() {
-            return opts;
+            return lOpts;
         }
 
         @Override
@@ -969,15 +952,16 @@ public class BookieShell implements Tool {
     /**
      * Command to read entry log files.
      */
-    class ReadLogCmd extends MyCommand {
+    /*class ReadLogCmd extends MyCommand {
+        Options rlOpts = new Options();
 
         ReadLogCmd() {
             super(CMD_READLOG);
-            opts.addOption("m", "msg", false, "Print message body");
-            opts.addOption("l", "ledgerid", true, "Ledger ID");
-            opts.addOption("e", "entryid", true, "Entry ID");
-            opts.addOption("sp", "startpos", true, "Start Position");
-            opts.addOption("ep", "endpos", true, "End Position");
+            rlOpts.addOption("m", "msg", false, "Print message body");
+            rlOpts.addOption("l", "ledgerid", true, "Ledger ID");
+            rlOpts.addOption("e", "entryid", true, "Entry ID");
+            rlOpts.addOption("sp", "startpos", true, "Start Position");
+            rlOpts.addOption("ep", "endpos", true, "End Position");
         }
 
         @Override
@@ -1029,14 +1013,15 @@ public class BookieShell implements Tool {
 
         @Override
         Options getOptions() {
-            return opts;
+            return rlOpts;
         }
     }
 
     /**
      * Command to print metadata of entrylog.
      */
-    class ReadLogMetadataCmd extends MyCommand {
+    /*class ReadLogMetadataCmd extends MyCommand {
+        Options rlOpts = new Options();
 
         ReadLogMetadataCmd() {
             super(CMD_READLOGMETADATA);
@@ -1055,11 +1040,10 @@ public class BookieShell implements Tool {
 
             long logId;
             try {
-                logId = Long.parseLong(leftArgs[0], 16);
+                logId = Long.parseLong(leftArgs[0]);
                 flags.logId(logId);
             } catch (NumberFormatException nfe) {
                 flags.logFilename(leftArgs[0]);
-                flags.logId(-1);
             }
             cmd.apply(bkConf, flags);
             return 0;
@@ -1077,19 +1061,20 @@ public class BookieShell implements Tool {
 
         @Override
         Options getOptions() {
-            return opts;
+            return rlOpts;
         }
     }
 
     /**
      * Command to read journal files.
      */
-    class ReadJournalCmd extends MyCommand {
+    /*class ReadJournalCmd extends MyCommand {
+        Options rjOpts = new Options();
 
         ReadJournalCmd() {
             super(CMD_READJOURNAL);
-            opts.addOption("dir", true, "Journal directory (needed if more than one journal configured)");
-            opts.addOption("m", "msg", false, "Print message body");
+            rjOpts.addOption("dir", true, "Journal directory (needed if more than one journal configured)");
+            rjOpts.addOption("m", "msg", false, "Print message body");
         }
 
         @Override
@@ -1134,14 +1119,14 @@ public class BookieShell implements Tool {
 
         @Override
         Options getOptions() {
-            return opts;
+            return rjOpts;
         }
     }
 
     /**
      * Command to print last log mark.
      */
-    class LastMarkCmd extends MyCommand {
+   /* class LastMarkCmd extends MyCommand {
         LastMarkCmd() {
             super(CMD_LASTMARK);
         }
@@ -1165,14 +1150,15 @@ public class BookieShell implements Tool {
 
         @Override
         Options getOptions() {
-            return opts;
+            return new Options();
         }
     }
 
     /**
      * List available bookies.
      */
-    class ListBookiesCmd extends MyCommand {
+    /*class ListBookiesCmd extends MyCommand {
+        Options opts = new Options();
 
         ListBookiesCmd() {
             super(CMD_LISTBOOKIES);
@@ -1233,7 +1219,8 @@ public class BookieShell implements Tool {
         }
     }
 
-    class ListDiskFilesCmd extends MyCommand {
+    /*class ListDiskFilesCmd extends MyCommand {
+        Options opts = new Options();
 
         ListDiskFilesCmd() {
             super(CMD_LISTFILESONDISC);
@@ -1275,7 +1262,7 @@ public class BookieShell implements Tool {
     /**
      * Command to print help message.
      */
-    class HelpCmd extends MyCommand {
+    /*class HelpCmd extends MyCommand {
         HelpCmd() {
             super(CMD_HELP);
         }
@@ -1310,14 +1297,15 @@ public class BookieShell implements Tool {
 
         @Override
         Options getOptions() {
-            return opts;
+            return new Options();
         }
     }
 
     /**
      * Command for administration of autorecovery.
      */
-    class AutoRecoveryCmd extends MyCommand {
+   /* class AutoRecoveryCmd extends MyCommand {
+        Options opts = new Options();
 
         public AutoRecoveryCmd() {
             super(CMD_AUTORECOVERY);
@@ -1356,46 +1344,11 @@ public class BookieShell implements Tool {
         }
     }
 
-
-    /**
-     * Command to query autorecovery status.
-     */
-    class QueryAutoRecoveryStatusCmd extends MyCommand {
-
-        public QueryAutoRecoveryStatusCmd() {
-            super(CMD_QUERY_AUTORECOVERY_STATUS);
-        }
-
-        @Override
-        Options getOptions() {
-            return opts;
-        }
-
-        @Override
-        String getDescription() {
-            return "Query the autorecovery status";
-        }
-
-        @Override
-        String getUsage() {
-            return "queryautorecoverystatus";
-        }
-
-        @Override
-        int runCmd(CommandLine cmdLine) throws Exception {
-            final boolean verbose = cmdLine.hasOption("verbose");
-            QueryAutoRecoveryStatusCommand.QFlags flags = new QueryAutoRecoveryStatusCommand.QFlags()
-                                                            .verbose(verbose);
-            QueryAutoRecoveryStatusCommand cmd = new QueryAutoRecoveryStatusCommand();
-            cmd.apply(bkConf, flags);
-            return 0;
-        }
-    }
-
     /**
      * Setter and Getter for LostBookieRecoveryDelay value (in seconds) in metadata store.
      */
-    class LostBookieRecoveryDelayCmd extends MyCommand {
+    /*class LostBookieRecoveryDelayCmd extends MyCommand {
+        Options opts = new Options();
 
         public LostBookieRecoveryDelayCmd() {
             super(CMD_LOSTBOOKIERECOVERYDELAY);
@@ -1438,7 +1391,8 @@ public class BookieShell implements Tool {
     /**
      * Print which node has the auditor lock.
      */
-    class WhoIsAuditorCmd extends MyCommand {
+    /*class WhoIsAuditorCmd extends MyCommand {
+        Options opts = new Options();
 
         public WhoIsAuditorCmd() {
             super(CMD_WHOISAUDITOR);
@@ -1471,7 +1425,8 @@ public class BookieShell implements Tool {
     /**
      * Prints the instanceid of the cluster.
      */
-    class WhatIsInstanceId extends MyCommand {
+    /*class WhatIsInstanceId extends MyCommand {
+        Options opts = new Options();
 
         public WhatIsInstanceId() {
             super(CMD_WHATISINSTANCEID);
@@ -1503,7 +1458,8 @@ public class BookieShell implements Tool {
     /**
      * Update cookie command.
      */
-    class UpdateCookieCmd extends MyCommand {
+   /* class UpdateCookieCmd extends MyCommand {
+        Options opts = new Options();
         private static final String BOOKIEID = "bookieId";
         private static final String EXPANDSTORAGE = "expandstorage";
         private static final String LIST = "list";
@@ -1589,7 +1545,8 @@ public class BookieShell implements Tool {
     /**
      * Update ledger command.
      */
-    class UpdateLedgerCmd extends MyCommand {
+    /*class UpdateLedgerCmd extends MyCommand {
+        private final Options opts = new Options();
 
         UpdateLedgerCmd() {
             super(CMD_UPDATELEDGER);
@@ -1664,7 +1621,8 @@ public class BookieShell implements Tool {
     /**
      * Update bookie into ledger command.
      */
-    class UpdateBookieInLedgerCmd extends MyCommand {
+    /*class UpdateBookieInLedgerCmd extends MyCommand {
+        private final Options opts = new Options();
 
         UpdateBookieInLedgerCmd() {
             super(CMD_UPDATE_BOOKIE_IN_LEDGER);
@@ -1742,12 +1700,13 @@ public class BookieShell implements Tool {
     /**
      * Command to delete a given ledger.
      */
-    class DeleteLedgerCmd extends MyCommand {
+    /*class DeleteLedgerCmd extends MyCommand {
+        Options lOpts = new Options();
 
         DeleteLedgerCmd() {
             super(CMD_DELETELEDGER);
-            opts.addOption("l", "ledgerid", true, "Ledger ID");
-            opts.addOption("f", "force", false, "Whether to force delete the Ledger without prompt..?");
+            lOpts.addOption("l", "ledgerid", true, "Ledger ID");
+            lOpts.addOption("f", "force", false, "Whether to force delete the Ledger without prompt..?");
         }
 
         @Override
@@ -1775,7 +1734,7 @@ public class BookieShell implements Tool {
 
         @Override
         Options getOptions() {
-            return opts;
+            return lOpts;
         }
     }
 
@@ -1783,7 +1742,8 @@ public class BookieShell implements Tool {
      * Command to retrieve bookie information like free disk space, etc from all
      * the bookies in the cluster.
      */
-    class BookieInfoCmd extends MyCommand {
+    /*class BookieInfoCmd extends MyCommand {
+        Options lOpts = new Options();
 
         BookieInfoCmd() {
             super(CMD_BOOKIEINFO);
@@ -1801,10 +1761,10 @@ public class BookieShell implements Tool {
 
         @Override
         Options getOptions() {
-            return opts;
+            return lOpts;
         }
 
-        @Override
+       /* @Override
         public int runCmd(CommandLine cmdLine) throws Exception {
             InfoCommand cmd = new InfoCommand();
             cmd.apply(bkConf, new CliFlags());
@@ -1815,7 +1775,8 @@ public class BookieShell implements Tool {
     /**
      * Command to trigger AuditTask by resetting lostBookieRecoveryDelay to its current value.
      */
-    class TriggerAuditCmd extends MyCommand {
+   /* class TriggerAuditCmd extends MyCommand {
+        Options opts = new Options();
 
         TriggerAuditCmd() {
             super(CMD_TRIGGERAUDIT);
@@ -1845,6 +1806,7 @@ public class BookieShell implements Tool {
     }
 
     class ForceAuditorChecksCmd extends MyCommand {
+        Options opts = new Options();
 
         ForceAuditorChecksCmd() {
             super(CMD_FORCEAUDITCHECKS);
@@ -1899,7 +1861,7 @@ public class BookieShell implements Tool {
                                 underreplicationManager.setReplicasCheckCTime(time);
                             }
                         }
-                    } catch (InterruptedException | ReplicationException e) {
+                    } catch (InterruptedException | KeeperException | ReplicationException e) {
                         LOG.error("Exception while trying to reset last run time ", e);
                         return -1;
                     }
@@ -1919,11 +1881,12 @@ public class BookieShell implements Tool {
      * and Cookie of the decommissioned bookie should be deleted from metadata
      * server.
      */
-    class DecommissionBookieCmd extends MyCommand {
+    /*class DecommissionBookieCmd extends MyCommand {
+        Options lOpts = new Options();
 
         DecommissionBookieCmd() {
             super(CMD_DECOMMISSIONBOOKIE);
-            opts.addOption("bookieid", true, "decommission a remote bookie");
+            lOpts.addOption("bookieid", true, "decommission a remote bookie");
         }
 
         @Override
@@ -1939,7 +1902,7 @@ public class BookieShell implements Tool {
 
         @Override
         Options getOptions() {
-            return opts;
+            return lOpts;
         }
 
         @Override
@@ -1956,11 +1919,12 @@ public class BookieShell implements Tool {
     /**
      * Command to retrieve remote bookie endpoint information.
      */
-    class EndpointInfoCmd extends MyCommand {
+    /*class EndpointInfoCmd extends MyCommand {
+        Options lOpts = new Options();
 
         EndpointInfoCmd() {
             super(CMD_ENDPOINTINFO);
-            opts.addOption("b", "bookieid", true, "Bookie Id");
+            lOpts.addOption("b", "bookieid", true, "Bookie Id");
         }
 
         @Override
@@ -1975,7 +1939,7 @@ public class BookieShell implements Tool {
 
         @Override
         Options getOptions() {
-            return opts;
+            return lOpts;
         }
 
         @Override
@@ -1998,14 +1962,15 @@ public class BookieShell implements Tool {
     /**
      * A facility for reporting update ledger progress.
      */
-    public interface UpdateLedgerNotifier {
+   /* public interface UpdateLedgerNotifier {
         void progress(long updated, long issued);
     }
 
     /**
      * Convert bookie indexes from InterleavedStorage to DbLedgerStorage format.
      */
-    class ConvertToDbStorageCmd extends MyCommand {
+   /* class ConvertToDbStorageCmd extends MyCommand {
+        Options opts = new Options();
 
         public ConvertToDbStorageCmd() {
             super(CMD_CONVERT_TO_DB_STORAGE);
@@ -2039,7 +2004,8 @@ public class BookieShell implements Tool {
     /**
      * Convert bookie indexes from DbLedgerStorage to InterleavedStorage format.
      */
-    class ConvertToInterleavedStorageCmd extends MyCommand {
+    /*class ConvertToInterleavedStorageCmd extends MyCommand {
+        Options opts = new Options();
 
         public ConvertToInterleavedStorageCmd() {
             super(CMD_CONVERT_TO_INTERLEAVED_STORAGE);
@@ -2072,7 +2038,8 @@ public class BookieShell implements Tool {
     /**
      * Rebuild DbLedgerStorage locations index.
      */
-    class RebuildDbLedgerLocationsIndexCmd extends MyCommand {
+    /*class RebuildDbLedgerLocationsIndexCmd extends MyCommand {
+        Options opts = new Options();
 
         public RebuildDbLedgerLocationsIndexCmd() {
             super(CMD_REBUILD_DB_LEDGER_LOCATIONS_INDEX);
@@ -2102,88 +2069,10 @@ public class BookieShell implements Tool {
     }
 
     /**
-     * Rebuild DbLedgerStorage ledgers index.
-     */
-    class RebuildDbLedgersIndexCmd extends MyCommand {
-
-        public RebuildDbLedgersIndexCmd() {
-            super(CMD_REBUILD_DB_LEDGERS_INDEX);
-            opts.addOption("v", "verbose", false, "Verbose logging, print the ledgers added to the new index");
-        }
-
-        @Override
-        Options getOptions() {
-            return opts;
-        }
-
-        @Override
-        String getDescription() {
-            return "Rebuild DbLedgerStorage ledgers index by scanning "
-                + "the journal and entry logs (sets all ledgers to fenced)";
-        }
-
-        @Override
-        String getUsage() {
-            return CMD_REBUILD_DB_LEDGERS_INDEX;
-        }
-
-        @Override
-        int runCmd(CommandLine cmdLine) throws Exception {
-            RebuildDBLedgersIndexCommand.RebuildLedgersIndexFlags flags =
-                    new RebuildDBLedgersIndexCommand.RebuildLedgersIndexFlags();
-            flags.verbose(cmdLine.hasOption("v"));
-            RebuildDBLedgersIndexCommand cmd = new RebuildDBLedgersIndexCommand();
-            if (cmd.apply(bkConf, flags)) {
-                return 0;
-            } else {
-                return -1;
-            }
-        }
-    }
-
-    /**
-     * Rebuild DbLedgerStorage ledgers index.
-     */
-    class CheckDbLedgersIndexCmd extends MyCommand {
-
-        public CheckDbLedgersIndexCmd() {
-            super(CMD_CHECK_DB_LEDGERS_INDEX);
-            opts.addOption("v", "verbose", false, "Verbose logging, print the ledger data in the index.");
-        }
-
-        @Override
-        Options getOptions() {
-            return opts;
-        }
-
-        @Override
-        String getDescription() {
-            return "Check DbLedgerStorage ledgers index by performing a read scan";
-        }
-
-        @Override
-        String getUsage() {
-            return CMD_CHECK_DB_LEDGERS_INDEX;
-        }
-
-        @Override
-        int runCmd(CommandLine cmdLine) throws Exception {
-            CheckDBLedgersIndexCommand.CheckLedgersIndexFlags flags =
-                    new CheckDBLedgersIndexCommand.CheckLedgersIndexFlags();
-            flags.verbose(cmdLine.hasOption("v"));
-            CheckDBLedgersIndexCommand cmd = new CheckDBLedgersIndexCommand();
-            if (cmd.apply(bkConf, flags)) {
-                return 0;
-            } else {
-                return -1;
-            }
-        }
-    }
-
-    /**
      * Regenerate an index file for interleaved storage.
      */
-    class RegenerateInterleavedStorageIndexFile extends MyCommand {
+   /* class RegenerateInterleavedStorageIndexFile extends MyCommand {
+        Options opts = new Options();
 
         public RegenerateInterleavedStorageIndexFile() {
             super(CMD_REGENERATE_INTERLEAVED_STORAGE_INDEX_FILE);
@@ -2264,7 +2153,6 @@ public class BookieShell implements Tool {
         commands.put(CMD_READJOURNAL, new ReadJournalCmd());
         commands.put(CMD_LASTMARK, new LastMarkCmd());
         commands.put(CMD_AUTORECOVERY, new AutoRecoveryCmd());
-        commands.put(CMD_QUERY_AUTORECOVERY_STATUS, new QueryAutoRecoveryStatusCmd());
         commands.put(CMD_LISTBOOKIES, new ListBookiesCmd());
         commands.put(CMD_LISTFILESONDISC, new ListDiskFilesCmd());
         commands.put(CMD_UPDATECOOKIE, new UpdateCookieCmd());
@@ -2277,8 +2165,6 @@ public class BookieShell implements Tool {
         commands.put(CMD_CONVERT_TO_DB_STORAGE, new ConvertToDbStorageCmd());
         commands.put(CMD_CONVERT_TO_INTERLEAVED_STORAGE, new ConvertToInterleavedStorageCmd());
         commands.put(CMD_REBUILD_DB_LEDGER_LOCATIONS_INDEX, new RebuildDbLedgerLocationsIndexCmd());
-        commands.put(CMD_REBUILD_DB_LEDGERS_INDEX, new RebuildDbLedgersIndexCmd());
-        commands.put(CMD_CHECK_DB_LEDGERS_INDEX, new CheckDbLedgersIndexCmd());
         commands.put(CMD_REGENERATE_INTERLEAVED_STORAGE_INDEX_FILE, new RegenerateInterleavedStorageIndexFile());
         commands.put(CMD_HELP, new HelpCmd());
         commands.put(CMD_LOSTBOOKIERECOVERYDELAY, new LostBookieRecoveryDelayCmd());
@@ -2357,7 +2243,7 @@ public class BookieShell implements Tool {
      * @param extensions - the file extensions, which we are interested in
      * @return sorted list of files
      */
-    public static List<File> listFilesAndSort(File[] folderNames, String... extensions) {
+    /*public static List<File> listFilesAndSort(File[] folderNames, String... extensions) {
         List<File> completeFilesList = new ArrayList<File>();
         for (int i = 0; i < folderNames.length; i++) {
             Collection<File> filesCollection = FileUtils.listFiles(folderNames[i], extensions, true);
@@ -2387,7 +2273,7 @@ public class BookieShell implements Tool {
                  * method may return FileTime representing the epoch (1970-01-01T00:00:00Z). So in that case
                  * it would be better to compare lastModifiedTime
                  */
-                if (compareValue == 0) {
+                /*if (compareValue == 0) {
                     FileTime file1LastModifiedTime = file1Attributes.lastModifiedTime();
                     FileTime file2LastModifiedTime = file2Attributes.lastModifiedTime();
                     compareValue = file1LastModifiedTime.compareTo(file2LastModifiedTime);
@@ -2399,62 +2285,52 @@ public class BookieShell implements Tool {
         }
     }
 
-    public static void main(String[] argv) {
-        int res = -1;
-        try {
-            BookieShell shell = new BookieShell();
+    public static void main(String[] argv) throws Exception {
+        BookieShell shell = new BookieShell();
 
-            // handle some common options for multiple cmds
-            Options opts = new Options();
-            opts.addOption(CONF_OPT, true, "configuration file");
-            opts.addOption(LEDGERID_FORMATTER_OPT, true, "format of ledgerId");
-            opts.addOption(ENTRY_FORMATTER_OPT, true, "format of entries");
-            BasicParser parser = new BasicParser();
-            CommandLine cmdLine = parser.parse(opts, argv, true);
+        // handle some common options for multiple cmds
+        Options opts = new Options();
+        opts.addOption(CONF_OPT, true, "configuration file");
+        opts.addOption(LEDGERID_FORMATTER_OPT, true, "format of ledgerId");
+        opts.addOption(ENTRY_FORMATTER_OPT, true, "format of entries");
+        BasicParser parser = new BasicParser();
+        CommandLine cmdLine = parser.parse(opts, argv, true);
 
-            // load configuration
-            CompositeConfiguration conf = new CompositeConfiguration();
-            if (cmdLine.hasOption(CONF_OPT)) {
-                String val = cmdLine.getOptionValue(CONF_OPT);
-                conf.addConfiguration(new PropertiesConfiguration(
-                        new File(val).toURI().toURL()));
-            }
-            shell.setConf(conf);
-
-            // ledgerid format
-            if (cmdLine.hasOption(LEDGERID_FORMATTER_OPT)) {
-                String val = cmdLine.getOptionValue(LEDGERID_FORMATTER_OPT);
-                shell.ledgerIdFormatter = LedgerIdFormatter.newLedgerIdFormatter(val, shell.bkConf);
-            } else {
-                shell.ledgerIdFormatter = LedgerIdFormatter.newLedgerIdFormatter(shell.bkConf);
-            }
-            if (LOG.isDebugEnabled()) {
-                LOG.debug("Using ledgerIdFormatter {}", shell.ledgerIdFormatter.getClass());
-            }
-
-            // entry format
-            if (cmdLine.hasOption(ENTRY_FORMATTER_OPT)) {
-                String val = cmdLine.getOptionValue(ENTRY_FORMATTER_OPT);
-                shell.entryFormatter = EntryFormatter.newEntryFormatter(val, shell.bkConf);
-            } else {
-                shell.entryFormatter = EntryFormatter.newEntryFormatter(shell.bkConf);
-            }
-            if (LOG.isDebugEnabled()) {
-                LOG.debug("Using entry formatter {}", shell.entryFormatter.getClass());
-            }
-
-            res = shell.run(cmdLine.getArgs());
-        } catch (Throwable e) {
-            LOG.error("Got an exception", e);
-        } finally {
-            System.exit(res);
+        // load configuration
+        CompositeConfiguration conf = new CompositeConfiguration();
+        if (cmdLine.hasOption(CONF_OPT)) {
+            String val = cmdLine.getOptionValue(CONF_OPT);
+            conf.addConfiguration(new PropertiesConfiguration(
+                    new File(val).toURI().toURL()));
         }
+        shell.setConf(conf);
+
+        // ledgerid format
+        if (cmdLine.hasOption(LEDGERID_FORMATTER_OPT)) {
+            String val = cmdLine.getOptionValue(LEDGERID_FORMATTER_OPT);
+            shell.ledgerIdFormatter = LedgerIdFormatter.newLedgerIdFormatter(val, shell.bkConf);
+        } else {
+            shell.ledgerIdFormatter = LedgerIdFormatter.newLedgerIdFormatter(shell.bkConf);
+        }
+        LOG.debug("Using ledgerIdFormatter {}", shell.ledgerIdFormatter.getClass());
+
+        // entry format
+        if (cmdLine.hasOption(ENTRY_FORMATTER_OPT)) {
+            String val = cmdLine.getOptionValue(ENTRY_FORMATTER_OPT);
+            shell.entryFormatter = EntryFormatter.newEntryFormatter(val, shell.bkConf);
+        } else {
+            shell.entryFormatter = EntryFormatter.newEntryFormatter(shell.bkConf);
+        }
+        LOG.debug("Using entry formatter {}", shell.entryFormatter.getClass());
+
+        int res = shell.run(cmdLine.getArgs());
+        System.exit(res);
     }
 
     private synchronized void initEntryLogger() throws IOException {
         if (null == entryLogger) {
             // provide read only entry logger
-            entryLogger = new ReadOnlyDefaultEntryLogger(bkConf);
+            entryLogger = new ReadOnlyEntryLogger(bkConf);
         }
     }
 
@@ -2481,7 +2357,7 @@ public class BookieShell implements Tool {
      * @param printMsg
      *          Whether printing the message body
      */
-    private void formatEntry(LedgerEntry entry, boolean printMsg) {
+   /* private void formatEntry(LedgerEntry entry, boolean printMsg) {
         long ledgerId = entry.getLedgerId();
         long entryId = entry.getEntryId();
         long entrySize = entry.getLength();
@@ -2542,5 +2418,4 @@ public class BookieShell implements Tool {
     private static boolean getOptionalValue(String optValue, String optName) {
         return StringUtils.equals(optValue, optName);
     }
-
-}
+}*/

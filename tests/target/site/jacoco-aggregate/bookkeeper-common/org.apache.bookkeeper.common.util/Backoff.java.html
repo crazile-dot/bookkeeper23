@@ -1,0 +1,299 @@
+<?xml version="1.0" encoding="UTF-8"?><!DOCTYPE html PUBLIC "-//W3C//DTD XHTML 1.0 Strict//EN" "http://www.w3.org/TR/xhtml1/DTD/xhtml1-strict.dtd"><html xmlns="http://www.w3.org/1999/xhtml" lang="it"><head><meta http-equiv="Content-Type" content="text/html;charset=UTF-8"/><link rel="stylesheet" href="../../jacoco-resources/report.css" type="text/css"/><link rel="shortcut icon" href="../../jacoco-resources/report.gif" type="image/gif"/><title>Backoff.java</title><link rel="stylesheet" href="../../jacoco-resources/prettify.css" type="text/css"/><script type="text/javascript" src="../../jacoco-resources/prettify.js"></script></head><body onload="window['PR_TAB_WIDTH']=4;prettyPrint()"><div class="breadcrumb" id="breadcrumb"><span class="info"><a href="../../jacoco-sessions.html" class="el_session">Sessions</a></span><a href="../../index.html" class="el_report">Tests</a> &gt; <a href="../index.html" class="el_bundle">bookkeeper-common</a> &gt; <a href="index.source.html" class="el_package">org.apache.bookkeeper.common.util</a> &gt; <span class="el_source">Backoff.java</span></div><h1>Backoff.java</h1><pre class="source lang-java linenums">/*
+ * Licensed to the Apache Software Foundation (ASF) under one
+ * or more contributor license agreements.  See the NOTICE file
+ * distributed with this work for additional information
+ * regarding copyright ownership.  The ASF licenses this file
+ * to you under the Apache License, Version 2.0 (the
+ * &quot;License&quot;); you may not use this file except in compliance
+ * with the License.  You may obtain a copy of the License at
+ *
+ *      http://www.apache.org/licenses/LICENSE-2.0
+ *
+ * Unless required by applicable law or agreed to in writing, software
+ * distributed under the License is distributed on an &quot;AS IS&quot; BASIS,
+ * WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+ * See the License for the specific language governing permissions and
+ * limitations under the License.
+ */
+
+package org.apache.bookkeeper.common.util;
+
+import java.util.concurrent.ThreadLocalRandom;
+import java.util.concurrent.TimeUnit;
+import java.util.concurrent.atomic.AtomicLong;
+import java.util.stream.Stream;
+import lombok.Data;
+import lombok.ToString;
+import org.apache.bookkeeper.common.util.Backoff.Jitter.Type;
+
+/**
+ * Implements various backoff strategies.
+ *
+ * &lt;p&gt;Strategies are defined by a {@link java.util.stream.Stream} of durations
+ * and are intended to determine the duration after which a task is to be
+ * retried.
+ */
+<span class="nc" id="L36">public class Backoff {</span>
+
+<span class="nc" id="L38">    public static final Policy DEFAULT = Jitter.of(</span>
+        Type.EXPONENTIAL,
+        200,
+        2000,
+        3);
+
+    private static final int MaxBitShift = 62;
+
+    /**
+     * Back off policy.
+     *
+     * &lt;p&gt;It defines a stream of time durations that will be used for backing off.
+     */
+    public interface Policy {
+
+<span class="nc" id="L53">        Policy NONE = () -&gt; Stream.empty();</span>
+
+        /**
+         * Convert the policy into a series of backoff values.
+         *
+         * @return a series of backoff values.
+         */
+        Stream&lt;Long&gt; toBackoffs();
+
+    }
+
+    /**
+     * A constant backoff policy.
+     */
+<span class="nc bnc" id="L67" title="All 10 branches missed.">    @Data(staticConstructor = &quot;of&quot;)</span>
+<span class="nc" id="L68">    @ToString</span>
+    public static class Constant implements Policy {
+
+        /**
+         * Create infinite constant backoff stream.
+         *
+         * &lt;p&gt;It is the infinite version of {@link #of(long, long)}.
+         *
+         * @param ms constant backoff time in milliseconds.
+         * @return constant backoff policy.
+         */
+        public static Constant of(long ms) {
+<span class="nc" id="L80">            return of(ms, -1);</span>
+        }
+
+<span class="nc" id="L83">        private final long ms;</span>
+<span class="nc" id="L84">        private final long limit;</span>
+
+        @Override
+        public Stream&lt;Long&gt; toBackoffs() {
+<span class="nc bnc" id="L88" title="All 2 branches missed.">            if (limit &gt;= 0) {</span>
+<span class="nc" id="L89">                return constant(ms).limit(limit);</span>
+            } else {
+<span class="nc" id="L91">                return constant(ms);</span>
+            }
+        }
+    }
+
+    /**
+     * A Jittered backoff policy.
+     *
+     * &lt;p&gt;It is an implementation of {@link http://www.awsarchitectureblog.com/2015/03/backoff.html}
+     */
+<span class="nc bnc" id="L101" title="All 20 branches missed.">    @Data(staticConstructor = &quot;of&quot;)</span>
+<span class="nc" id="L102">    @ToString</span>
+    public static class Jitter implements Policy {
+
+        /**
+         * Jitter type.
+         */
+<span class="nc" id="L108">        public enum Type {</span>
+<span class="nc" id="L109">            DECORRELATED,</span>
+<span class="nc" id="L110">            EQUAL,</span>
+<span class="nc" id="L111">            EXPONENTIAL</span>
+        }
+
+        /**
+         * Create infinite jittered backoff stream.
+         *
+         * &lt;p&gt;It is the infinite version of {@link #of(Type, long, long, long)}.
+         *
+         * @param type    jittered backoff type
+         * @param startMs the start backoff time in milliseconds.
+         * @param maxMs   the max backoff time in milliseconds.
+         * @return jittered backoff policy.
+         */
+        public static Jitter of(Type type, long startMs, long maxMs) {
+<span class="nc" id="L125">            return of(type, startMs, maxMs, -1);</span>
+        }
+
+<span class="nc" id="L128">        private final Type type;</span>
+<span class="nc" id="L129">        private final long startMs;</span>
+<span class="nc" id="L130">        private final long maxMs;</span>
+<span class="nc" id="L131">        private final long limit;</span>
+
+        @Override
+        public Stream&lt;Long&gt; toBackoffs() {
+            Stream&lt;Long&gt; backoffStream;
+<span class="nc bnc" id="L136" title="All 3 branches missed.">            switch (type) {</span>
+                case DECORRELATED:
+<span class="nc" id="L138">                    backoffStream = decorrelatedJittered(startMs, maxMs);</span>
+<span class="nc" id="L139">                    break;</span>
+                case EQUAL:
+<span class="nc" id="L141">                    backoffStream = equalJittered(startMs, maxMs);</span>
+<span class="nc" id="L142">                    break;</span>
+                case EXPONENTIAL:
+                default:
+<span class="nc" id="L145">                    backoffStream = exponentialJittered(startMs, maxMs);</span>
+                    break;
+            }
+<span class="nc bnc" id="L148" title="All 2 branches missed.">            if (limit &gt;= 0) {</span>
+<span class="nc" id="L149">                return backoffStream.limit(limit);</span>
+            } else {
+<span class="nc" id="L151">                return backoffStream;</span>
+            }
+        }
+    }
+
+    /**
+     * A exponential backoff policy.
+     */
+<span class="nc bnc" id="L159" title="All 14 branches missed.">    @Data(staticConstructor = &quot;of&quot;)</span>
+<span class="nc" id="L160">    @ToString</span>
+    public static class Exponential implements Policy {
+
+        /**
+         * Create an infinite exponential backoff policy.
+         *
+         * &lt;p&gt;It is the infinite version of {@link #of(long, long, int, int)}.
+         *
+         * @param startMs    start backoff time in milliseconds.
+         * @param maxMs      max backoff time in milliseconds.
+         * @param multiplier the backoff multiplier
+         * @return the exponential backoff policy.
+         */
+        public static Exponential of(long startMs, long maxMs, int multiplier) {
+<span class="nc" id="L174">            return of(startMs, maxMs, multiplier, -1);</span>
+        }
+
+<span class="nc" id="L177">        private final long startMs;</span>
+<span class="nc" id="L178">        private final long maxMs;</span>
+<span class="nc" id="L179">        private final int multiplier;</span>
+<span class="nc" id="L180">        private final int limit;</span>
+
+        @Override
+        public Stream&lt;Long&gt; toBackoffs() {
+<span class="nc bnc" id="L184" title="All 2 branches missed.">            if (limit &gt;= 0) {</span>
+<span class="nc" id="L185">                return exponential(startMs, multiplier, maxMs).limit(limit);</span>
+            } else {
+<span class="nc" id="L187">                return exponential(startMs, multiplier, maxMs);</span>
+            }
+        }
+    }
+
+    /**
+     * Create a stream with constant backoffs.
+     *
+     * @param startMs initial backoff in milliseconds
+     * @return a stream with constant backoff values.
+     */
+    public static Stream&lt;Long&gt; constant(long startMs) {
+<span class="nc" id="L199">        return Stream.iterate(startMs, lastMs -&gt; startMs);</span>
+    }
+
+    /**
+     * Create a stream with exponential backoffs.
+     *
+     * @param startMs    initial backoff in milliseconds.
+     * @param multiplier the multiplier for next backoff.
+     * @param maxMs      max backoff in milliseconds.
+     * @return a stream with exponential backoffs.
+     */
+    public static Stream&lt;Long&gt; exponential(long startMs,
+                                           int multiplier,
+                                           long maxMs) {
+<span class="nc" id="L213">        return Stream.iterate(startMs, lastMs -&gt; Math.min(lastMs * multiplier, maxMs));</span>
+    }
+
+    /**
+     * Create a stream of exponential backoffs with jitters.
+     *
+     * &lt;p&gt;This is &quot;full jitter&quot; via http://www.awsarchitectureblog.com/2015/03/backoff.html
+     *
+     * @param startMs initial backoff in milliseconds.
+     * @param maxMs   max backoff in milliseconds.
+     * @return a stream of exponential backoffs with jitters.
+     */
+    public static Stream&lt;Long&gt; exponentialJittered(long startMs,
+                                                   long maxMs) {
+<span class="nc" id="L227">        final long startNanos = TimeUnit.NANOSECONDS.convert(startMs, TimeUnit.MILLISECONDS);</span>
+<span class="nc" id="L228">        final long maxNanos = TimeUnit.NANOSECONDS.convert(maxMs, TimeUnit.MILLISECONDS);</span>
+<span class="nc" id="L229">        final AtomicLong attempts = new AtomicLong(1);</span>
+<span class="nc" id="L230">        return Stream.iterate(startMs, lastMs -&gt; {</span>
+<span class="nc" id="L231">            long shift = Math.min(attempts.get(), MaxBitShift);</span>
+<span class="nc" id="L232">            long maxBackoffNanos = Math.min(maxNanos, startNanos * (1L &lt;&lt; shift));</span>
+<span class="nc" id="L233">            long randomMs = TimeUnit.MILLISECONDS.convert(</span>
+<span class="nc" id="L234">                ThreadLocalRandom.current().nextLong(startNanos, maxBackoffNanos),</span>
+                TimeUnit.NANOSECONDS);
+<span class="nc" id="L236">            attempts.incrementAndGet();</span>
+<span class="nc" id="L237">            return randomMs;</span>
+        });
+    }
+
+    /**
+     * Create an infinite backoffs that have jitter with a random distribution
+     * between {@code startMs} and 3 times the previously selected value, capped at {@code maxMs}.
+     *
+     * &lt;p&gt;this is &quot;decorrelated jitter&quot; via http://www.awsarchitectureblog.com/2015/03/backoff.html
+     *
+     * @param startMs initial backoff in milliseconds
+     * @param maxMs   max backoff in milliseconds
+     * @return a stream of jitter backoffs.
+     */
+    public static Stream&lt;Long&gt; decorrelatedJittered(long startMs,
+                                                    long maxMs) {
+<span class="nc" id="L253">        final long startNanos = TimeUnit.NANOSECONDS.convert(startMs, TimeUnit.MILLISECONDS);</span>
+<span class="nc" id="L254">        final long maxNanos = TimeUnit.NANOSECONDS.convert(maxMs, TimeUnit.MILLISECONDS);</span>
+<span class="nc" id="L255">        return Stream.iterate(startMs, lastMs -&gt; {</span>
+<span class="nc" id="L256">            long lastNanos = TimeUnit.MILLISECONDS.convert(lastMs, TimeUnit.NANOSECONDS);</span>
+<span class="nc" id="L257">            long randRange = Math.abs(lastNanos * 3 - startNanos);</span>
+            long randBackoff;
+<span class="nc bnc" id="L259" title="All 2 branches missed.">            if (0L == randRange) {</span>
+<span class="nc" id="L260">                randBackoff = startNanos;</span>
+            } else {
+<span class="nc" id="L262">                randBackoff = startNanos + ThreadLocalRandom.current().nextLong(randRange);</span>
+            }
+<span class="nc" id="L264">            long backOffNanos = Math.min(maxNanos, randBackoff);</span>
+<span class="nc" id="L265">            return TimeUnit.MILLISECONDS.convert(backOffNanos, TimeUnit.NANOSECONDS);</span>
+        });
+
+    }
+
+    /**
+     * Create infinite backoffs that keep half of the exponential growth, and jitter
+     * between 0 and that amount.
+     *
+     * &lt;p&gt;this is &quot;equal jitter&quot; via http://www.awsarchitectureblog.com/2015/03/backoff.html
+     *
+     * @param startMs initial backoff in milliseconds.
+     * @param maxMs   max backoff in milliseconds.
+     * @return a stream of exponential backoffs with jitters.
+     */
+    public static Stream&lt;Long&gt; equalJittered(long startMs,
+                                             long maxMs) {
+<span class="nc" id="L282">        final long startNanos = TimeUnit.NANOSECONDS.convert(startMs, TimeUnit.MILLISECONDS);</span>
+<span class="nc" id="L283">        final long maxNanos = TimeUnit.NANOSECONDS.convert(maxMs, TimeUnit.MILLISECONDS);</span>
+<span class="nc" id="L284">        final AtomicLong attempts = new AtomicLong(1);</span>
+<span class="nc" id="L285">        return Stream.iterate(startMs, lastMs -&gt; {</span>
+<span class="nc" id="L286">            long shift = Math.min(attempts.get() - 1, MaxBitShift);</span>
+<span class="nc" id="L287">            long halfExpNanos = startNanos * (1L &lt;&lt; shift);</span>
+<span class="nc" id="L288">            long backoffNanos = halfExpNanos + ThreadLocalRandom.current().nextLong(halfExpNanos);</span>
+<span class="nc" id="L289">            attempts.incrementAndGet();</span>
+<span class="nc bnc" id="L290" title="All 2 branches missed.">            if (backoffNanos &lt; maxNanos) {</span>
+<span class="nc" id="L291">                return TimeUnit.MILLISECONDS.convert(backoffNanos, TimeUnit.NANOSECONDS);</span>
+            } else {
+<span class="nc" id="L293">                return maxMs;</span>
+            }
+        });
+    }
+
+}
+</pre><div class="footer"><span class="right">Created with <a href="http://www.jacoco.org/jacoco">JaCoCo</a> 0.8.2.201808211720</span></div></body></html>

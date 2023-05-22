@@ -1,0 +1,197 @@
+<?xml version="1.0" encoding="UTF-8"?><!DOCTYPE html PUBLIC "-//W3C//DTD XHTML 1.0 Strict//EN" "http://www.w3.org/TR/xhtml1/DTD/xhtml1-strict.dtd"><html xmlns="http://www.w3.org/1999/xhtml" lang="it"><head><meta http-equiv="Content-Type" content="text/html;charset=UTF-8"/><link rel="stylesheet" href="../../jacoco-resources/report.css" type="text/css"/><link rel="shortcut icon" href="../../jacoco-resources/report.gif" type="image/gif"/><title>Lifecycle.java</title><link rel="stylesheet" href="../../jacoco-resources/prettify.css" type="text/css"/><script type="text/javascript" src="../../jacoco-resources/prettify.js"></script></head><body onload="window['PR_TAB_WIDTH']=4;prettyPrint()"><div class="breadcrumb" id="breadcrumb"><span class="info"><a href="../../jacoco-sessions.html" class="el_session">Sessions</a></span><a href="../../index.html" class="el_report">Tests</a> &gt; <a href="../index.html" class="el_bundle">bookkeeper-common</a> &gt; <a href="index.source.html" class="el_package">org.apache.bookkeeper.common.component</a> &gt; <span class="el_source">Lifecycle.java</span></div><h1>Lifecycle.java</h1><pre class="source lang-java linenums">/*
+ * Licensed to the Apache Software Foundation (ASF) under one
+ * or more contributor license agreements.  See the NOTICE file
+ * distributed with this work for additional information
+ * regarding copyright ownership.  The ASF licenses this file
+ * to you under the Apache License, Version 2.0 (the
+ * &quot;License&quot;); you may not use this file except in compliance
+ * with the License.  You may obtain a copy of the License at
+ *
+ *      http://www.apache.org/licenses/LICENSE-2.0
+ *
+ * Unless required by applicable law or agreed to in writing, software
+ * distributed under the License is distributed on an &quot;AS IS&quot; BASIS,
+ * WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+ * See the License for the specific language governing permissions and
+ * limitations under the License.
+ */
+
+package org.apache.bookkeeper.common.component;
+
+/**
+ * Lifecycle state. Allows the following transitions:
+ *
+ * &lt;ul&gt;
+ * &lt;li&gt;INITIALIZED -&amp;gt; STARTED, STOPPED, CLOSED&lt;/li&gt;
+ * &lt;li&gt;STARTED     -&amp;gt; STOPPED&lt;/li&gt;
+ * &lt;li&gt;STOPPED     -&amp;gt; STARTED, CLOSED&lt;/li&gt;
+ * &lt;li&gt;CLOSED      -&amp;gt; &lt;/li&gt;
+ * &lt;/ul&gt;
+ *
+ * &lt;p&gt;Also allows to stay in the same state. For example, when calling stop on a component, the
+ * following logic can be applied:
+ *
+ * &lt;pre&gt;
+ * public void stop() {
+ *  if (!lifecycleState.moveToStopped()) {
+ *      return;
+ *  }
+ * // continue with stop logic
+ * }
+ * &lt;/pre&gt;
+ *
+ * &lt;p&gt;Note, closed is only allowed to be called when stopped, so make sure to stop the component first.
+ * Here is how the logic can be applied:
+ *
+ * &lt;pre&gt;
+ * public void close() {
+ *  if (lifecycleState.started()) {
+ *      stop();
+ *  }
+ *  if (!lifecycleState.moveToClosed()) {
+ *      return;
+ *  }
+ *  // perform close logic here
+ * }
+ * &lt;/pre&gt;
+ */
+<span class="nc" id="L58">public class Lifecycle {</span>
+
+    /**
+     * Lifecycle State.
+     */
+<span class="nc" id="L63">    public enum State {</span>
+<span class="nc" id="L64">        INITIALIZED,</span>
+<span class="nc" id="L65">        STOPPED,</span>
+<span class="nc" id="L66">        STARTED,</span>
+<span class="nc" id="L67">        CLOSED</span>
+    }
+
+<span class="nc" id="L70">    private volatile State state = State.INITIALIZED;</span>
+
+    public State state() {
+<span class="nc" id="L73">        return this.state;</span>
+    }
+
+    /**
+     * Returns &lt;tt&gt;true&lt;/tt&gt; if the state is initialized.
+     */
+    public boolean initialized() {
+<span class="nc bnc" id="L80" title="All 2 branches missed.">        return state == State.INITIALIZED;</span>
+    }
+
+    /**
+     * Returns &lt;tt&gt;true&lt;/tt&gt; if the state is started.
+     */
+    public boolean started() {
+<span class="nc bnc" id="L87" title="All 2 branches missed.">        return state == State.STARTED;</span>
+    }
+
+    /**
+     * Returns &lt;tt&gt;true&lt;/tt&gt; if the state is stopped.
+     */
+    public boolean stopped() {
+<span class="nc bnc" id="L94" title="All 2 branches missed.">        return state == State.STOPPED;</span>
+    }
+
+    /**
+     * Returns &lt;tt&gt;true&lt;/tt&gt; if the state is closed.
+     */
+    public boolean closed() {
+<span class="nc bnc" id="L101" title="All 2 branches missed.">        return state == State.CLOSED;</span>
+    }
+
+    public boolean stoppedOrClosed() {
+<span class="nc" id="L105">        Lifecycle.State state = this.state;</span>
+<span class="nc bnc" id="L106" title="All 4 branches missed.">        return state == State.STOPPED || state == State.CLOSED;</span>
+    }
+
+    public boolean canMoveToStarted() throws IllegalStateException {
+<span class="nc" id="L110">        State localState = this.state;</span>
+<span class="nc bnc" id="L111" title="All 4 branches missed.">        if (localState == State.INITIALIZED || localState == State.STOPPED) {</span>
+<span class="nc" id="L112">            return true;</span>
+        }
+<span class="nc bnc" id="L114" title="All 2 branches missed.">        if (localState == State.STARTED) {</span>
+<span class="nc" id="L115">            return false;</span>
+        }
+<span class="nc bnc" id="L117" title="All 2 branches missed.">        if (localState == State.CLOSED) {</span>
+<span class="nc" id="L118">            throw new IllegalStateException(&quot;Can't move to started state when closed&quot;);</span>
+        }
+<span class="nc" id="L120">        throw new IllegalStateException(&quot;Can't move to started with unknown state&quot;);</span>
+    }
+
+
+    public boolean moveToStarted() throws IllegalStateException {
+<span class="nc" id="L125">        State localState = this.state;</span>
+<span class="nc bnc" id="L126" title="All 4 branches missed.">        if (localState == State.INITIALIZED || localState == State.STOPPED) {</span>
+<span class="nc" id="L127">            state = State.STARTED;</span>
+<span class="nc" id="L128">            return true;</span>
+        }
+<span class="nc bnc" id="L130" title="All 2 branches missed.">        if (localState == State.STARTED) {</span>
+<span class="nc" id="L131">            return false;</span>
+        }
+<span class="nc bnc" id="L133" title="All 2 branches missed.">        if (localState == State.CLOSED) {</span>
+<span class="nc" id="L134">            throw new IllegalStateException(&quot;Can't move to started state when closed&quot;);</span>
+        }
+<span class="nc" id="L136">        throw new IllegalStateException(&quot;Can't move to started with unknown state&quot;);</span>
+    }
+
+    public boolean canMoveToStopped() throws IllegalStateException {
+<span class="nc" id="L140">        State localState = state;</span>
+<span class="nc bnc" id="L141" title="All 2 branches missed.">        if (localState == State.STARTED) {</span>
+<span class="nc" id="L142">            return true;</span>
+        }
+<span class="nc bnc" id="L144" title="All 4 branches missed.">        if (localState == State.INITIALIZED || localState == State.STOPPED) {</span>
+<span class="nc" id="L145">            return false;</span>
+        }
+<span class="nc bnc" id="L147" title="All 2 branches missed.">        if (localState == State.CLOSED) {</span>
+<span class="nc" id="L148">            throw new IllegalStateException(&quot;Can't move to stopped state when closed&quot;);</span>
+        }
+<span class="nc" id="L150">        throw new IllegalStateException(&quot;Can't move to stopped with unknown state&quot;);</span>
+    }
+
+    public boolean moveToStopped() throws IllegalStateException {
+<span class="nc" id="L154">        State localState = state;</span>
+<span class="nc bnc" id="L155" title="All 2 branches missed.">        if (localState == State.STARTED) {</span>
+<span class="nc" id="L156">            state = State.STOPPED;</span>
+<span class="nc" id="L157">            return true;</span>
+        }
+<span class="nc bnc" id="L159" title="All 4 branches missed.">        if (localState == State.INITIALIZED || localState == State.STOPPED) {</span>
+<span class="nc" id="L160">            return false;</span>
+        }
+<span class="nc bnc" id="L162" title="All 2 branches missed.">        if (localState == State.CLOSED) {</span>
+<span class="nc" id="L163">            throw new IllegalStateException(&quot;Can't move to stopped state when closed&quot;);</span>
+        }
+<span class="nc" id="L165">        throw new IllegalStateException(&quot;Can't move to stopped with unknown state&quot;);</span>
+    }
+
+    public boolean canMoveToClosed() throws IllegalStateException {
+<span class="nc" id="L169">        State localState = state;</span>
+<span class="nc bnc" id="L170" title="All 2 branches missed.">        if (localState == State.CLOSED) {</span>
+<span class="nc" id="L171">            return false;</span>
+        }
+<span class="nc bnc" id="L173" title="All 2 branches missed.">        if (localState == State.STARTED) {</span>
+<span class="nc" id="L174">            throw new IllegalStateException(&quot;Can't move to closed before moving to stopped mode&quot;);</span>
+        }
+<span class="nc" id="L176">        return true;</span>
+    }
+
+    public boolean moveToClosed() throws IllegalStateException {
+<span class="nc" id="L180">        State localState = state;</span>
+<span class="nc bnc" id="L181" title="All 2 branches missed.">        if (localState == State.CLOSED) {</span>
+<span class="nc" id="L182">            return false;</span>
+        }
+<span class="nc bnc" id="L184" title="All 2 branches missed.">        if (localState == State.STARTED) {</span>
+<span class="nc" id="L185">            throw new IllegalStateException(&quot;Can't move to closed before moving to stopped mode&quot;);</span>
+        }
+<span class="nc" id="L187">        state = State.CLOSED;</span>
+<span class="nc" id="L188">        return true;</span>
+    }
+
+    @Override
+    public String toString() {
+<span class="nc" id="L193">        return state.toString();</span>
+    }
+
+}
+</pre><div class="footer"><span class="right">Created with <a href="http://www.jacoco.org/jacoco">JaCoCo</a> 0.8.2.201808211720</span></div></body></html>

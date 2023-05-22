@@ -25,7 +25,7 @@ import java.net.InetAddress;
 import java.net.InetSocketAddress;
 import java.net.UnknownHostException;
 import java.util.List;
-import org.apache.bookkeeper.stream.proto.common.Endpoint;
+//import org.apache.bookkeeper.stream.proto.common.Endpoint;
 import org.apache.commons.lang.StringUtils;
 
 /**
@@ -39,8 +39,9 @@ public class NetUtils {
      * @param endpoint network endpoint
      * @return inet socket address for the network endpoint
      */
-    public static InetSocketAddress of(Endpoint endpoint) {
-        return new InetSocketAddress(endpoint.getHostname(), endpoint.getPort());
+    public static InetSocketAddress of(Object endpoint) {
+        //return new InetSocketAddress(endpoint.getHostname(), endpoint.getPort());
+        return null;
     }
 
     public static String getLocalHostName(boolean useHostname) {
@@ -57,7 +58,7 @@ public class NetUtils {
         return hostname;
     }
 
-    public static Endpoint getLocalEndpoint(int port, boolean useHostname)
+    public static Object getLocalEndpoint(int port, boolean useHostname)
         throws UnknownHostException {
         String hostname;
         if (useHostname) {
@@ -65,7 +66,8 @@ public class NetUtils {
         } else {
             hostname = InetAddress.getLocalHost().getHostAddress();
         }
-        return createEndpoint(hostname, port);
+        //return createEndpoint(hostname, port);
+        return null;
     }
 
     /**
@@ -74,13 +76,13 @@ public class NetUtils {
      * @param endpointStr an endpoint string.
      * @return list of endpoints.
      */
-    public static List<Endpoint> parseEndpoints(String endpointStr) {
+    public static List<Object> parseEndpoints(String endpointStr) {
         String[] endpointParts = StringUtils.split(endpointStr, ',');
         checkArgument(endpointParts.length > 0,
             "Invalid endpoint strings %s", endpointStr);
-        List<Endpoint> endpoints = Lists.newArrayListWithExpectedSize(endpointParts.length);
+        List<Object> endpoints = Lists.newArrayListWithExpectedSize(endpointParts.length);
         for (String endpointPart : endpointParts) {
-            endpoints.add(parseEndpoint(endpointPart));
+            //endpoints.add(parseEndpoint(endpointPart));
         }
         return endpoints;
     }
@@ -91,7 +93,7 @@ public class NetUtils {
      * @param endpointStr an endpoint string.
      * @return endpoint.
      */
-    public static Endpoint parseEndpoint(String endpointStr) {
+    public static Object parseEndpoint(String endpointStr) {
         String[] endpointParts = StringUtils.split(endpointStr, ':');
         checkArgument(2 == endpointParts.length,
             "Invalid endpoint string %s - It should be 'host:port'.", endpointStr);
@@ -102,7 +104,8 @@ public class NetUtils {
         } catch (NumberFormatException nfe) {
             throw new IllegalArgumentException("Invalid port found in the endpoint string " + endpointStr, nfe);
         }
-        return createEndpoint(host, port);
+        //return createEndpoint(host, port);
+        return null;
     }
 
     /**
@@ -112,11 +115,12 @@ public class NetUtils {
      * @param port     port of the endpoint
      * @return an endpoint created from {@code hostname} and {@code port}.
      */
-    public static Endpoint createEndpoint(String hostname, int port) {
-        return Endpoint.newBuilder()
+    public static Object createEndpoint(String hostname, int port) {
+        /*return Endpoint.newBuilder()
             .setHostname(hostname)
             .setPort(port)
-            .build();
+            .build();*/
+        return null;
     }
 
     /**
@@ -125,9 +129,9 @@ public class NetUtils {
      * @param ep endpoint
      * @return endpoint string representation
      */
-    public static String endpointToString(Endpoint ep) {
+    public static String endpointToString(Object ep) {
         StringBuilder sb = new StringBuilder();
-        sb.append(ep.getHostname()).append(":").append(ep.getPort());
+        //sb.append(ep.getHostname()).append(":").append(ep.getPort());
         return sb.toString();
     }
 

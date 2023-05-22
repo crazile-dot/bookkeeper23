@@ -1,4 +1,4 @@
-/*
+/**
  * Licensed to the Apache Software Foundation (ASF) under one
  * or more contributor license agreements.  See the NOTICE file
  * distributed with this work for additional information
@@ -22,7 +22,7 @@ import org.apache.distributedlog.LogSegmentMetadata;
 
 
 /**
- * Listener on log segments changes for a given stream used by {@link org.apache.distributedlog.BKLogReadHandler}.
+ * Listener on log segments changes for a given stream used by {@link }.
  */
 public interface LogSegmentListener {
 

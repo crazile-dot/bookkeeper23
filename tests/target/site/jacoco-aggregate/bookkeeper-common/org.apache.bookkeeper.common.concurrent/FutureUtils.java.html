@@ -1,0 +1,369 @@
+<?xml version="1.0" encoding="UTF-8"?><!DOCTYPE html PUBLIC "-//W3C//DTD XHTML 1.0 Strict//EN" "http://www.w3.org/TR/xhtml1/DTD/xhtml1-strict.dtd"><html xmlns="http://www.w3.org/1999/xhtml" lang="it"><head><meta http-equiv="Content-Type" content="text/html;charset=UTF-8"/><link rel="stylesheet" href="../../jacoco-resources/report.css" type="text/css"/><link rel="shortcut icon" href="../../jacoco-resources/report.gif" type="image/gif"/><title>FutureUtils.java</title><link rel="stylesheet" href="../../jacoco-resources/prettify.css" type="text/css"/><script type="text/javascript" src="../../jacoco-resources/prettify.js"></script></head><body onload="window['PR_TAB_WIDTH']=4;prettyPrint()"><div class="breadcrumb" id="breadcrumb"><span class="info"><a href="../../jacoco-sessions.html" class="el_session">Sessions</a></span><a href="../../index.html" class="el_report">Tests</a> &gt; <a href="../index.html" class="el_bundle">bookkeeper-common</a> &gt; <a href="index.source.html" class="el_package">org.apache.bookkeeper.common.concurrent</a> &gt; <span class="el_source">FutureUtils.java</span></div><h1>FutureUtils.java</h1><pre class="source lang-java linenums">/*
+ * Licensed to the Apache Software Foundation (ASF) under one
+ * or more contributor license agreements.  See the NOTICE file
+ * distributed with this work for additional information
+ * regarding copyright ownership.  The ASF licenses this file
+ * to you under the Apache License, Version 2.0 (the
+ * &quot;License&quot;); you may not use this file except in compliance
+ * with the License.  You may obtain a copy of the License at
+ *
+ *     http://www.apache.org/licenses/LICENSE-2.0
+ *
+ * Unless required by applicable law or agreed to in writing, software
+ * distributed under the License is distributed on an &quot;AS IS&quot; BASIS,
+ * WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+ * See the License for the specific language governing permissions and
+ * limitations under the License.
+ */
+
+package org.apache.bookkeeper.common.concurrent;
+
+import com.google.common.base.Stopwatch;
+import com.google.common.collect.Lists;
+import java.util.Iterator;
+import java.util.List;
+import java.util.concurrent.CompletableFuture;
+import java.util.concurrent.ExecutionException;
+import java.util.concurrent.ExecutorService;
+import java.util.concurrent.TimeUnit;
+import java.util.concurrent.TimeoutException;
+import java.util.function.BiConsumer;
+import java.util.function.Function;
+import java.util.stream.Collectors;
+import javax.annotation.Nullable;
+import lombok.SneakyThrows;
+import lombok.extern.slf4j.Slf4j;
+import org.apache.bookkeeper.common.stats.OpStatsListener;
+//import org.apache.bookkeeper.common.util.OrderedScheduler;
+import org.apache.bookkeeper.stats.OpStatsLogger;
+
+/**
+ * Future related utils.
+ */
+<span class="nc" id="L43">@Slf4j</span>
+public final class FutureUtils {
+
+    private FutureUtils() {}
+
+<span class="nc" id="L48">    private static final Function&lt;Throwable, Exception&gt; DEFAULT_EXCEPTION_HANDLER = cause -&gt; {</span>
+<span class="nc bnc" id="L49" title="All 2 branches missed.">        if (cause instanceof Exception) {</span>
+<span class="nc" id="L50">            return (Exception) cause;</span>
+        } else {
+<span class="nc" id="L52">            return new Exception(cause);</span>
+        }
+    };
+
+    public static CompletableFuture&lt;Void&gt; Void() {
+<span class="nc" id="L57">        return value(null);</span>
+    }
+
+    public static &lt;T&gt; T result(CompletableFuture&lt;T&gt; future) throws Exception {
+<span class="nc" id="L61">        return FutureUtils.result(future, DEFAULT_EXCEPTION_HANDLER);</span>
+    }
+
+    public static &lt;T&gt; T result(CompletableFuture&lt;T&gt; future, long timeout, TimeUnit timeUnit) throws Exception {
+<span class="nc" id="L65">        return FutureUtils.result(future, DEFAULT_EXCEPTION_HANDLER, timeout, timeUnit);</span>
+    }
+
+<span class="nc" id="L68">    @SneakyThrows(InterruptedException.class)</span>
+    public static &lt;T, ExceptionT extends Throwable&gt; T result(
+        CompletableFuture&lt;T&gt; future, Function&lt;Throwable, ExceptionT&gt; exceptionHandler) throws ExceptionT {
+        try {
+<span class="nc" id="L72">            return future.get();</span>
+<span class="nc" id="L73">        } catch (InterruptedException e) {</span>
+<span class="nc" id="L74">            Thread.currentThread().interrupt();</span>
+<span class="nc" id="L75">            throw e;</span>
+<span class="nc" id="L76">        } catch (ExecutionException e) {</span>
+<span class="nc" id="L77">            ExceptionT cause = exceptionHandler.apply(e.getCause());</span>
+<span class="nc bnc" id="L78" title="All 2 branches missed.">            if (null == cause) {</span>
+<span class="nc" id="L79">                return null;</span>
+            } else {
+<span class="nc" id="L81">                throw cause;</span>
+            }
+        }
+    }
+
+<span class="nc" id="L86">    @SneakyThrows(InterruptedException.class)</span>
+    public static &lt;T, ExceptionT extends Throwable&gt; T result(
+        CompletableFuture&lt;T&gt; future,
+        Function&lt;Throwable, ExceptionT&gt; exceptionHandler,
+        long timeout,
+        TimeUnit timeUnit) throws ExceptionT, TimeoutException {
+        try {
+<span class="nc" id="L93">            return future.get(timeout, timeUnit);</span>
+<span class="nc" id="L94">        } catch (InterruptedException e) {</span>
+<span class="nc" id="L95">            Thread.currentThread().interrupt();</span>
+<span class="nc" id="L96">            throw e;</span>
+<span class="nc" id="L97">        } catch (ExecutionException e) {</span>
+<span class="nc" id="L98">            ExceptionT cause = exceptionHandler.apply(e.getCause());</span>
+<span class="nc bnc" id="L99" title="All 2 branches missed.">            if (null == cause) {</span>
+<span class="nc" id="L100">                return null;</span>
+            } else {
+<span class="nc" id="L102">                throw cause;</span>
+            }
+        }
+    }
+
+    public static &lt;T&gt; CompletableFuture&lt;T&gt; createFuture() {
+<span class="nc" id="L108">        return new CompletableFuture&lt;T&gt;();</span>
+    }
+
+    public static &lt;T&gt; CompletableFuture&lt;T&gt; value(T value) {
+<span class="nc" id="L112">        return CompletableFuture.completedFuture(value);</span>
+    }
+
+    public static &lt;T&gt; CompletableFuture&lt;T&gt; exception(Throwable cause) {
+<span class="nc" id="L116">        CompletableFuture&lt;T&gt; future = FutureUtils.createFuture();</span>
+<span class="nc" id="L117">        future.completeExceptionally(cause);</span>
+<span class="nc" id="L118">        return future;</span>
+    }
+
+    public static &lt;T&gt; void complete(CompletableFuture&lt;T&gt; result,
+                                    T value) {
+<span class="nc bnc" id="L123" title="All 2 branches missed.">        if (null == result) {</span>
+<span class="nc" id="L124">            return;</span>
+        }
+<span class="nc" id="L126">        result.complete(value);</span>
+<span class="nc" id="L127">    }</span>
+
+    public static &lt;T&gt; void completeExceptionally(CompletableFuture&lt;T&gt; result,
+                                                 Throwable cause) {
+<span class="nc bnc" id="L131" title="All 2 branches missed.">        if (null == result) {</span>
+<span class="nc" id="L132">            return;</span>
+        }
+<span class="nc" id="L134">        result.completeExceptionally(cause);</span>
+<span class="nc" id="L135">    }</span>
+
+    /*/**
+     * Completing the {@code future} in the thread in the scheduler identified by
+     * the {@code scheduleKey}.
+     *
+     * @param future      future to complete
+     * @param action      action to execute when complete
+     * @param scheduler   scheduler to execute the action.
+     * @param scheduleKey key to choose the thread to execute the action
+     * @param &lt;T&gt;
+     * @return
+     */
+    /*public static &lt;T&gt; CompletableFuture&lt;T&gt; whenCompleteAsync(
+        CompletableFuture&lt;T&gt; future,
+        BiConsumer&lt;? super T, ? super Throwable&gt; action,
+        OrderedScheduler scheduler,
+        Object scheduleKey) {
+        return future.whenCompleteAsync(action, scheduler.chooseThread(scheduleKey));
+    }*/
+
+    public static &lt;T&gt; CompletableFuture&lt;List&lt;T&gt;&gt; collect(List&lt;CompletableFuture&lt;T&gt;&gt; futureList) {
+<span class="nc" id="L157">        CompletableFuture&lt;Void&gt; finalFuture =</span>
+<span class="nc" id="L158">            CompletableFuture.allOf(futureList.toArray(new CompletableFuture[futureList.size()]));</span>
+<span class="nc" id="L159">        return finalFuture.thenApply(result -&gt;</span>
+            futureList
+<span class="nc" id="L161">                .stream()</span>
+<span class="nc" id="L162">                .map(CompletableFuture::join)</span>
+<span class="nc" id="L163">                .collect(Collectors.toList()));</span>
+    }
+
+    public static &lt;T&gt; void proxyTo(CompletableFuture&lt;T&gt; src,
+                                   CompletableFuture&lt;T&gt; target) {
+<span class="nc" id="L168">        src.whenComplete((value, cause) -&gt; {</span>
+<span class="nc bnc" id="L169" title="All 2 branches missed.">            if (null == cause) {</span>
+<span class="nc" id="L170">                target.complete(value);</span>
+            } else {
+<span class="nc" id="L172">                target.completeExceptionally(cause);</span>
+            }
+<span class="nc" id="L174">        });</span>
+<span class="nc" id="L175">    }</span>
+
+    //
+    // Process futures
+    //
+
+    private static class ListFutureProcessor&lt;T, R&gt;
+        implements FutureEventListener&lt;R&gt;, Runnable {
+
+<span class="nc" id="L184">        private volatile boolean done = false;</span>
+        private final Iterator&lt;T&gt; itemsIter;
+        private final Function&lt;T, CompletableFuture&lt;R&gt;&gt; processFunc;
+        private final CompletableFuture&lt;List&lt;R&gt;&gt; promise;
+        private final List&lt;R&gt; results;
+        private final ExecutorService callbackExecutor;
+
+        ListFutureProcessor(List&lt;T&gt; items,
+                            Function&lt;T, CompletableFuture&lt;R&gt;&gt; processFunc,
+<span class="nc" id="L193">                            ExecutorService callbackExecutor) {</span>
+<span class="nc" id="L194">            this.itemsIter = items.iterator();</span>
+<span class="nc" id="L195">            this.processFunc = processFunc;</span>
+<span class="nc" id="L196">            this.promise = new CompletableFuture&lt;&gt;();</span>
+<span class="nc" id="L197">            this.results = Lists.newArrayListWithExpectedSize(items.size());</span>
+<span class="nc" id="L198">            this.callbackExecutor = callbackExecutor;</span>
+<span class="nc" id="L199">        }</span>
+
+        @Override
+        public void onSuccess(R value) {
+<span class="nc" id="L203">            results.add(value);</span>
+<span class="nc bnc" id="L204" title="All 2 branches missed.">            if (null == callbackExecutor) {</span>
+<span class="nc" id="L205">                run();</span>
+            } else {
+<span class="nc" id="L207">                callbackExecutor.submit(this);</span>
+            }
+<span class="nc" id="L209">        }</span>
+
+        @Override
+        public void onFailure(final Throwable cause) {
+<span class="nc" id="L213">            done = true;</span>
+
+<span class="nc bnc" id="L215" title="All 2 branches missed.">            if (null == callbackExecutor) {</span>
+<span class="nc" id="L216">                promise.completeExceptionally(cause);</span>
+            } else {
+<span class="nc" id="L218">                callbackExecutor.submit((Runnable) () -&gt; promise.completeExceptionally(cause));</span>
+            }
+<span class="nc" id="L220">        }</span>
+
+        @Override
+        public void run() {
+<span class="nc bnc" id="L224" title="All 2 branches missed.">            if (done) {</span>
+<span class="nc" id="L225">                log.debug(&quot;ListFutureProcessor is interrupted.&quot;);</span>
+<span class="nc" id="L226">                return;</span>
+            }
+<span class="nc bnc" id="L228" title="All 2 branches missed.">            if (!itemsIter.hasNext()) {</span>
+<span class="nc" id="L229">                promise.complete(results);</span>
+<span class="nc" id="L230">                done = true;</span>
+<span class="nc" id="L231">                return;</span>
+            }
+<span class="nc" id="L233">            processFunc.apply(itemsIter.next()).whenComplete(this);</span>
+<span class="nc" id="L234">        }</span>
+    }
+
+    /**
+     * Process the list of items one by one using the process function &lt;i&gt;processFunc&lt;/i&gt;.
+     * The process will be stopped immediately if it fails on processing any one.
+     *
+     * @param collection       list of items
+     * @param processFunc      process function
+     * @param callbackExecutor executor to process the item
+     * @return future presents the list of processed results
+     */
+    public static &lt;T, R&gt; CompletableFuture&lt;List&lt;R&gt;&gt; processList(List&lt;T&gt; collection,
+                                                                Function&lt;T, CompletableFuture&lt;R&gt;&gt; processFunc,
+                                                                @Nullable ExecutorService callbackExecutor) {
+<span class="nc" id="L249">        ListFutureProcessor&lt;T, R&gt; processor =</span>
+            new ListFutureProcessor&lt;T, R&gt;(collection, processFunc, callbackExecutor);
+<span class="nc bnc" id="L251" title="All 2 branches missed.">        if (null != callbackExecutor) {</span>
+<span class="nc" id="L252">            callbackExecutor.submit(processor);</span>
+        } else {
+<span class="nc" id="L254">            processor.run();</span>
+        }
+<span class="nc" id="L256">        return processor.promise;</span>
+    }
+/*
+    /**
+     * Raise an exception to the &lt;i&gt;promise&lt;/i&gt; within a given &lt;i&gt;timeout&lt;/i&gt; period.
+     * If the promise has been satisfied before raising, it won't change the state of the promise.
+     *
+     * @param promise   promise to raise exception
+     * @param timeout   timeout period
+     * @param unit      timeout period unit
+     * @param cause     cause to raise
+     * @param scheduler scheduler to execute raising exception
+     * @param key       the submit key used by the scheduler
+     * @return the promise applied with the raise logic
+     */
+    /*public static &lt;T&gt; CompletableFuture&lt;T&gt; within(final CompletableFuture&lt;T&gt; promise,
+                                                  final long timeout,
+                                                  final TimeUnit unit,
+                                                  final Throwable cause,
+                                                  final OrderedScheduler scheduler,
+                                                  final Object key) {
+        if (timeout &lt; 0 || promise.isDone()) {
+            return promise;
+        }
+        // schedule a timeout to raise timeout exception
+        final java.util.concurrent.ScheduledFuture&lt;?&gt; task = scheduler.scheduleOrdered(key, () -&gt; {
+            if (!promise.isDone() &amp;&amp; promise.completeExceptionally(cause)) {
+                log.info(&quot;Raise exception&quot;, cause);
+            }
+        }, timeout, unit);
+        // when the promise is satisfied, cancel the timeout task
+        promise.whenComplete((value, throwable) -&gt; {
+                if (!task.cancel(true)) {
+                    log.debug(&quot;Failed to cancel the timeout task&quot;);
+                }
+            }
+        );
+        return promise;
+    }
+
+    /**
+     * Ignore exception from the &lt;i&gt;future&lt;/i&gt;.
+     *
+     * @param future the original future
+     * @return a transformed future ignores exceptions
+     */
+    public static &lt;T&gt; CompletableFuture&lt;Void&gt; ignore(CompletableFuture&lt;T&gt; future) {
+<span class="nc" id="L303">        return ignore(future, null);</span>
+    }
+
+    /**
+     * Ignore exception from the &lt;i&gt;future&lt;/i&gt; and log &lt;i&gt;errorMsg&lt;/i&gt; on exceptions.
+     *
+     * @param future   the original future
+     * @param errorMsg the error message to log on exceptions
+     * @return a transformed future ignores exceptions
+     */
+    public static &lt;T&gt; CompletableFuture&lt;Void&gt; ignore(CompletableFuture&lt;T&gt; future,
+                                                     final String errorMsg) {
+<span class="nc" id="L315">        final CompletableFuture&lt;Void&gt; promise = new CompletableFuture&lt;Void&gt;();</span>
+<span class="nc" id="L316">        future.whenComplete(new FutureEventListener&lt;T&gt;() {</span>
+            @Override
+            public void onSuccess(T value) {
+<span class="nc" id="L319">                promise.complete(null);</span>
+<span class="nc" id="L320">            }</span>
+
+            @Override
+            public void onFailure(Throwable cause) {
+<span class="nc bnc" id="L324" title="All 2 branches missed.">                if (null != errorMsg) {</span>
+<span class="nc" id="L325">                    log.error(errorMsg, cause);</span>
+                }
+<span class="nc" id="L327">                promise.complete(null);</span>
+<span class="nc" id="L328">            }</span>
+        });
+<span class="nc" id="L330">        return promise;</span>
+    }
+
+    public static &lt;T&gt; CompletableFuture&lt;T&gt; ensure(CompletableFuture&lt;T&gt; future,
+                                                  Runnable ensureBlock) {
+<span class="nc" id="L335">        return future.whenComplete((value, cause) -&gt; {</span>
+<span class="nc" id="L336">            ensureBlock.run();</span>
+<span class="nc" id="L337">        });</span>
+    }
+
+    public static &lt;T&gt; CompletableFuture&lt;T&gt; rescue(CompletableFuture&lt;T&gt; future,
+                                                  Function&lt;Throwable, CompletableFuture&lt;T&gt;&gt; rescueFuc) {
+<span class="nc" id="L342">        CompletableFuture&lt;T&gt; result = FutureUtils.createFuture();</span>
+<span class="nc" id="L343">        future.whenComplete((value, cause) -&gt; {</span>
+<span class="nc bnc" id="L344" title="All 2 branches missed.">            if (null == cause) {</span>
+<span class="nc" id="L345">                result.complete(value);</span>
+<span class="nc" id="L346">                return;</span>
+            }
+<span class="nc" id="L348">            proxyTo(rescueFuc.apply(cause), result);</span>
+<span class="nc" id="L349">        });</span>
+<span class="nc" id="L350">        return result;</span>
+    }
+
+    /**
+      * Add a event listener over &lt;i&gt;result&lt;/i&gt; for collecting the operation stats.
+      *
+      * @param result result to listen on
+      * @param opStatsLogger stats logger to record operations stats
+      * @param stopwatch stop watch to time operation
+      * @param &lt;T&gt;
+      * @return result after registered the event listener
+      */
+    public static &lt;T&gt; CompletableFuture&lt;T&gt; stats(CompletableFuture&lt;T&gt; result,
+                                                 OpStatsLogger opStatsLogger,
+                                                 Stopwatch stopwatch) {
+<span class="nc" id="L365">        return result.whenComplete(new OpStatsListener&lt;T&gt;(opStatsLogger, stopwatch));</span>
+    }
+
+}
+</pre><div class="footer"><span class="right">Created with <a href="http://www.jacoco.org/jacoco">JaCoCo</a> 0.8.2.201808211720</span></div></body></html>

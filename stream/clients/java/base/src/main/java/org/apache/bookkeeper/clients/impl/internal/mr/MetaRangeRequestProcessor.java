@@ -27,60 +27,60 @@ import org.apache.bookkeeper.clients.impl.channel.StorageServerChannel;
 import org.apache.bookkeeper.clients.impl.container.StorageContainerChannel;
 import org.apache.bookkeeper.clients.utils.ListenableFutureRpcProcessor;
 import org.apache.bookkeeper.common.util.Backoff;
-import org.apache.bookkeeper.stream.proto.storage.GetActiveRangesRequest;
+/*import org.apache.bookkeeper.stream.proto.storage.GetActiveRangesRequest;
 import org.apache.bookkeeper.stream.proto.storage.GetActiveRangesResponse;
-import org.apache.bookkeeper.stream.proto.storage.StatusCode;
+import org.apache.bookkeeper.stream.proto.storage.StatusCode;*/
 
 /**
  * Request Processor processing meta range request.
  */
 public class MetaRangeRequestProcessor<RespT>
-    extends ListenableFutureRpcProcessor<GetActiveRangesRequest, GetActiveRangesResponse, RespT> {
-
+{
     public static <T> MetaRangeRequestProcessor<T> of(
-        GetActiveRangesRequest request,
-        Function<GetActiveRangesResponse, T> responseFunc,
+        Object request,
+        Function<Object, T> responseFunc,
         StorageContainerChannel channel,
         ScheduledExecutorService executor,
         Backoff.Policy backoffPolicy) {
-        return new MetaRangeRequestProcessor<>(request, responseFunc, channel, executor, backoffPolicy);
+        return null;
     }
 
-    private final GetActiveRangesRequest request;
-    private final Function<GetActiveRangesResponse, RespT> responseFunc;
+    //private final GetActiveRangesRequest request;
+    //private final Function<GetActiveRangesResponse, RespT> responseFunc;
 
-    private MetaRangeRequestProcessor(GetActiveRangesRequest request,
-                                      Function<GetActiveRangesResponse, RespT> responseFunc,
+    private MetaRangeRequestProcessor(Object request,
+                                      Function<Object, RespT> responseFunc,
                                       StorageContainerChannel channel,
                                       ScheduledExecutorService executor,
                                       Backoff.Policy backoffPolicy) {
-        super(channel, executor, backoffPolicy);
-        this.request = request;
-        this.responseFunc = responseFunc;
+        //super(channel, executor, backoffPolicy);
+        //this.request = request;
+        //this.responseFunc = responseFunc;
     }
 
-    @Override
-    protected GetActiveRangesRequest createRequest() {
-        return request;
+    //@Override
+    protected Object createRequest() {
+        return null;
     }
 
-    @Override
-    protected ListenableFuture<GetActiveRangesResponse> sendRPC(StorageServerChannel rsChannel,
-                                                                GetActiveRangesRequest request) {
-        return rsChannel.getMetaRangeService().getActiveRanges(request);
+    //@Override
+    protected ListenableFuture<Object> sendRPC(StorageServerChannel rsChannel,
+                                                                Object request) {
+        return null;
     }
 
-    private String getIdentifier(GetActiveRangesRequest request) {
+    private String getIdentifier(Object request) {
 
-        return "" + request.getStreamId();
+        return "" ;
     }
 
-    @Override
-    protected RespT processResponse(GetActiveRangesResponse response) throws Exception {
-        if (StatusCode.SUCCESS == response.getCode()) {
-            return responseFunc.apply(response);
+    //@Override
+    protected RespT processResponse(Object response) throws Exception {
+        if (true) {
+            return null;
         }
 
-        throw createMetaRangeException(getIdentifier(request), response.getCode());
+       // throw createMetaRangeException(getIdentifier(request), response.getCode());
+        return null;
     }
 }

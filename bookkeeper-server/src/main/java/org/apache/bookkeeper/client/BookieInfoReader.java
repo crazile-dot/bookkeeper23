@@ -1,4 +1,4 @@
-/*
+/**
  * Licensed to the Apache Software Foundation (ASF) under one
  * or more contributor license agreements.  See the NOTICE file
  * distributed with this work for additional information
@@ -33,8 +33,8 @@ import org.apache.bookkeeper.client.WeightedRandomSelection.WeightedObject;
 import org.apache.bookkeeper.conf.ClientConfiguration;
 import org.apache.bookkeeper.net.BookieId;
 import org.apache.bookkeeper.proto.BookieClient;
-import org.apache.bookkeeper.proto.BookkeeperInternalCallbacks.GetBookieInfoCallback;
-import org.apache.bookkeeper.proto.BookkeeperProtocol;
+//import org.apache.bookkeeper.proto.BookkeeperInternalCallbacks.GetBookieInfoCallback;
+//import org.apache.bookkeeper.proto.BookkeeperProtocol;
 import org.apache.commons.collections4.CollectionUtils;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
@@ -44,7 +44,7 @@ import org.slf4j.LoggerFactory;
  *
  * <p>NOTE: This class is tended to be used by this project only. External users should not rely on it directly.
  */
-public class BookieInfoReader {
+/*public class BookieInfoReader {
     private static final Logger LOG = LoggerFactory.getLogger(BookieInfoReader.class);
     private static final long GET_BOOKIE_INFO_REQUEST_FLAGS =
         BookkeeperProtocol.GetBookieInfoRequest.Flags.TOTAL_DISK_CAPACITY_VALUE
@@ -59,7 +59,7 @@ public class BookieInfoReader {
      *
      * <p>NOTE: This class is tended to be used by this project only. External users should not rely on it directly.
      */
-    public static class BookieInfo implements WeightedObject {
+    /*public static class BookieInfo implements WeightedObject {
         private final long freeDiskSpace;
         private final long totalDiskSpace;
         public BookieInfo() {
@@ -90,19 +90,19 @@ public class BookieInfoReader {
      * Tracks the most recently reported set of bookies from BookieWatcher as well
      * as current BookieInfo for bookies we've successfully queried.
      */
-    private static class BookieInfoMap {
+    /*private static class BookieInfoMap {
         /**
          * Contains the most recently obtained information on the contained bookies.
          * When an error happens querying a bookie, the entry is removed.
          */
-        private final Map<BookieId, BookieInfo> infoMap = new HashMap<>();
+        /*private final Map<BookieId, BookieInfo> infoMap = new HashMap<>();
 
         /**
          * Contains the most recently reported set of bookies from BookieWatcher
          * A partial query consists of every member of mostRecentlyReportedBookies
          * minus the entries in bookieInfoMap.
          */
-        private Collection<BookieId> mostRecentlyReportedBookies = new ArrayList<>();
+        /*private Collection<BookieId> mostRecentlyReportedBookies = new ArrayList<>();
 
         public void updateBookies(Collection<BookieId> updatedBookieSet) {
             if (LOG.isDebugEnabled()) {
@@ -129,7 +129,7 @@ public class BookieInfoReader {
          * @param bookie bookie for which to get info
          * @return Info for bookie, null otherwise
          */
-        public BookieInfo getInfo(BookieId bookie) {
+        /*public BookieInfo getInfo(BookieId bookie) {
             return infoMap.get(bookie);
         }
 
@@ -138,7 +138,7 @@ public class BookieInfoReader {
          *
          * @param bookie bookie on which we observed an error
          */
-        public void clearInfo(BookieId bookie) {
+        /*public void clearInfo(BookieId bookie) {
             infoMap.remove(bookie);
         }
 
@@ -148,14 +148,14 @@ public class BookieInfoReader {
          * @param bookie bookie for which we obtained new info
          * @param info the new info
          */
-        public void gotInfo(BookieId bookie, BookieInfo info) {
+        /*public void gotInfo(BookieId bookie, BookieInfo info) {
             infoMap.put(bookie, info);
         }
 
         /**
          * Get bookie info map.
          */
-        public Map<BookieId, BookieInfo> getBookieMap() {
+        /*public Map<BookieId, BookieInfo> getBookieMap() {
             return infoMap;
         }
     }
@@ -165,7 +165,7 @@ public class BookieInfoReader {
      * Tracks whether there is an execution in progress as well as whether
      * another is pending.
      */
-    public enum State { UNQUEUED, PARTIAL, FULL }
+   /* public enum State { UNQUEUED, PARTIAL, FULL }
     private static class InstanceState {
         private boolean running = false;
         private State queuedType = State.UNQUEUED;
@@ -184,7 +184,7 @@ public class BookieInfoReader {
          *
          * @return True if we should execute a scan, False if there is already one running
          */
-        public boolean tryStartFull() {
+        /*public boolean tryStartFull() {
             queuedType = State.FULL;
             return shouldStart();
         }
@@ -194,7 +194,7 @@ public class BookieInfoReader {
          *
          * @return True if we should execute a scan, False if there is already one running
          */
-        public boolean tryStartPartial() {
+        /*public boolean tryStartPartial() {
             if (queuedType == State.UNQUEUED) {
                 queuedType = State.PARTIAL;
             }
@@ -204,7 +204,7 @@ public class BookieInfoReader {
         /**
          * Gets and clears queuedType.
          */
-        public State getAndClearQueuedType() {
+        /*public State getAndClearQueuedType() {
             State ret = queuedType;
             queuedType = State.UNQUEUED;
             return ret;
@@ -214,7 +214,7 @@ public class BookieInfoReader {
          * If queuedType != UNQUEUED, returns true, leaves running equal to true
          * Otherwise, returns false and sets running to false.
          */
-        public boolean completeUnlessQueued() {
+        /*public boolean completeUnlessQueued() {
             if (queuedType == State.UNQUEUED) {
                 running = false;
                 return false;
@@ -286,7 +286,7 @@ public class BookieInfoReader {
      * @param bookie to lookup
      * @return None if absent, free disk space if present
      */
-    synchronized Optional<Long> getFreeDiskSpace(BookieId bookie) {
+    /*synchronized Optional<Long> getFreeDiskSpace(BookieId bookie) {
         BookieInfo bookieInfo = bookieInfoMap.getInfo(bookie);
         if (bookieInfo != null) {
             return Optional.of(bookieInfo.getFreeDiskSpace());
@@ -296,7 +296,7 @@ public class BookieInfoReader {
     }
 
     /* State to track scan execution progress as callbacks come in */
-    private int totalSent = 0;
+    /*private int totalSent = 0;
     private int completedCnt = 0;
     private int errorCnt = 0;
 
@@ -304,7 +304,7 @@ public class BookieInfoReader {
      * Performs scan described by instanceState using the cached bookie information
      * in bookieInfoMap.
      */
-    synchronized void getReadWriteBookieInfo() {
+    /*synchronized void getReadWriteBookieInfo() {
         State queuedType = instanceState.getAndClearQueuedType();
         Collection<BookieId> toScan;
         if (queuedType == State.FULL) {
@@ -444,4 +444,4 @@ public class BookieInfoReader {
         }
         return map;
     }
-}
+}*/

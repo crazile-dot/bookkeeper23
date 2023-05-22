@@ -24,28 +24,27 @@ import java.util.function.Supplier;
 import lombok.extern.slf4j.Slf4j;
 import org.apache.bookkeeper.api.StorageClient;
 import org.apache.bookkeeper.clients.StorageClientImpl;
-import org.apache.bookkeeper.clients.config.StorageClientSettings;
 import org.apache.bookkeeper.clients.impl.internal.StorageServerClientManagerImpl;
 import org.apache.bookkeeper.clients.impl.internal.api.RootRangeClient;
 import org.apache.bookkeeper.clients.impl.internal.api.StorageServerClientManager;
 import org.apache.bookkeeper.clients.utils.ClientResources;
 import org.apache.bookkeeper.common.util.AbstractAutoAsyncCloseable;
-import org.apache.bookkeeper.stream.proto.NamespaceConfiguration;
+/*import org.apache.bookkeeper.stream.proto.NamespaceConfiguration;
 import org.apache.bookkeeper.stream.proto.NamespaceProperties;
 import org.apache.bookkeeper.stream.proto.StreamConfiguration;
-import org.apache.bookkeeper.stream.proto.StreamProperties;
+import org.apache.bookkeeper.stream.proto.StreamProperties;*/
 
 /**
  * A storage admin client.
  */
 @Slf4j
-public class StorageAdminClientImpl extends AbstractAutoAsyncCloseable implements StorageAdminClient {
+public abstract class StorageAdminClientImpl extends AbstractAutoAsyncCloseable implements StorageAdminClient {
 
     // clients
-    private final StorageClientSettings settings;
-    private final ClientResources resources;
-    private final StorageServerClientManager clientManager;
-    private final RootRangeClient rootRangeClient;
+    private final Object settings = null;
+    private final ClientResources resources = null;
+    private final StorageServerClientManager clientManager = null;
+    private final RootRangeClient rootRangeClient = null;
 
     /**
      * Create a stream admin client with provided {@code withSettings}.
@@ -53,21 +52,22 @@ public class StorageAdminClientImpl extends AbstractAutoAsyncCloseable implement
      * @param settings withSettings to create an admin client.
      * @param resources resources used by this client
      */
-    public StorageAdminClientImpl(StorageClientSettings settings,
+    public StorageAdminClientImpl(Object settings,
                                   ClientResources resources) {
-        this(
+        /*this(
             settings,
             resources,
-            () -> new StorageServerClientManagerImpl(settings, resources.scheduler()));
+            () -> new StorageServerClientManagerImpl(settings, resources.scheduler()));*/
+
     }
 
-    StorageAdminClientImpl(StorageClientSettings settings,
+    StorageAdminClientImpl(Object settings,
                            ClientResources resources,
                            Supplier<StorageServerClientManager> factory) {
-        this.settings = settings;
-        this.resources = resources;
-        this.clientManager = factory.get();
-        this.rootRangeClient = this.clientManager.getRootRangeClient();
+        //this.settings = settings;
+        //this.resources = resources;
+        //this.clientManager = factory.get();
+        //this.rootRangeClient = this.clientManager.getRootRangeClient();
     }
 
     @Override
@@ -77,9 +77,9 @@ public class StorageAdminClientImpl extends AbstractAutoAsyncCloseable implement
     }
 
     @Override
-    public CompletableFuture<NamespaceProperties> createNamespace(String namespace,
-                                                                  NamespaceConfiguration colConf) {
-        return rootRangeClient.createNamespace(namespace, colConf);
+    public CompletableFuture<Object> createNamespace(String namespace,
+                                                                  Object colConf) {
+        return null;
     }
 
     @Override
@@ -88,15 +88,15 @@ public class StorageAdminClientImpl extends AbstractAutoAsyncCloseable implement
     }
 
     @Override
-    public CompletableFuture<NamespaceProperties> getNamespace(String namespace) {
-        return rootRangeClient.getNamespace(namespace);
+    public CompletableFuture<Object> getNamespace(String namespace) {
+        return null;
     }
 
-    @Override
-    public CompletableFuture<StreamProperties> createStream(String namespace,
+    //@Override
+    public CompletableFuture<Object> createStream(String namespace,
                                                             String streamName,
-                                                            StreamConfiguration streamConf) {
-        return rootRangeClient.createStream(namespace, streamName, streamConf);
+                                                            Object streamConf) {
+        return null;
     }
 
     @Override
@@ -106,9 +106,9 @@ public class StorageAdminClientImpl extends AbstractAutoAsyncCloseable implement
     }
 
     @Override
-    public CompletableFuture<StreamProperties> getStream(String namespace,
+    public CompletableFuture<Object> getStream(String namespace,
                                                          String streamName) {
-        return rootRangeClient.getStream(namespace, streamName);
+        return null;
     }
 
     //
@@ -127,13 +127,9 @@ public class StorageAdminClientImpl extends AbstractAutoAsyncCloseable implement
         try {
             closeAsync().get();
         } catch (InterruptedException e) {
-            if (log.isDebugEnabled()) {
-                log.debug("Interrupted on closing stream admin client", e);
-            }
+            log.debug("Interrupted on closing stream admin client", e);
         } catch (ExecutionException e) {
-            if (log.isDebugEnabled()) {
-                log.debug("Failed to cloe stream admin client", e);
-            }
+            log.debug("Failed to cloe stream admin client", e);
         }
     }
 }

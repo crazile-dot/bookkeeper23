@@ -28,9 +28,10 @@ import java.util.concurrent.atomic.AtomicReference;
 import lombok.extern.slf4j.Slf4j;
 import org.apache.bookkeeper.bookie.Bookie.NoLedgerException;
 import org.apache.bookkeeper.bookie.CheckpointSource.Checkpoint;
-import org.apache.bookkeeper.common.util.OrderedExecutor;
+//import org.apache.bookkeeper.common.util.OrderedExecutor;
 import org.apache.bookkeeper.conf.ServerConfiguration;
 import org.apache.bookkeeper.stats.StatsLogger;
+import org.apache.bookkeeper.util.SafeRunnable;
 
 /**
  * EntryMemTableWithParallelFlusher.
@@ -38,13 +39,13 @@ import org.apache.bookkeeper.stats.StatsLogger;
 @Slf4j
 class EntryMemTableWithParallelFlusher extends EntryMemTable {
 
-    final OrderedExecutor flushExecutor;
+    //final OrderedExecutor flushExecutor;
 
     public EntryMemTableWithParallelFlusher(final ServerConfiguration conf, final CheckpointSource source,
             final StatsLogger statsLogger) {
         super(conf, source, statsLogger);
-        this.flushExecutor = OrderedExecutor.newBuilder().numThreads(conf.getNumOfMemtableFlushThreads())
-                .name("MemtableFlushThreads").build();
+        //this.flushExecutor = OrderedExecutor.newBuilder().numThreads(conf.getNumOfMemtableFlushThreads())
+               // .name("MemtableFlushThreads").build();
     }
 
     /**
@@ -83,35 +84,38 @@ class EntryMemTableWithParallelFlusher extends EntryMemTable {
                         ConcurrentNavigableMap<EntryKey, EntryKeyValue> thisLedgerEntries = keyValues
                                 .subMap(thisLedgerFirstEntry, thisLedgerCeilingKeyMarker);
                         pendingNumOfLedgerFlushes.register();
-                        flushExecutor.executeOrdered(thisLedgerId, () -> {
-                            try {
-                                long ledger;
-                                boolean ledgerDeleted = false;
-                                for (EntryKey key : thisLedgerEntries.keySet()) {
-                                    EntryKeyValue kv = (EntryKeyValue) key;
-                                    flushedSize.addAndGet(kv.getLength());
-                                    ledger = kv.getLedgerId();
-                                    if (!ledgerDeleted) {
-                                        try {
-                                            flusher.process(ledger, kv.getEntryId(), kv.getValueAsByteBuffer());
-                                        } catch (NoLedgerException exception) {
-                                            ledgerDeleted = true;
+                        /*flushExecutor.executeOrdered(thisLedgerId, new SafeRunnable() {
+                            @Override
+                            public void safeRun() {
+                                try {
+                                    long ledger;
+                                    boolean ledgerDeleted = false;
+                                    for (EntryKey key : thisLedgerEntries.keySet()) {
+                                        EntryKeyValue kv = (EntryKeyValue) key;
+                                        flushedSize.addAndGet(kv.getLength());
+                                        ledger = kv.getLedgerId();
+                                        if (!ledgerDeleted) {
+                                            try {
+                                                flusher.process(ledger, kv.getEntryId(), kv.getValueAsByteBuffer());
+                                            } catch (NoLedgerException exception) {
+                                                ledgerDeleted = true;
+                                            }
                                         }
                                     }
+                                    pendingNumOfLedgerFlushes.arriveAndDeregister();
+                                } catch (Exception exc) {
+                                    log.error("Got Exception while trying to flush process entryies: ", exc);
+                                    exceptionWhileFlushingParallelly.set(exc);
+                                    /*
+                                     * if we get any unexpected exception while
+                                     * trying to flush process entries of a
+                                     * ledger, then terminate the
+                                     * pendingNumOfLedgerFlushes phaser.
+                                     */
+                                    /*pendingNumOfLedgerFlushes.forceTermination();
                                 }
-                                pendingNumOfLedgerFlushes.arriveAndDeregister();
-                            } catch (Exception exc) {
-                                log.error("Got Exception while trying to flush process entryies: ", exc);
-                                exceptionWhileFlushingParallelly.set(exc);
-                                /*
-                                 * if we get any unexpected exception while
-                                 * trying to flush process entries of a
-                                 * ledger, then terminate the
-                                 * pendingNumOfLedgerFlushes phaser.
-                                 */
-                                pendingNumOfLedgerFlushes.forceTermination();
                             }
-                        });
+                        });*/
                         thisLedgerFirstMapEntry = keyValues.ceilingEntry(thisLedgerCeilingKeyMarker);
                     }
 
@@ -135,7 +139,7 @@ class EntryMemTableWithParallelFlusher extends EntryMemTable {
                         throw new IOException("Failed to complete the flushSnapshotByParallelizing",
                                 exceptionWhileFlushingParallelly.get());
                     }
-                    memTableStats.getFlushBytesCounter().addCount(flushedSize.get());
+                    memTableStats.getFlushBytesCounter().add(flushedSize.get());
                     clearSnapshot(keyValues);
                 }
             }
@@ -146,6 +150,6 @@ class EntryMemTableWithParallelFlusher extends EntryMemTable {
 
     @Override
     public void close() throws Exception {
-        flushExecutor.shutdown();
+        //flushExecutor.shutdown();
     }
 }

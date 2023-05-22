@@ -1,4 +1,4 @@
-/*
+/**
  * Licensed to the Apache Software Foundation (ASF) under one
  * or more contributor license agreements.  See the NOTICE file
  * distributed with this work for additional information
@@ -18,10 +18,12 @@
 package org.apache.bookkeeper.client;
 
 import io.netty.util.HashedWheelTimer;
+
 import java.util.List;
 import java.util.Map;
 import java.util.Optional;
 import java.util.Set;
+
 import org.apache.bookkeeper.conf.ClientConfiguration;
 import org.apache.bookkeeper.feature.FeatureProvider;
 import org.apache.bookkeeper.net.BookieId;
@@ -35,7 +37,7 @@ import org.apache.bookkeeper.stats.StatsLogger;
  *
  * @see EnsemblePlacementPolicy
  */
-public class ZoneawareEnsemblePlacementPolicy extends ZoneawareEnsemblePlacementPolicyImpl
+public abstract class ZoneawareEnsemblePlacementPolicy extends ZoneawareEnsemblePlacementPolicyImpl
         implements ITopologyAwareEnsemblePlacementPolicy<BookieNode> {
     ZoneawareEnsemblePlacementPolicyImpl slave = null;
 
@@ -53,7 +55,7 @@ public class ZoneawareEnsemblePlacementPolicy extends ZoneawareEnsemblePlacement
             confClone.setNetworkTopologyStabilizePeriodSeconds(0);
             super.initialize(confClone, optionalDnsResolver, timer, featureProvider,
                     statsLogger, bookieAddressResolver);
-            slave = new ZoneawareEnsemblePlacementPolicyImpl();
+            //slave = new ZoneawareEnsemblePlacementPolicyImpl();
             slave.initialize(conf, optionalDnsResolver, timer, featureProvider, statsLogger, bookieAddressResolver);
         } else {
             super.initialize(conf, optionalDnsResolver, timer, featureProvider, statsLogger, bookieAddressResolver);
@@ -123,7 +125,7 @@ public class ZoneawareEnsemblePlacementPolicy extends ZoneawareEnsemblePlacement
 
     @Override
     public void handleBookiesThatJoined(Set<BookieId> joinedBookies) {
-        super.handleBookiesThatJoined(joinedBookies);
+        //super.handleBookiesThatJoined(joinedBookies);
         if (null != slave) {
             slave.handleBookiesThatJoined(joinedBookies);
         }

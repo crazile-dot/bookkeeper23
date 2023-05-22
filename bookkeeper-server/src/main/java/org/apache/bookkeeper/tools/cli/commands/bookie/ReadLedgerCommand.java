@@ -20,7 +20,6 @@ package org.apache.bookkeeper.tools.cli.commands.bookie;
 
 import com.beust.jcommander.Parameter;
 import com.google.common.util.concurrent.UncheckedExecutionException;
-import edu.umd.cs.findbugs.annotations.SuppressFBWarnings;
 import io.netty.buffer.ByteBufUtil;
 import io.netty.buffer.UnpooledByteBufAllocator;
 import io.netty.channel.EventLoopGroup;
@@ -35,15 +34,15 @@ import java.util.stream.LongStream;
 import lombok.Setter;
 import lombok.experimental.Accessors;
 import org.apache.bookkeeper.client.BKException;
-import org.apache.bookkeeper.client.BookKeeperAdmin;
+//import org.apache.bookkeeper.client.BookKeeperAdmin;
 import org.apache.bookkeeper.client.LedgerEntry;
 import org.apache.bookkeeper.client.LedgerHandle;
-import org.apache.bookkeeper.common.util.OrderedExecutor;
+//import org.apache.bookkeeper.common.util.OrderedExecutor;
 import org.apache.bookkeeper.conf.ClientConfiguration;
 import org.apache.bookkeeper.conf.ServerConfiguration;
 import org.apache.bookkeeper.net.BookieId;
 import org.apache.bookkeeper.proto.BookieClient;
-import org.apache.bookkeeper.proto.BookieClientImpl;
+//import org.apache.bookkeeper.proto.BookieClientImpl;
 import org.apache.bookkeeper.proto.BookieProtocol;
 import org.apache.bookkeeper.stats.NullStatsLogger;
 import org.apache.bookkeeper.tools.cli.helpers.BookieCommand;
@@ -139,7 +138,6 @@ public class ReadLedgerCommand extends BookieCommand<ReadLedgerCommand.ReadLedge
         }
     }
 
-    @SuppressFBWarnings("RCN_REDUNDANT_NULLCHECK_WOULD_HAVE_BEEN_A_NPE")
     private boolean readledger(ServerConfiguration serverConf, ReadLedgerFlags flags)
         throws InterruptedException, BKException, IOException {
 
@@ -156,7 +154,7 @@ public class ReadLedgerCommand extends BookieCommand<ReadLedgerCommand.ReadLedge
         ClientConfiguration conf = new ClientConfiguration();
         conf.addConfiguration(serverConf);
 
-        try (BookKeeperAdmin bk = new BookKeeperAdmin(conf)) {
+        /*try (BookKeeperAdmin bk = new BookKeeperAdmin(conf)) {
             if (flags.forceRecovery) {
                 // Force the opening of the ledger to trigger recovery
                 try (LedgerHandle lh = bk.openLedger(flags.ledgerId)) {
@@ -201,8 +199,9 @@ public class ReadLedgerCommand extends BookieCommand<ReadLedgerCommand.ReadLedge
                                                    return;
                                                }
 
-                                               LOG.info("--------- Lid={}, Eid={} ---------",
-                                                   ledgerIdFormatter.formatLedgerId(flags.ledgerId), entryId);
+                                               LOG.info(
+                                                   "--------- Lid=" + ledgerIdFormatter.formatLedgerId(flags.ledgerId)
+                                                   + ", Eid=" + entryId + " ---------");
                                                if (flags.msg) {
                                                    LOG.info("Data: " + ByteBufUtil.prettyHexDump(buffer));
                                                }
@@ -221,7 +220,7 @@ public class ReadLedgerCommand extends BookieCommand<ReadLedgerCommand.ReadLedge
                 executor.shutdown();
                 bookieClient.close();
             }
-        }
+        }*/
         return true;
     }
 
@@ -237,10 +236,8 @@ public class ReadLedgerCommand extends BookieCommand<ReadLedgerCommand.ReadLedge
         long ledgerId = entry.getLedgerId();
         long entryId = entry.getEntryId();
         long entrySize = entry.getLength();
-
-        LOG.info("--------- Lid={}, Eid={}, EntrySize={} ---------",
-            ledgerIdFormatter.formatLedgerId(ledgerId), entryId, entrySize);
-
+        LOG.info("--------- Lid=" + ledgerIdFormatter.formatLedgerId(ledgerId) + ", Eid=" + entryId
+                           + ", EntrySize=" + entrySize + " ---------");
         if (printMsg) {
             entryFormatter.formatEntry(entry.getEntry());
         }

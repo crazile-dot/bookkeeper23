@@ -37,10 +37,11 @@ public final class GrpcServices {
      * @return the list of grpc services should be associated with the range store.
      */
     public static Collection<ServerServiceDefinition> create(RangeStoreService store) {
-        return Lists.newArrayList(
+        /*return Lists.newArrayList(
             new GrpcRootRangeService(store).bindService(),
             new GrpcMetaRangeService(store).bindService(),
-            new GrpcTableService(store).bindService());
+            new GrpcTableService(store).bindService());*/
+        return null;
     }
 
 }

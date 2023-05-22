@@ -40,55 +40,56 @@ import org.apache.bookkeeper.clients.impl.channel.StorageServerChannel;
 import org.apache.bookkeeper.clients.impl.container.StorageContainerChannel;
 import org.apache.bookkeeper.clients.utils.ListenableFutureRpcProcessor;
 import org.apache.bookkeeper.common.util.Backoff.Policy;
-import org.apache.bookkeeper.stream.proto.kv.rpc.IncrementRequest;
+/*import org.apache.bookkeeper.stream.proto.kv.rpc.IncrementRequest;
 import org.apache.bookkeeper.stream.proto.kv.rpc.IncrementResponse;
-import org.apache.bookkeeper.stream.proto.storage.StatusCode;
+import org.apache.bookkeeper.stream.proto.storage.StatusCode;*/
 
 /**
  * Request Processor processing table request.
  */
-class IncrementRequestProcessor<RespT>
-    extends ListenableFutureRpcProcessor<IncrementRequest, IncrementResponse, RespT> {
+class IncrementRequestProcessor<RespT> {
+   // extends ListenableFutureRpcProcessor<IncrementRequest, IncrementResponse, RespT> {
 
     public static <T> IncrementRequestProcessor<T> of(
-        IncrementRequest request,
-        Function<IncrementResponse, T> responseFunc,
+        Object request,
+        Function<Object, T> responseFunc,
         StorageContainerChannel channel,
         ScheduledExecutorService executor,
         Policy backoffPolicy) {
-        return new IncrementRequestProcessor<>(request, responseFunc, channel, executor, backoffPolicy);
+        return null;
     }
 
-    private final IncrementRequest request;
-    private final Function<IncrementResponse, RespT> responseFunc;
+    //private final IncrementRequest request;
+    //private final Function<IncrementResponse, RespT> responseFunc;
 
-    private IncrementRequestProcessor(IncrementRequest request,
-                                      Function<IncrementResponse, RespT> respFunc,
+    private IncrementRequestProcessor(Object request,
+                                      Function<Object, RespT> respFunc,
                                       StorageContainerChannel channel,
                                       ScheduledExecutorService executor,
                                       Policy backoffPolicy) {
-        super(channel, executor, backoffPolicy);
-        this.request = request;
-        this.responseFunc = respFunc;
+        //super(channel, executor, backoffPolicy);
+        //this.request = request;
+        //this.responseFunc = respFunc;
     }
 
-    @Override
-    protected IncrementRequest createRequest() {
-        return request;
+    //@Override
+    protected Object createRequest() {
+        return null;
     }
 
-    @Override
-    protected ListenableFuture<IncrementResponse> sendRPC(StorageServerChannel rsChannel,
-                                                          IncrementRequest request) {
-        return rsChannel.getTableService().increment(request);
+    //@Override
+    protected ListenableFuture<Object> sendRPC(StorageServerChannel rsChannel,
+                                                          Object request) {
+        return null;
     }
 
-    @Override
-    protected RespT processResponse(IncrementResponse response) throws Exception {
-        if (StatusCode.SUCCESS == response.getHeader().getCode()) {
+   // @Override
+    protected RespT processResponse(Object response) throws Exception {
+        /*if (StatusCode.SUCCESS == response.getHeader().getCode()) {
             return responseFunc.apply(response);
         }
         throw new InternalServerException("Encountered internal server exception : code = "
-            + response.getHeader().getCode());
+            + response.getHeader().getCode());*/
+        return null;
     }
 }

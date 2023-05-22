@@ -22,7 +22,8 @@ import static com.google.common.base.Preconditions.checkNotNull;
 
 import java.util.HashMap;
 import java.util.concurrent.ExecutorService;
-import org.apache.bookkeeper.client.BookKeeperAdmin;
+
+//import org.apache.bookkeeper.client.BookKeeperAdmin;
 import org.apache.bookkeeper.common.util.JsonUtil;
 import org.apache.bookkeeper.conf.ServerConfiguration;
 import org.apache.bookkeeper.http.HttpServer;
@@ -42,14 +43,14 @@ public class DecommissionService implements HttpEndpointService {
     static final Logger LOG = LoggerFactory.getLogger(DecommissionService.class);
 
     protected ServerConfiguration conf;
-    protected BookKeeperAdmin bka;
+    //protected BookKeeperAdmin bka;
     protected ExecutorService executor;
 
 
-    public DecommissionService(ServerConfiguration conf, BookKeeperAdmin bka, ExecutorService executor) {
+    public DecommissionService(ServerConfiguration conf, ExecutorService executor) {
         checkNotNull(conf);
         this.conf = conf;
-        this.bka = bka;
+        //this.bka = bka;
         this.executor = executor;
     }
 
@@ -78,7 +79,7 @@ public class DecommissionService implements HttpEndpointService {
                     executor.execute(() -> {
                         try {
                             LOG.info("Start decommissioning bookie.");
-                            bka.decommissionBookie(bookieSrc);
+                            //bka.decommissionBookie(bookieSrc);
                             LOG.info("Complete decommissioning bookie.");
                         } catch (Exception e) {
                             LOG.error("Error handling decommissionBookie: {}.", bookieSrc, e);
@@ -86,7 +87,7 @@ public class DecommissionService implements HttpEndpointService {
                     });
 
                     response.setCode(HttpServer.StatusCode.OK);
-                    response.setBody("Success send decommission Bookie command " + bookieSrc);
+                    response.setBody("Success send decommission Bookie command " + bookieSrc.toString());
                     return response;
                 } catch (Exception e) {
                     LOG.error("Exception occurred while decommissioning bookie: ", e);

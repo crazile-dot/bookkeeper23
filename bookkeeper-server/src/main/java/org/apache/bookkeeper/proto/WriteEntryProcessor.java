@@ -1,4 +1,4 @@
-/*
+/**
  * Licensed to the Apache Software Foundation (ASF) under one
  * or more contributor license agreements.  See the NOTICE file
  * distributed with this work for additional information
@@ -19,9 +19,12 @@ package org.apache.bookkeeper.proto;
 
 import com.google.common.annotations.VisibleForTesting;
 import io.netty.buffer.ByteBuf;
+import io.netty.channel.Channel;
 import io.netty.util.Recycler;
+
 import java.io.IOException;
 import java.util.concurrent.TimeUnit;
+
 import org.apache.bookkeeper.bookie.BookieException;
 import org.apache.bookkeeper.bookie.BookieException.OperationRejectedException;
 import org.apache.bookkeeper.net.BookieId;
@@ -46,26 +49,24 @@ class WriteEntryProcessor extends PacketProcessorBase<ParsedAddRequest> implemen
         startTimeNanos = -1L;
     }
 
-    public static WriteEntryProcessor create(ParsedAddRequest request, BookieRequestHandler requestHandler,
-                                             BookieRequestProcessor requestProcessor) {
+    public static WriteEntryProcessor create(ParsedAddRequest request, Channel channel,
+                                             Object requestProcessor) {
         WriteEntryProcessor wep = RECYCLER.get();
-        wep.init(request, requestHandler, requestProcessor);
-        requestProcessor.onAddRequestStart(requestHandler.ctx().channel());
+        wep.init(request, channel, requestProcessor);
         return wep;
     }
 
     @Override
     protected void processPacket() {
-        if (requestProcessor.getBookie().isReadOnly()
+        /*if (requestProcessor.getBookie().isReadOnly()
             && !(request.isHighPriority() && requestProcessor.getBookie().isAvailableForHighPriorityWrites())) {
             LOG.warn("BookieServer is running in readonly mode,"
                     + " so rejecting the request from the client!");
-            sendWriteReqResponse(BookieProtocol.EREADONLY,
+            sendResponse(BookieProtocol.EREADONLY,
                          ResponseBuilder.buildErrorResponse(BookieProtocol.EREADONLY, request),
                          requestProcessor.getRequestStats().getAddRequestStats());
             request.release();
             request.recycle();
-            recycle();
             return;
         }
 
@@ -74,19 +75,17 @@ class WriteEntryProcessor extends PacketProcessorBase<ParsedAddRequest> implemen
         ByteBuf addData = request.getData();
         try {
             if (request.isRecoveryAdd()) {
-                requestProcessor.getBookie().recoveryAddEntry(addData, this, requestHandler, request.getMasterKey());
+                requestProcessor.getBookie().recoveryAddEntry(addData, this, channel, request.getMasterKey());
             } else {
-                requestProcessor.getBookie().addEntry(addData, false, this,
-                        requestHandler, request.getMasterKey());
+                requestProcessor.getBookie().addEntry(addData, false, this, channel, request.getMasterKey());
             }
         } catch (OperationRejectedException e) {
-            requestProcessor.getRequestStats().getAddEntryRejectedCounter().inc();
             // Avoid to log each occurence of this exception as this can happen when the ledger storage is
             // unable to keep up with the write rate.
             if (LOG.isDebugEnabled()) {
                 LOG.debug("Operation rejected while writing {}", request, e);
             }
-            rc = BookieProtocol.ETOOMANYREQUESTS;
+            rc = BookieProtocol.EIO;
         } catch (IOException e) {
             LOG.error("Error writing {}", request, e);
             rc = BookieProtocol.EIO;
@@ -101,35 +100,35 @@ class WriteEntryProcessor extends PacketProcessorBase<ParsedAddRequest> implemen
                       request.ledgerId, request.entryId, t.getMessage(), t);
             // some bad request which cause unexpected exception
             rc = BookieProtocol.EBADREQ;
+        } finally {
+            addData.release();
         }
 
         if (rc != BookieProtocol.EOK) {
             requestProcessor.getRequestStats().getAddEntryStats()
                 .registerFailedEvent(MathUtils.elapsedNanos(startTimeNanos), TimeUnit.NANOSECONDS);
-            sendWriteReqResponse(rc,
+            sendResponse(rc,
                          ResponseBuilder.buildErrorResponse(rc, request),
                          requestProcessor.getRequestStats().getAddRequestStats());
             request.recycle();
-            recycle();
-        }
+        }*/
     }
 
     @Override
     public void writeComplete(int rc, long ledgerId, long entryId,
                               BookieId addr, Object ctx) {
-        if (BookieProtocol.EOK == rc) {
+        /*if (BookieProtocol.EOK == rc) {
             requestProcessor.getRequestStats().getAddEntryStats()
                 .registerSuccessfulEvent(MathUtils.elapsedNanos(startTimeNanos), TimeUnit.NANOSECONDS);
         } else {
             requestProcessor.getRequestStats().getAddEntryStats()
                 .registerFailedEvent(MathUtils.elapsedNanos(startTimeNanos), TimeUnit.NANOSECONDS);
         }
-
-        requestHandler.prepareSendResponseV2(rc, request);
-        requestProcessor.onAddRequestFinish();
-
+        sendResponse(rc,
+                     ResponseBuilder.buildAddResponse(request),
+                     requestProcessor.getRequestStats().getAddRequestStats());
         request.recycle();
-        recycle();
+        recycle();*/
     }
 
     @Override

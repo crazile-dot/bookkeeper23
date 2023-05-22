@@ -27,7 +27,7 @@ import org.apache.bookkeeper.clients.admin.StorageAdminClient;
 import org.apache.bookkeeper.clients.exceptions.NamespaceNotFoundException;
 import org.apache.bookkeeper.stream.cli.commands.AdminCommand;
 import org.apache.bookkeeper.stream.cli.commands.namespace.GetNamespaceCommand.Flags;
-import org.apache.bookkeeper.stream.proto.NamespaceProperties;
+//import org.apache.bookkeeper.stream.proto.NamespaceProperties;
 import org.apache.bookkeeper.tools.common.BKFlags;
 import org.apache.bookkeeper.tools.framework.CliFlags;
 import org.apache.bookkeeper.tools.framework.CliSpec;
@@ -64,7 +64,7 @@ public class GetNamespaceCommand extends AdminCommand<Flags> {
 
         String namespaceName = cmdFlags.arguments.get(0);
         try {
-            NamespaceProperties ns = result(
+            Object ns = result(
                 admin.getNamespace(namespaceName));
             spec.console().println("Namespace '" + namespaceName + "' :");
             spec.console().println(ns);

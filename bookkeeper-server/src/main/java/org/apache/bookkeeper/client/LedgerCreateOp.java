@@ -30,9 +30,10 @@ import java.util.Map;
 import java.util.concurrent.CompletableFuture;
 import java.util.concurrent.TimeUnit;
 import java.util.concurrent.locks.ReentrantReadWriteLock;
-import org.apache.bookkeeper.client.AsyncCallback.CreateCallback;
+
+//import org.apache.bookkeeper.client.AsyncCallback.CreateCallback;
 import org.apache.bookkeeper.client.BKException.BKNotEnoughBookiesException;
-import org.apache.bookkeeper.client.BookKeeper.DigestType;
+//import org.apache.bookkeeper.client.BookKeeper.DigestType;
 import org.apache.bookkeeper.client.SyncCallbackUtils.SyncCreateAdvCallback;
 import org.apache.bookkeeper.client.SyncCallbackUtils.SyncCreateCallback;
 import org.apache.bookkeeper.client.api.CreateAdvBuilder;
@@ -56,10 +57,10 @@ import org.slf4j.LoggerFactory;
  */
 class LedgerCreateOp {
 
-    static final Logger LOG = LoggerFactory.getLogger(LedgerCreateOp.class);
+    static final Logger LOG = LoggerFactory.getLogger(LedgerCreateOp.class);}
 
-    final CreateCallback cb;
-    LedgerMetadata metadata;
+    //final CreateCallback cb;
+   /* LedgerMetadata metadata;
     LedgerHandle lh;
     long ledgerId = -1L;
     final Object ctx;
@@ -69,8 +70,8 @@ class LedgerCreateOp {
     final Map<String, byte[]> customMetadata;
     final int metadataFormatVersion;
     final byte[] passwd;
-    final BookKeeper bk;
-    final DigestType digestType;
+    //final BookKeeper bk;
+    //final DigestType digestType;
     final EnumSet<WriteFlag> writeFlags;
     final long startTime;
     final OpStatsLogger createOpLogger;
@@ -78,7 +79,7 @@ class LedgerCreateOp {
     boolean adv = false;
     boolean generateLedgerId = true;
 
-    /**
+   /* /**
      * Constructor.
      *
      * @param bk
@@ -101,8 +102,8 @@ class LedgerCreateOp {
      *       A map of user specified custom metadata about the ledger to be persisted; will not try to
      *       preserve the order(e.g. sortedMap) upon later retireval.
      */
-    LedgerCreateOp(
-            BookKeeper bk, int ensembleSize, int writeQuorumSize, int ackQuorumSize, DigestType digestType,
+
+            /*BookKeeper bk, int ensembleSize, int writeQuorumSize, int ackQuorumSize, DigestType digestType,
             byte[] passwd, CreateCallback cb, Object ctx, final Map<String, byte[]> customMetadata,
             EnumSet<WriteFlag> writeFlags,
             BookKeeperClientStats clientStats) {
@@ -120,12 +121,12 @@ class LedgerCreateOp {
         this.startTime = MathUtils.nowInNano();
         this.createOpLogger = clientStats.getCreateOpLogger();
         this.clientStats = clientStats;
-    }
+    }*/
 
     /**
      * Initiates the operation.
      */
-    public void initiate() {
+    /*public void initiate() {
         int actualEnsembleSize = ensembleSize;
         List<BookieId> ensemble = null;
         // select bookies for first ensemble
@@ -212,7 +213,7 @@ class LedgerCreateOp {
     /**
      * Initiates the operation to return LedgerHandleAdv.
      */
-    public void initiateAdv(final long ledgerId) {
+    /*public void initiateAdv(final long ledgerId) {
         this.adv = true;
         this.ledgerId = ledgerId;
         if (this.ledgerId != -1L) {
@@ -224,7 +225,7 @@ class LedgerCreateOp {
     /**
      * Callback when metadata store has responded.
      */
-    private void metadataCallback(Versioned<LedgerMetadata> writtenMetadata,
+   /* private void metadataCallback(Versioned<LedgerMetadata> writtenMetadata,
                                   Throwable exception, LedgerMetadataBuilder metadataBuilder) {
         if (exception != null) {
             if (this.generateLedgerId
@@ -271,11 +272,7 @@ class LedgerCreateOp {
         } else {
             createOpLogger.registerSuccessfulEvent(MathUtils.elapsedNanos(startTime), TimeUnit.NANOSECONDS);
         }
-        if (lh != null) { // lh is null in case of errors
-            lh.executeOrdered(() -> cb.createComplete(rc, lh, ctx));
-        } else {
-            cb.createComplete(rc, null, ctx);
-        }
+        cb.createComplete(rc, lh, ctx);
     }
 
     public static class CreateBuilderImpl implements CreateBuilder {
@@ -472,4 +469,4 @@ class LedgerCreateOp {
             }
         }
     }
-}
+}*/

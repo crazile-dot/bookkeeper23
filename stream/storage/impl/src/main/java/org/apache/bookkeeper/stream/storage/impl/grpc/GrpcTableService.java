@@ -19,7 +19,7 @@ package org.apache.bookkeeper.stream.storage.impl.grpc;
 
 import io.grpc.stub.StreamObserver;
 import lombok.extern.slf4j.Slf4j;
-import org.apache.bookkeeper.stream.proto.kv.rpc.DeleteRangeRequest;
+/*import org.apache.bookkeeper.stream.proto.kv.rpc.DeleteRangeRequest;
 import org.apache.bookkeeper.stream.proto.kv.rpc.DeleteRangeResponse;
 import org.apache.bookkeeper.stream.proto.kv.rpc.IncrementRequest;
 import org.apache.bookkeeper.stream.proto.kv.rpc.IncrementResponse;
@@ -31,7 +31,7 @@ import org.apache.bookkeeper.stream.proto.kv.rpc.ResponseHeader;
 import org.apache.bookkeeper.stream.proto.kv.rpc.TableServiceGrpc.TableServiceImplBase;
 import org.apache.bookkeeper.stream.proto.kv.rpc.TxnRequest;
 import org.apache.bookkeeper.stream.proto.kv.rpc.TxnResponse;
-import org.apache.bookkeeper.stream.proto.storage.StatusCode;
+import org.apache.bookkeeper.stream.proto.storage.StatusCode;*/
 import org.apache.bookkeeper.stream.storage.api.metadata.RangeStoreService;
 import org.apache.bookkeeper.stream.storage.impl.grpc.handler.ResponseHandler;
 
@@ -39,7 +39,7 @@ import org.apache.bookkeeper.stream.storage.impl.grpc.handler.ResponseHandler;
  * The gRPC protocol based k/v service.
  */
 @Slf4j
-public class GrpcTableService extends TableServiceImplBase {
+public class GrpcTableService {
 
     private final RangeStoreService rangeStore;
 
@@ -48,10 +48,10 @@ public class GrpcTableService extends TableServiceImplBase {
         log.info("Created Table service");
     }
 
-    @Override
-    public void range(RangeRequest request,
-                      StreamObserver<RangeResponse> responseObserver) {
-        rangeStore.range(request).whenComplete(
+    //@Override
+    public void range(Object request,
+                      StreamObserver<Object> responseObserver) {
+        /*rangeStore.range(request).whenComplete(
             new ResponseHandler<RangeResponse>(responseObserver) {
                 @Override
                 protected RangeResponse createErrorResp(Throwable cause) {
@@ -62,13 +62,13 @@ public class GrpcTableService extends TableServiceImplBase {
                             .build())
                         .build();
                 }
-            });
+            });*/
     }
 
-    @Override
-    public void put(PutRequest request,
-                    StreamObserver<PutResponse> responseObserver) {
-        rangeStore.put(request).whenComplete(
+    //@Override
+    public void put(Object request,
+                    StreamObserver<Object> responseObserver) {
+        /*rangeStore.put(request).whenComplete(
             new ResponseHandler<PutResponse>(responseObserver) {
                 @Override
                 protected PutResponse createErrorResp(Throwable cause) {
@@ -79,13 +79,13 @@ public class GrpcTableService extends TableServiceImplBase {
                             .build())
                         .build();
                 }
-            });
+            });*/
     }
 
-    @Override
-    public void delete(DeleteRangeRequest request,
-                       StreamObserver<DeleteRangeResponse> responseObserver) {
-        rangeStore.delete(request).whenComplete(
+    //@Override
+    public void delete(Object request,
+                       StreamObserver<Object> responseObserver) {
+        /*rangeStore.delete(request).whenComplete(
             new ResponseHandler<DeleteRangeResponse>(responseObserver) {
                 @Override
                 protected DeleteRangeResponse createErrorResp(Throwable cause) {
@@ -96,13 +96,13 @@ public class GrpcTableService extends TableServiceImplBase {
                             .build())
                         .build();
                 }
-            });
+            });*/
     }
 
-    @Override
-    public void txn(TxnRequest request,
-                    StreamObserver<TxnResponse> responseObserver) {
-        rangeStore.txn(request).whenComplete(
+    //@Override
+    public void txn(Object request,
+                    StreamObserver<Object> responseObserver) {
+        /*rangeStore.txn(request).whenComplete(
             new ResponseHandler<TxnResponse>(responseObserver) {
                 @Override
                 protected TxnResponse createErrorResp(Throwable cause) {
@@ -113,13 +113,13 @@ public class GrpcTableService extends TableServiceImplBase {
                             .build())
                         .build();
                 }
-            });
+            });*/
     }
 
-    @Override
-    public void increment(IncrementRequest request,
-                          StreamObserver<IncrementResponse> responseObserver) {
-        rangeStore.incr(request).whenComplete(
+    //@Override
+    public void increment(Object request,
+                          StreamObserver<Object> responseObserver) {
+        /*rangeStore.incr(request).whenComplete(
             new ResponseHandler<IncrementResponse>(responseObserver) {
                 @Override
                 protected IncrementResponse createErrorResp(Throwable cause) {
@@ -130,6 +130,6 @@ public class GrpcTableService extends TableServiceImplBase {
                             .build())
                         .build();
                 }
-            });
+            });*/
     }
 }

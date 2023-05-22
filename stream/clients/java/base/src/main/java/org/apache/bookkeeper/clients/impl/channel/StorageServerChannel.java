@@ -27,12 +27,12 @@ import io.grpc.ManagedChannelBuilder;
 import java.util.Optional;
 import java.util.function.Function;
 import javax.annotation.concurrent.GuardedBy;
-import org.apache.bookkeeper.clients.config.StorageClientSettings;
+
 import org.apache.bookkeeper.clients.impl.container.StorageContainerClientInterceptor;
 import org.apache.bookkeeper.clients.resolver.EndpointResolver;
 import org.apache.bookkeeper.clients.utils.GrpcUtils;
 import org.apache.bookkeeper.common.grpc.stats.MonitoringClientInterceptor;
-import org.apache.bookkeeper.stream.proto.common.Endpoint;
+/*import org.apache.bookkeeper.stream.proto.common.Endpoint;
 import org.apache.bookkeeper.stream.proto.kv.rpc.TableServiceGrpc;
 import org.apache.bookkeeper.stream.proto.kv.rpc.TableServiceGrpc.TableServiceFutureStub;
 import org.apache.bookkeeper.stream.proto.storage.MetaRangeServiceGrpc;
@@ -40,7 +40,7 @@ import org.apache.bookkeeper.stream.proto.storage.MetaRangeServiceGrpc.MetaRange
 import org.apache.bookkeeper.stream.proto.storage.RootRangeServiceGrpc;
 import org.apache.bookkeeper.stream.proto.storage.RootRangeServiceGrpc.RootRangeServiceFutureStub;
 import org.apache.bookkeeper.stream.proto.storage.StorageContainerServiceGrpc;
-import org.apache.bookkeeper.stream.proto.storage.StorageContainerServiceGrpc.StorageContainerServiceFutureStub;
+import org.apache.bookkeeper.stream.proto.storage.StorageContainerServiceGrpc.StorageContainerServiceFutureStub;*/
 
 /**
  * A channel connected to a range server.
@@ -49,8 +49,8 @@ import org.apache.bookkeeper.stream.proto.storage.StorageContainerServiceGrpc.St
  */
 public class StorageServerChannel implements AutoCloseable {
 
-    public static Function<Endpoint, StorageServerChannel> factory(StorageClientSettings settings) {
-        return new Function<Endpoint, StorageServerChannel>() {
+    public static Function<Object, StorageServerChannel> factory(Object settings) {
+        /*return new Function<Endpoint, StorageServerChannel>() {
 
             private final Optional<MonitoringClientInterceptor> interceptor =
                 settings.statsLogger().map(statsLogger ->
@@ -67,21 +67,22 @@ public class StorageServerChannel implements AutoCloseable {
                     .map(interceptor -> channel.intercept(interceptor))
                     .orElse(channel);
             }
-        };
+        };*/
+        return null;
     }
 
     private final Optional<String> token;
-    private final Channel channel;
+    private final Channel channel = null;
     private final StorageServerChannel interceptedServerChannel;
 
-    @GuardedBy("this")
+    /*@GuardedBy("this")
     private RootRangeServiceFutureStub rootRangeService;
     @GuardedBy("this")
     private MetaRangeServiceFutureStub metaRangeService;
     @GuardedBy("this")
     private StorageContainerServiceFutureStub scService;
     @GuardedBy("this")
-    private TableServiceFutureStub kvService;
+    private TableServiceFutureStub kvService;*/
 
     /**
      * Construct a range server channel to a given range server endpoint.
@@ -91,21 +92,21 @@ public class StorageServerChannel implements AutoCloseable {
      * @param usePlainText whether to plain text protocol or not
      */
     @SuppressWarnings("deprecation")
-    public StorageServerChannel(Endpoint endpoint,
+    public StorageServerChannel(Object endpoint,
                                 Optional<String> token,
                                 boolean usePlainText,
                                 EndpointResolver endpointResolver) {
         this.token = token;
-        Endpoint resolvedEndpoint = endpointResolver.resolve(endpoint);
-        ManagedChannelBuilder channelBuilder = ManagedChannelBuilder.forAddress(
+        //Object resolvedEndpoint = endpointResolver.resolve();
+        /*ManagedChannelBuilder channelBuilder = ManagedChannelBuilder.forAddress(
             resolvedEndpoint.getHostname(),
-            resolvedEndpoint.getPort());
+            resolvedEndpoint.getPort());*/
         if (usePlainText) {
-            channelBuilder.usePlaintext();
+            // channelBuilder.usePlaintext();
         } else {
-            channelBuilder.useTransportSecurity();
+           // channelBuilder.useTransportSecurity();
         }
-        this.channel = channelBuilder.build();
+        //this.channel = channelBuilder.build();
         this.interceptedServerChannel = null;
     }
 
@@ -128,44 +129,44 @@ public class StorageServerChannel implements AutoCloseable {
                                  Optional<String> token,
                                  StorageServerChannel interceptedServerChannel) {
         this.token = token;
-        this.channel = channel;
+        //this.channel = channel;
         this.interceptedServerChannel = interceptedServerChannel;
     }
 
-    public synchronized RootRangeServiceFutureStub getRootRangeService() {
-        if (null == rootRangeService) {
+    public synchronized Object getRootRangeService() {
+        /*if (null == rootRangeService) {
             rootRangeService = GrpcUtils.configureGrpcStub(
                 RootRangeServiceGrpc.newFutureStub(channel),
                 token);
-        }
-        return rootRangeService;
+        }*/
+        return 1;
     }
 
-    public synchronized MetaRangeServiceFutureStub getMetaRangeService() {
-        if (null == metaRangeService) {
+    public synchronized Object getMetaRangeService() {
+        /*if (null == metaRangeService) {
             metaRangeService = GrpcUtils.configureGrpcStub(
                 MetaRangeServiceGrpc.newFutureStub(channel),
                 token);
-        }
-        return metaRangeService;
+        }*/
+        return 1;
     }
 
-    public synchronized StorageContainerServiceFutureStub getStorageContainerService() {
-        if (null == scService) {
-            scService = GrpcUtils.configureGrpcStub(
+    public synchronized Object getStorageContainerService() {
+        if (true) {
+            /*scService = GrpcUtils.configureGrpcStub(
                 StorageContainerServiceGrpc.newFutureStub(channel),
-                token);
+                token);*/
         }
-        return scService;
+        return 1;
     }
 
-    public synchronized TableServiceFutureStub getTableService() {
-        if (null == kvService) {
-            kvService = GrpcUtils.configureGrpcStub(
+    public synchronized Object getTableService() {
+        if (true) {
+            /*kvService = GrpcUtils.configureGrpcStub(
                 TableServiceGrpc.newFutureStub(channel),
-                token);
+                token);*/
         }
-        return kvService;
+        return 1;
     }
 
     /**

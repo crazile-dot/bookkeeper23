@@ -1,4 +1,4 @@
-/*
+/**
  * Licensed to the Apache Software Foundation (ASF) under one
  * or more contributor license agreements.  See the NOTICE file
  * distributed with this work for additional information
@@ -18,6 +18,7 @@
 package org.apache.bookkeeper.client;
 
 import com.google.common.annotations.VisibleForTesting;
+
 import java.util.concurrent.CompletableFuture;
 import java.util.concurrent.atomic.AtomicLong;
 import org.apache.bookkeeper.client.AsyncCallback.AddCallback;
@@ -92,7 +93,7 @@ class LedgerRecoveryOp implements ReadEntryListener, AddCallback {
     }
 
     public CompletableFuture<LedgerHandle> initiate() {
-        ReadLastConfirmedOp rlcop = new ReadLastConfirmedOp(clientCtx.getBookieClient(),
+        /*ReadLastConfirmedOp rlcop = new ReadLastConfirmedOp(clientCtx.getBookieClient(),
                                                             lh.distributionSchedule,
                                                             lh.macManager,
                                                             lh.ledgerId,
@@ -112,7 +113,7 @@ class LedgerRecoveryOp implements ReadEntryListener, AddCallback {
                                  - the LAC returned by the current bookie ensemble (could be -1)
                                  - the first entry id of the current ensemble - 1.
                                  */
-                                Long lastEnsembleEntryId = lh.getVersionedLedgerMetadata()
+                                /*Long lastEnsembleEntryId = lh.getVersionedLedgerMetadata()
                                         .getValue()
                                         .getAllEnsembles()
                                         .lastEntry()
@@ -129,22 +130,20 @@ class LedgerRecoveryOp implements ReadEntryListener, AddCallback {
                             // ledger recovery
                             metadataForRecovery = lh.getLedgerMetadata();
                             doRecoveryRead();
-                        } else if (rc == BKException.Code.TimeoutException) {
-                            submitCallback(rc);
                         } else if (rc == BKException.Code.UnauthorizedAccessException) {
                             submitCallback(rc);
                         } else {
                             submitCallback(BKException.Code.ReadException);
                         }
                     }
-                });
+                });*/
 
         /**
          * Enable fencing on this op. When the read request reaches the bookies
          * server it will fence off the ledger, stopping any subsequent operation
          * from writing to it.
          */
-        rlcop.initiateWithFencing();
+        //rlcop.initiateWithFencing();
 
         return promise;
     }
@@ -173,12 +172,12 @@ class LedgerRecoveryOp implements ReadEntryListener, AddCallback {
         }
     }
 
-    @Override
+   // @Override
     public void onEntryComplete(int rc, LedgerHandle lh, LedgerEntry entry, Object ctx) {
         // notify entry listener on individual entries being read during ledger recovery.
         ReadEntryListener listener = entryListener;
         if (null != listener) {
-            listener.onEntryComplete(rc, lh, entry, ctx);
+            //listener.onEntryComplete(rc, lh, entry, ctx);
         }
 
         // we only trigger recovery add an entry when readDone == false && callbackDone == false
@@ -191,7 +190,7 @@ class LedgerRecoveryOp implements ReadEntryListener, AddCallback {
              * replicas. We subtract the length of the data itself, since it will
              * be added again when processing the call to add it.
              */
-            synchronized (lh) {
+           /* synchronized (lh) {
                 lh.length = entry.getLength() - (long) data.length;
                 // check whether entry id is expected, so we won't overwritten any entries by mistake
                 if (entry.getEntryId() != lh.lastAddPushed + 1) {
@@ -199,9 +198,9 @@ class LedgerRecoveryOp implements ReadEntryListener, AddCallback {
                             entry.getEntryId(), (lh.lastAddPushed + 1), lh.getId());
                     rc = BKException.Code.UnexpectedConditionException;
                 }
-            }
+            }*/
             if (BKException.Code.OK == rc) {
-                lh.asyncRecoveryAddEntry(data, 0, data.length, this, null);
+               // lh.asyncRecoveryAddEntry(data, 0, data.length, this, null);
                 if (entry.getEntryId() == endEntryToRead) {
                     // trigger next batch read
                     doRecoveryRead();
@@ -221,23 +220,23 @@ class LedgerRecoveryOp implements ReadEntryListener, AddCallback {
 
         // otherwise, some other error, we can't handle
         if (BKException.Code.OK != rc && !promise.isDone()) {
-            LOG.error("Failure {} while reading entries: ({} - {}), ledger: {} while recovering ledger",
-                      BKException.getMessage(rc), startEntryToRead, endEntryToRead, lh.getId());
+           /* LOG.error("Failure {} while reading entries: ({} - {}), ledger: {} while recovering ledger",
+                      BKException.getMessage(rc), startEntryToRead, endEntryToRead, lh.getId());*/
             submitCallback(rc);
         } else if (BKException.Code.OK == rc) {
             // we are here is because we successfully read an entry but readDone was already set to true.
             // this would happen on recovery a ledger than has gaps in the tail.
-            LOG.warn("Successfully read entry {} for ledger {}, but readDone is already {}",
-                    entry.getEntryId(), lh.getId(), readDone);
+            /*LOG.warn("Successfully read entry {} for ledger {}, but readDone is already {}",
+                    entry.getEntryId(), lh.getId(), readDone);*/
         }
         return;
     }
 
-    @Override
+   // @Override
     public void addComplete(int rc, LedgerHandle lh, long entryId, Object ctx) {
         if (rc != BKException.Code.OK) {
             LOG.error("Failure {} while writing entry: {} while recovering ledger: {}",
-                    BKException.codeLogger(rc), entryId + 1, lh.ledgerId);
+                    BKException.codeLogger(rc), entryId + 1, 1);
             submitCallback(rc);
             return;
         }

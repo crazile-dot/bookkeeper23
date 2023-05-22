@@ -15,7 +15,6 @@
  * See the License for the specific language governing permissions and
  * limitations under the License.
  */
-
 package org.apache.bookkeeper.clients.impl.internal;
 
 import static com.google.common.base.Preconditions.checkState;
@@ -34,13 +33,13 @@ import org.apache.bookkeeper.clients.exceptions.StreamExistsException;
 import org.apache.bookkeeper.clients.exceptions.StreamNotFoundException;
 import org.apache.bookkeeper.clients.impl.internal.api.HashStreamRanges;
 import org.apache.bookkeeper.common.util.ExceptionalFunction;
-import org.apache.bookkeeper.stream.proto.RangeKeyType;
+/*import org.apache.bookkeeper.stream.proto.RangeKeyType;
 import org.apache.bookkeeper.stream.proto.RangeProperties;
 import org.apache.bookkeeper.stream.proto.storage.GetActiveRangesResponse;
 import org.apache.bookkeeper.stream.proto.storage.GetStorageContainerEndpointResponse;
 import org.apache.bookkeeper.stream.proto.storage.OneStorageContainerEndpointResponse;
 import org.apache.bookkeeper.stream.proto.storage.RelatedRanges;
-import org.apache.bookkeeper.stream.proto.storage.StatusCode;
+import org.apache.bookkeeper.stream.proto.storage.StatusCode;*/
 
 /**
  * Utils for converting protocol related data structures to internal data structures.
@@ -50,10 +49,10 @@ public final class ProtocolInternalUtils {
     private ProtocolInternalUtils() {
     }
 
-    public static HashStreamRanges createActiveRanges(GetActiveRangesResponse response) {
-        TreeMap<Long, RangeProperties> ranges = Maps.newTreeMap();
+    public static HashStreamRanges createActiveRanges(Object response) {
+        TreeMap<Long, Object> ranges = Maps.newTreeMap();
         long lastEndKey = Long.MIN_VALUE;
-        for (RelatedRanges rr : response.getRangesList()) {
+        /*for (RelatedRanges rr : response.getRangesList()) {
             RangeProperties range = rr.getProps();
             long startKey = range.getStartHashKey();
             long endKey = range.getEndHashKey();
@@ -62,19 +61,20 @@ public final class ProtocolInternalUtils {
                 "Invalid range key found : expected = %s, actual = %s", lastEndKey, startKey);
             ranges.put(startKey, range);
             lastEndKey = endKey;
-        }
+        }*/
         checkState(
             Long.MAX_VALUE == lastEndKey,
             "Missing key range [%s - %s)", lastEndKey, Long.MAX_VALUE);
         checkState(
             ranges.size() > 0,
             "No active range found");
-        return HashStreamRanges.ofHash(
+        /*return HashStreamRanges.ofHash(
             RangeKeyType.HASH,
-            ranges);
+            ranges);*/
+        return null;
     }
 
-    static final ExceptionalFunction<GetStorageContainerEndpointResponse, List<OneStorageContainerEndpointResponse>>
+    /*static final ExceptionalFunction<GetStorageContainerEndpointResponse, List<OneStorageContainerEndpointResponse>>
         GetStorageContainerEndpointsFunction = response -> {
         if (StatusCode.SUCCESS == response.getStatusCode()) {
             return response.getResponsesList();
@@ -82,14 +82,14 @@ public final class ProtocolInternalUtils {
         throw new StorageContainerException(
             response.getStatusCode(),
             "Fail to get storage container endpoints");
-    };
+    };*/
 
     //
     // Exceptions
     //
 
-    public static Throwable createRootRangeException(String streamName, StatusCode statusCode) {
-        switch (statusCode) {
+    public static Throwable createRootRangeException(String streamName, Object statusCode) {
+        /*switch (statusCode) {
             case INVALID_NAMESPACE_NAME:
                 return new InvalidNamespaceNameException(streamName);
             case NAMESPACE_EXISTS:
@@ -104,12 +104,13 @@ public final class ProtocolInternalUtils {
                 return new StreamNotFoundException(streamName);
             default:
                 return new ClientException("fail to access its root range : code = " + statusCode);
-        }
+        }*/
+        return null;
     }
 
     public static Exception createMetaRangeException(String name,
-                                                     StatusCode statusCode) {
-        switch (statusCode) {
+                                                     Object statusCode) {
+        /*switch (statusCode) {
             case STREAM_EXISTS:
                 return new StreamExistsException(name);
             case STREAM_NOT_FOUND:
@@ -117,7 +118,8 @@ public final class ProtocolInternalUtils {
             default:
                 return new InternalServerException("Encountered internal server exception on stream "
                     + name + " : code = " + statusCode);
-        }
+        }*/
+        return null;
     }
 
 }

@@ -86,7 +86,7 @@ class SyncCallbackUtils {
         }
     }
 
-    static class SyncCreateCallback implements AsyncCallback.CreateCallback {
+    static class SyncCreateCallback implements AsyncCallback{
 
         private final CompletableFuture<? super LedgerHandle> future;
 
@@ -101,19 +101,19 @@ class SyncCallbackUtils {
          * @param lh ledger handle object
          * @param ctx optional control object
          */
-        @Override
+       // @Override
         public void createComplete(int rc, LedgerHandle lh, Object ctx) {
             finish(rc, lh, future);
         }
 
     }
 
-    static class SyncCreateAdvCallback implements AsyncCallback.CreateCallback {
+    static class SyncCreateAdvCallback implements AsyncCallback {
 
-        private final CompletableFuture<? super LedgerHandleAdv> future;
+        //private final CompletableFuture<? super LedgerHandleAdv> future;
 
-        public SyncCreateAdvCallback(CompletableFuture<? super LedgerHandleAdv> future) {
-            this.future = future;
+        public SyncCreateAdvCallback(CompletableFuture<? super Object> future) {
+
         }
 
         /**
@@ -123,18 +123,18 @@ class SyncCallbackUtils {
          * @param lh ledger handle object
          * @param ctx optional control object
          */
-        @Override
+        //@Override
         public void createComplete(int rc, LedgerHandle lh, Object ctx) {
-            if (lh == null || lh instanceof LedgerHandleAdv) {
+           /* if (lh == null || lh instanceof LedgerHandleAdv) {
                 finish(rc, (LedgerHandleAdv) lh, future);
             } else {
                 finish(BKException.Code.UnexpectedConditionException, null, future);
-            }
+            }*/
         }
 
     }
 
-    static class SyncOpenCallback implements AsyncCallback.OpenCallback {
+    static class SyncOpenCallback implements AsyncCallback{
 
         private final CompletableFuture<? super LedgerHandle> future;
 
@@ -152,13 +152,13 @@ class SyncCallbackUtils {
          * @param ctx
          *          optional control object
          */
-        @Override
+       // @Override
         public void openComplete(int rc, LedgerHandle lh, Object ctx) {
             finish(rc, lh, future);
         }
     }
 
-    static class SyncDeleteCallback implements AsyncCallback.DeleteCallback {
+    static class SyncDeleteCallback implements AsyncCallback {
 
         private final CompletableFuture<Void> future;
 
@@ -175,13 +175,13 @@ class SyncCallbackUtils {
          * @param ctx
          *            optional control object
          */
-        @Override
+       // @Override
         public void deleteComplete(int rc, Object ctx) {
             finish(rc, null, future);
         }
     }
 
-    static class LastAddConfirmedCallback implements AsyncCallback.AddLacCallback {
+    static class LastAddConfirmedCallback implements AsyncCallback {
         static final LastAddConfirmedCallback INSTANCE = new LastAddConfirmedCallback();
         /**
          * Implementation of callback interface for synchronous read method.
@@ -193,17 +193,19 @@ class SyncCallbackUtils {
          * @param ctx
          *          control object
          */
-        @Override
+        //@Override
         public void addLacComplete(int rc, LedgerHandle lh, Object ctx) {
             if (rc != BKException.Code.OK) {
                 log.warn("LastAddConfirmedUpdate failed: {} ", BKException.getMessage(rc));
-            } else if (log.isDebugEnabled()) {
-                log.debug("Callback LAC Updated for: {} ", lh.getId());
+            } else {
+                if (log.isDebugEnabled()) {
+                    log.debug("Callback LAC Updated for: {} ");
+                }
             }
         }
     }
 
-    static class SyncReadCallback implements AsyncCallback.ReadCallback {
+    static class SyncReadCallback implements AsyncCallback {
 
         private final CompletableFuture<Enumeration<LedgerEntry>> future;
 
@@ -223,7 +225,7 @@ class SyncCallbackUtils {
          * @param ctx
          *          control object
          */
-        @Override
+        //@Override
         public void readComplete(int rc, LedgerHandle lh,
                                  Enumeration<LedgerEntry> seq, Object ctx) {
             finish(rc, seq, future);
@@ -244,39 +246,39 @@ class SyncCallbackUtils {
          * @param ctx
          *          control object
          */
-        @Override
+       // @Override
         public void addComplete(int rc, LedgerHandle lh, long entry, Object ctx) {
             finish(rc, entry, this);
         }
     }
 
     static class FutureReadLastConfirmed extends CompletableFuture<Long>
-        implements AsyncCallback.ReadLastConfirmedCallback {
+        implements AsyncCallback{
 
-        @Override
+       // @Override
         public void readLastConfirmedComplete(int rc, long lastConfirmed, Object ctx) {
             finish(rc, lastConfirmed, this);
         }
 
     }
 
-    static class SyncReadLastConfirmedCallback implements AsyncCallback.ReadLastConfirmedCallback {
+    static class SyncReadLastConfirmedCallback implements AsyncCallback {
         /**
          * Implementation of  callback interface for synchronous read last confirmed method.
          */
-        @Override
+       // @Override
         public void readLastConfirmedComplete(int rc, long lastConfirmed, Object ctx) {
-            LedgerHandle.LastConfirmedCtx lcCtx = (LedgerHandle.LastConfirmedCtx) ctx;
+            /*LedgerHandle.LastConfirmedCtx lcCtx = (LedgerHandle.LastConfirmedCtx) ctx;
 
             synchronized (lcCtx) {
                 lcCtx.setRC(rc);
                 lcCtx.setLastConfirmed(lastConfirmed);
                 lcCtx.notify();
-            }
+            }*/
         }
     }
 
-    static class SyncCloseCallback implements AsyncCallback.CloseCallback {
+    static class SyncCloseCallback implements AsyncCallback {
 
         private final CompletableFuture<Void> future;
 
@@ -291,16 +293,16 @@ class SyncCallbackUtils {
          * @param lh
          * @param ctx
          */
-        @Override
+      //  @Override
         public void closeComplete(int rc, LedgerHandle lh, Object ctx) {
             finish(rc, null, future);
         }
     }
 
     static class FutureReadLastConfirmedAndEntry
-        extends CompletableFuture<LastConfirmedAndEntry> implements AsyncCallback.ReadLastConfirmedAndEntryCallback {
+        extends CompletableFuture<LastConfirmedAndEntry> implements AsyncCallback {
 
-        @Override
+      //  @Override
         public void readLastConfirmedAndEntryComplete(int rc, long lastConfirmed, LedgerEntry entry, Object ctx) {
             LastConfirmedAndEntry result = LastConfirmedAndEntryImpl.create(lastConfirmed, entry);
             finish(rc, result, this);

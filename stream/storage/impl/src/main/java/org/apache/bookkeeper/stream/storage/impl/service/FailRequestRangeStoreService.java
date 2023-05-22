@@ -22,7 +22,7 @@ import io.grpc.Status;
 import io.grpc.StatusRuntimeException;
 import java.util.concurrent.CompletableFuture;
 import org.apache.bookkeeper.common.concurrent.FutureUtils;
-import org.apache.bookkeeper.common.util.OrderedScheduler;
+/*import org.apache.bookkeeper.common.util.OrderedScheduler;
 import org.apache.bookkeeper.stream.proto.kv.rpc.DeleteRangeRequest;
 import org.apache.bookkeeper.stream.proto.kv.rpc.DeleteRangeResponse;
 import org.apache.bookkeeper.stream.proto.kv.rpc.IncrementRequest;
@@ -46,28 +46,29 @@ import org.apache.bookkeeper.stream.proto.storage.GetActiveRangesResponse;
 import org.apache.bookkeeper.stream.proto.storage.GetNamespaceRequest;
 import org.apache.bookkeeper.stream.proto.storage.GetNamespaceResponse;
 import org.apache.bookkeeper.stream.proto.storage.GetStreamRequest;
-import org.apache.bookkeeper.stream.proto.storage.GetStreamResponse;
+import org.apache.bookkeeper.stream.proto.storage.GetStreamResponse;*/
 import org.apache.bookkeeper.stream.storage.api.metadata.RangeStoreService;
 
 /**
  * It is a single-ton implementation that fails all requests.
  */
-final class FailRequestRangeStoreService implements RangeStoreService {
+abstract class FailRequestRangeStoreService implements RangeStoreService {
 
-    static RangeStoreService of(OrderedScheduler scheduler) {
-        return new FailRequestRangeStoreService(scheduler);
+    static RangeStoreService of(Object scheduler) {
+        //return new FailRequestRangeStoreService(scheduler);
+        return null;
     }
 
-    private final OrderedScheduler scheduler;
+    private final Object scheduler;
 
-    private FailRequestRangeStoreService(OrderedScheduler scheduler) {
+    private FailRequestRangeStoreService(Object scheduler) {
         this.scheduler = scheduler;
     }
 
     private <T> CompletableFuture<T> failWrongGroupRequest() {
         CompletableFuture<T> future = FutureUtils.createFuture();
-        scheduler.execute(() ->
-            future.completeExceptionally(new StatusRuntimeException(Status.NOT_FOUND)));
+        /*scheduler.execute(() ->
+            future.completeExceptionally(new StatusRuntimeException(Status.NOT_FOUND)));*/
         return future;
     }
 
@@ -85,18 +86,18 @@ final class FailRequestRangeStoreService implements RangeStoreService {
     // Namespace API
     //
 
-    @Override
-    public CompletableFuture<CreateNamespaceResponse> createNamespace(CreateNamespaceRequest request) {
+   // @Override
+    public CompletableFuture<Object> createNamespace(Object request) {
         return failWrongGroupRequest();
     }
 
-    @Override
-    public CompletableFuture<DeleteNamespaceResponse> deleteNamespace(DeleteNamespaceRequest request) {
+   // @Override
+    public CompletableFuture<Object> deleteNamespace(Object request) {
         return failWrongGroupRequest();
     }
 
-    @Override
-    public CompletableFuture<GetNamespaceResponse> getNamespace(GetNamespaceRequest request) {
+    //@Override
+    public CompletableFuture<Object> getNamespace(Object request) {
         return failWrongGroupRequest();
     }
 
@@ -104,18 +105,18 @@ final class FailRequestRangeStoreService implements RangeStoreService {
     // Stream API
     //
 
-    @Override
-    public CompletableFuture<CreateStreamResponse> createStream(CreateStreamRequest request) {
+    //@Override
+    public CompletableFuture<Object> createStream(Object request) {
         return failWrongGroupRequest();
     }
 
-    @Override
-    public CompletableFuture<DeleteStreamResponse> deleteStream(DeleteStreamRequest request) {
+    //@Override
+    public CompletableFuture<Object> deleteStream(Object request) {
         return failWrongGroupRequest();
     }
 
-    @Override
-    public CompletableFuture<GetStreamResponse> getStream(GetStreamRequest request) {
+    //@Override
+    public CompletableFuture<Object> getStream(Object request) {
         return failWrongGroupRequest();
     }
 
@@ -123,8 +124,8 @@ final class FailRequestRangeStoreService implements RangeStoreService {
     // Stream Meta Range API.
     //
 
-    @Override
-    public CompletableFuture<GetActiveRangesResponse> getActiveRanges(GetActiveRangesRequest request) {
+    //@Override
+    public CompletableFuture<Object> getActiveRanges(Object request) {
         return failWrongGroupRequest();
     }
 
@@ -133,28 +134,28 @@ final class FailRequestRangeStoreService implements RangeStoreService {
     //
 
 
-    @Override
-    public CompletableFuture<RangeResponse> range(RangeRequest request) {
+    //@Override
+    public CompletableFuture<Object> range(Object request) {
         return failWrongGroupRequest();
     }
 
-    @Override
-    public CompletableFuture<PutResponse> put(PutRequest request) {
+    //@Override
+    public CompletableFuture<Object> put(Object request) {
         return failWrongGroupRequest();
     }
 
-    @Override
-    public CompletableFuture<DeleteRangeResponse> delete(DeleteRangeRequest request) {
+    //@Override
+    public CompletableFuture<Object> delete(Object request) {
         return failWrongGroupRequest();
     }
 
-    @Override
-    public CompletableFuture<TxnResponse> txn(TxnRequest request) {
+    //@Override
+    public CompletableFuture<Object> txn(Object request) {
         return failWrongGroupRequest();
     }
 
-    @Override
-    public CompletableFuture<IncrementResponse> incr(IncrementRequest request) {
+    //@Override
+    public CompletableFuture<Object> incr(Object request) {
         return failWrongGroupRequest();
     }
 }

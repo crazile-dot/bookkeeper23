@@ -24,7 +24,7 @@ import java.io.IOException;
 import lombok.Setter;
 import lombok.experimental.Accessors;
 import org.apache.bookkeeper.client.BKException;
-import org.apache.bookkeeper.client.BookKeeper;
+//import org.apache.bookkeeper.client.BookKeeper;
 import org.apache.bookkeeper.conf.ClientConfiguration;
 import org.apache.bookkeeper.conf.ServerConfiguration;
 import org.apache.bookkeeper.tools.cli.helpers.BookieCommand;
@@ -114,7 +114,7 @@ public class DeleteLedgerCommand extends BookieCommand<DeleteLedgerCommand.Delet
                 "Are your sure to delete Ledger : " + ledgerIdFormatter.formatLedgerId(flags.ledgerId) + "?");
         }
 
-        BookKeeper bookKeeper = null;
+        /*BookKeeper bookKeeper = null;
         try {
             if (flags.force || confirm) {
                 ClientConfiguration configuration = new ClientConfiguration();
@@ -126,7 +126,7 @@ public class DeleteLedgerCommand extends BookieCommand<DeleteLedgerCommand.Delet
             if (bookKeeper != null) {
                 bookKeeper.close();
             }
-        }
+        }*/
 
         return true;
     }

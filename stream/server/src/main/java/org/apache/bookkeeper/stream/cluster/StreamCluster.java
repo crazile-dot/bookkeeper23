@@ -31,7 +31,6 @@ import java.util.stream.Collectors;
 import lombok.extern.slf4j.Slf4j;
 import org.apache.bookkeeper.clients.StorageClientBuilder;
 import org.apache.bookkeeper.clients.admin.StorageAdminClient;
-import org.apache.bookkeeper.clients.config.StorageClientSettings;
 import org.apache.bookkeeper.clients.exceptions.ClientException;
 import org.apache.bookkeeper.clients.exceptions.NamespaceNotFoundException;
 import org.apache.bookkeeper.clients.utils.NetUtils;
@@ -39,13 +38,12 @@ import org.apache.bookkeeper.common.component.AbstractLifecycleComponent;
 import org.apache.bookkeeper.common.component.LifecycleComponent;
 import org.apache.bookkeeper.common.net.ServiceURI;
 import org.apache.bookkeeper.conf.ServerConfiguration;
-import org.apache.bookkeeper.discover.RegistrationManager;
 import org.apache.bookkeeper.meta.MetadataDrivers;
 import org.apache.bookkeeper.shims.zk.ZooKeeperServerShim;
 import org.apache.bookkeeper.stats.NullStatsLogger;
-import org.apache.bookkeeper.stream.proto.NamespaceConfiguration;
+/*import org.apache.bookkeeper.stream.proto.NamespaceConfiguration;
 import org.apache.bookkeeper.stream.proto.NamespaceProperties;
-import org.apache.bookkeeper.stream.proto.common.Endpoint;
+import org.apache.bookkeeper.stream.proto.common.Endpoint;*/
 import org.apache.bookkeeper.stream.server.StorageServer;
 import org.apache.bookkeeper.stream.storage.conf.StorageConfiguration;
 import org.apache.bookkeeper.stream.storage.exceptions.StorageRuntimeException;
@@ -53,6 +51,7 @@ import org.apache.bookkeeper.stream.storage.impl.cluster.ZkClusterInitializer;
 import org.apache.commons.lang3.StringUtils;
 import org.apache.commons.lang3.tuple.Pair;
 import org.apache.distributedlog.LocalDLMEmulator;
+import org.pitest.mutationtest.engine.gregor.mutators.rv.OBBN1Mutator;
 
 /**
  * A Cluster that runs a few storage nodes.
@@ -84,7 +83,7 @@ public class StreamCluster
     }
 
     private final StreamClusterSpec spec;
-    private final List<Endpoint> rpcEndpoints;
+    private final List<Object> rpcEndpoints;
     private ServiceURI metadataServiceUri;
     private int zkPort;
     private ZooKeeperServerShim zks;
@@ -104,7 +103,7 @@ public class StreamCluster
         this.nextGrpcPort = spec.initialGrpcPort();
     }
 
-    public List<Endpoint> getRpcEndpoints() {
+    public List<Object> getRpcEndpoints() {
         return rpcEndpoints;
     }
 
@@ -144,18 +143,18 @@ public class StreamCluster
 
         // format the bookkeeper cluster
         MetadataDrivers.runFunctionWithMetadataBookieDriver(newBookieConfiguration(metadataServiceUri), driver -> {
-                try (RegistrationManager rm = driver.createRegistrationManager()) {
-                    boolean initialized = rm.initNewCluster();
-                    if (initialized) {
-                        log.info("Successfully initialized the segment storage");
-                    } else {
-                        log.info("The segment storage was already initialized");
-                    }
-                } catch (Exception e) {
-                    throw new StorageRuntimeException("Failed to initialize the segment storage", e);
+            try {
+                boolean initialized = driver.getRegistrationManager().initNewCluster();
+                if (initialized) {
+                    log.info("Successfully initialized the segment storage");
+                } else {
+                    log.info("The segment storage was already initialized");
                 }
-                return null;
-            });
+            } catch (Exception e) {
+                throw new StorageRuntimeException("Failed to initialize the segment storage", e);
+            }
+            return null;
+        });
     }
 
     private LifecycleComponent startServer() throws Exception {
@@ -233,10 +232,7 @@ public class StreamCluster
             getRpcEndpoints().stream()
                 .map(endpoint -> NetUtils.endpointToString(endpoint))
                 .collect(Collectors.joining(",")));
-        StorageClientSettings settings = StorageClientSettings.newBuilder()
-            .serviceUri(serviceUri)
-            .usePlaintext(true)
-            .build();
+        Object settings = null;
         log.info("Service uri are : {}", serviceUri);
         String namespaceName = "default";
         try (StorageAdminClient admin = StorageClientBuilder.newBuilder()
@@ -246,22 +242,17 @@ public class StreamCluster
             boolean created = false;
             while (!created) {
                 try {
-                    NamespaceProperties nsProps = result(admin.getNamespace(namespaceName));
+                    Object nsProps = result(admin.getNamespace(namespaceName));
                     log.info("Namespace '{}':\n{}", namespaceName, nsProps);
                     created = true;
                 } catch (NamespaceNotFoundException nnfe) {
                     log.info("Namespace '{}' is not found.", namespaceName);
                     log.info("Creating namespace '{}' ...", namespaceName);
                     try {
-                        NamespaceProperties nsProps = result(
-                            admin.createNamespace(
-                                namespaceName,
-                                NamespaceConfiguration.newBuilder()
-                                    .setDefaultStreamConf(DEFAULT_STREAM_CONF)
-                                    .build()));
+                        Object nsProps = null;
                         log.info("Successfully created namespace '{}':", namespaceName);
                         log.info("{}", nsProps);
-                    } catch (ClientException ce) {
+                    } catch (Exception ce) {
                         // encountered exception, try to fetch the namespace again
                     }
                 }

@@ -28,8 +28,8 @@ import lombok.extern.slf4j.Slf4j;
 import org.apache.bookkeeper.discover.RegistrationClient;
 import org.apache.bookkeeper.discover.RegistrationClient.RegistrationListener;
 import org.apache.bookkeeper.net.BookieId;
-import org.apache.bookkeeper.stream.proto.cluster.ClusterAssignmentData;
-import org.apache.bookkeeper.stream.proto.cluster.ClusterMetadata;
+/*import org.apache.bookkeeper.stream.proto.cluster.ClusterAssignmentData;
+import org.apache.bookkeeper.stream.proto.cluster.ClusterMetadata;*/
 import org.apache.bookkeeper.stream.storage.api.cluster.ClusterControllerLeader;
 import org.apache.bookkeeper.stream.storage.api.cluster.ClusterMetadataStore;
 import org.apache.bookkeeper.stream.storage.impl.sc.StorageContainerController;
@@ -188,11 +188,11 @@ public class ClusterControllerLeaderImpl implements ClusterControllerLeader, Reg
             }
         }
 
-        ClusterMetadata clusterMetadata = clusterMetadataStore.getClusterMetadata();
-        ClusterAssignmentData currentState = clusterMetadataStore.getClusterAssignmentData();
+        Object clusterMetadata = null;
+        Object currentState = null;
 
         // servers are changed, process the change.
-        ClusterAssignmentData newState = scController.computeIdealState(
+        Object newState = scController.computeIdealState(
             clusterMetadata,
             currentState,
             availableServersSnapshot);
@@ -205,7 +205,7 @@ public class ClusterControllerLeaderImpl implements ClusterControllerLeader, Reg
         } else {
             // update the assignment state
             lastSuccessfulAssigmentAt = System.currentTimeMillis();
-            clusterMetadataStore.updateClusterAssignmentData(newState);
+            //clusterMetadataStore.updateClusterAssignmentData(newState);
         }
     }
 

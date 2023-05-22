@@ -118,8 +118,8 @@ abstract class CookieCommand<CookieFlagsT extends CliFlags>
     protected abstract void apply(RegistrationManager rm, CookieFlagsT cmdFlags)
         throws Exception;
 
-    public org.apache.bookkeeper.bookie.BookieShell.Command asShellCommand(String shellCmdName,
+    /*public org.apache.bookkeeper.bookie.BookieShell.Command asShellCommand(String shellCmdName,
                                                                            CompositeConfiguration conf) {
         return new BookieShellCommand<>(shellCmdName, this, conf);
-    }
+    }*/
 }

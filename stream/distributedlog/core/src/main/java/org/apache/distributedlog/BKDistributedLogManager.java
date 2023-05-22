@@ -1,4 +1,4 @@
-/*
+/**
  * Licensed to the Apache Software Foundation (ASF) under one
  * or more contributor license agreements.  See the NOTICE file
  * distributed with this work for additional information
@@ -34,7 +34,7 @@ import java.util.concurrent.ExecutorService;
 import java.util.function.Function;
 import org.apache.bookkeeper.common.concurrent.FutureEventListener;
 import org.apache.bookkeeper.common.concurrent.FutureUtils;
-import org.apache.bookkeeper.common.util.OrderedScheduler;
+//import org.apache.bookkeeper.common.util.OrderedScheduler;
 import org.apache.bookkeeper.feature.FeatureProvider;
 import org.apache.bookkeeper.stats.AlertStatsLogger;
 import org.apache.bookkeeper.stats.StatsLogger;
@@ -109,7 +109,7 @@ class BKDistributedLogManager implements DistributedLogManager {
     private final DynamicDistributedLogConfiguration dynConf;
     private final NamespaceDriver driver;
     private CompletableFuture<Void> closePromise;
-    private final OrderedScheduler scheduler;
+    //private final OrderedScheduler scheduler;
     private final FeatureProvider featureProvider;
     private final AsyncFailureInjector failureInjector;
     private final StatsLogger statsLogger;
@@ -159,7 +159,7 @@ class BKDistributedLogManager implements DistributedLogManager {
                             URI uri,
                             NamespaceDriver driver,
                             LogSegmentMetadataCache logSegmentMetadataCache,
-                            OrderedScheduler scheduler,
+                            Object scheduler,
                             String clientId,
                             Integer regionId,
                             PermitLimiter writeLimiter,
@@ -174,10 +174,10 @@ class BKDistributedLogManager implements DistributedLogManager {
         this.uri = uri;
         this.driver = driver;
         this.logSegmentMetadataCache = logSegmentMetadataCache;
-        this.scheduler = scheduler;
+        //this.scheduler = scheduler;
         this.statsLogger = statsLogger;
         this.perLogStatsLogger = BroadCastStatsLogger.masterslave(perLogStatsLogger, statsLogger);
-        this.pendingReaders = new PendingReaders(scheduler);
+        this.pendingReaders = null;
         this.regionId = regionId;
         this.clientId = clientId;
         this.streamIdentifier = conf.getUnpartitionedStreamName();
@@ -209,8 +209,8 @@ class BKDistributedLogManager implements DistributedLogManager {
         return conf;
     }
 
-    OrderedScheduler getScheduler() {
-        return scheduler;
+    Object getScheduler() {
+        return 1;
     }
 
     AsyncFailureInjector getFailureInjector() {
@@ -319,7 +319,7 @@ class BKDistributedLogManager implements DistributedLogManager {
                 driver.getLogStreamMetadataStore(READER),
                 logSegmentMetadataCache,
                 driver.getLogSegmentEntryStore(READER),
-                scheduler,
+                null,
                 alertStatsLogger,
                 statsLogger,
                 perLogStatsLogger,
@@ -387,7 +387,7 @@ class BKDistributedLogManager implements DistributedLogManager {
                 driver.getLogStreamMetadataStore(WRITER),
                 logSegmentMetadataCache,
                 driver.getLogSegmentEntryStore(WRITER),
-                scheduler,
+                null,
                 segmentAllocator,
                 statsLogger,
                 perLogStatsLogger,
@@ -423,12 +423,12 @@ class BKDistributedLogManager implements DistributedLogManager {
 
     <T> CompletableFuture<T> processReaderOperation(final Function<BKLogReadHandler, CompletableFuture<T>> func) {
         CompletableFuture<T> future = FutureUtils.createFuture();
-        scheduler.submit(() -> {
+        /*scheduler.submit(() -> {
             BKLogReadHandler readHandler = getReadHandlerAndRegisterListener(true, null);
             FutureUtils.proxyTo(
                 func.apply(readHandler),
                 future);
-        });
+        });*/
         return future;
     }
 
@@ -595,7 +595,7 @@ class BKDistributedLogManager implements DistributedLogManager {
                 name,
                 segment,
                 fromTxnId,
-                scheduler,
+                null,
                 entryStore,
                 Math.max(2, dynConf.getReadAheadBatchSize())
         ).thenCompose(foundRecord -> {
@@ -707,7 +707,7 @@ class BKDistributedLogManager implements DistributedLogManager {
         Optional<String> subscriberId = Optional.empty();
         AsyncLogReader reader = new BKAsyncLogReader(
                 this,
-                scheduler,
+                null,
                 fromDLSN,
                 subscriberId,
                 false,
@@ -744,7 +744,7 @@ class BKDistributedLogManager implements DistributedLogManager {
         }
         final BKAsyncLogReader reader = new BKAsyncLogReader(
                 BKDistributedLogManager.this,
-                scheduler,
+                null,
                 fromDLSN.isPresent() ? fromDLSN.get() : DLSN.InitialDLSN,
                 subscriberId,
                 false,

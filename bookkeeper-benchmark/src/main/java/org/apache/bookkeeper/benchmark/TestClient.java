@@ -38,8 +38,8 @@ import java.util.concurrent.TimeUnit;
 import java.util.concurrent.atomic.AtomicLong;
 import org.apache.bookkeeper.client.AsyncCallback.AddCallback;
 import org.apache.bookkeeper.client.BKException;
-import org.apache.bookkeeper.client.BookKeeper;
-import org.apache.bookkeeper.client.BookKeeper.DigestType;
+//import org.apache.bookkeeper.client.BookKeeper;
+//import org.apache.bookkeeper.client.BookKeeper.DigestType;
 import org.apache.bookkeeper.client.LedgerHandle;
 import org.apache.bookkeeper.conf.ClientConfiguration;
 import org.apache.commons.cli.CommandLine;
@@ -111,7 +111,7 @@ public class TestClient {
                 }, timeout);
         }
 
-        BookKeeper bkc = null;
+        //BookKeeper bkc = null;
         try {
             int numFiles = Integer.parseInt(cmd.getOptionValue("numconcurrent", "1"));
             int numThreads = Math.min(numFiles, 1000);
@@ -129,10 +129,10 @@ public class TestClient {
                 conf.setThrottleValue(bkthrottle);
                 conf.setMetadataServiceUri("zk://" + zkservers + "/ledgers");
 
-                bkc = new BookKeeper(conf);
+                //bkc = new BookKeeper(conf);
                 List<LedgerHandle> handles = new ArrayList<LedgerHandle>();
                 for (int i = 0; i < numFiles; i++) {
-                    handles.add(bkc.createLedger(bkensemble, bkquorum, DigestType.CRC32, new byte[] {'a', 'b'}));
+                    //handles.add(bkc.createLedger(bkensemble, bkquorum, DigestType.CRC32, new byte[] {'a', 'b'}));
                 }
                 for (int i = 0; i < numFiles; i++) {
                     clients.add(new BKClient(handles, data, runfor, cmd.hasOption("sync")));
@@ -175,15 +175,10 @@ public class TestClient {
             executor.shutdown();
         } catch (ExecutionException ee) {
             LOG.error("Exception in worker", ee);
-        } catch (BKException e) {
+        } catch (Exception e) {
             LOG.error("Error accessing bookkeeper", e);
-        } catch (IOException ioe) {
-            LOG.error("I/O exception during benchmark", ioe);
-        } catch (InterruptedException ie) {
-            LOG.error("Benchmark interrupted", ie);
-            Thread.currentThread().interrupt();
         } finally {
-            if (bkc != null) {
+            /*if (bkc != null) {
                 try {
                     bkc.close();
                 } catch (BKException bke) {
@@ -192,7 +187,7 @@ public class TestClient {
                     LOG.warn("Interrupted closing bookkeeper client", ie);
                     Thread.currentThread().interrupt();
                 }
-            }
+            }*/
         }
         timeouter.cancel();
     }
@@ -264,10 +259,10 @@ public class TestClient {
                 while (System.currentTimeMillis() < stopat) {
                     LedgerHandle lh = handles.get(r.nextInt(handles.size()));
                     if (sync) {
-                        lh.addEntry(data);
+                       // lh.addEntry(data);
                         success.incrementAndGet();
                     } else {
-                        lh.asyncAddEntry(data, this, null);
+                        //lh.asyncAddEntry(data, this, null);
                         outstanding.incrementAndGet();
                     }
                 }
@@ -281,10 +276,7 @@ public class TestClient {
                 LOG.info("Worker finished processing writes (ms): {} TPT: {} op/s", time,
                          success.get() / ((double) time / 1000));
                 return success.get();
-            } catch (BKException e) {
-                LOG.error("Exception in worker thread", e);
-                return 0L;
-            } catch (InterruptedException ie) {
+            }  catch (InterruptedException ie) {
                 Thread.currentThread().interrupt();
                 LOG.error("Exception in worker thread", ie);
                 return 0L;

@@ -23,30 +23,30 @@ import com.google.common.collect.Maps;
 import java.util.concurrent.ConcurrentMap;
 import org.apache.bookkeeper.clients.impl.channel.StorageServerChannelManager;
 import org.apache.bookkeeper.clients.impl.internal.api.LocationClient;
-import org.apache.bookkeeper.common.util.OrderedScheduler;
+//import org.apache.bookkeeper.common.util.OrderedScheduler;
 
 /**
  * A manager manages channels/clients to storage containers.
  */
 public class StorageContainerChannelManager implements AutoCloseable {
 
-    private final StorageContainerChannelFactory factory;
-    private final ConcurrentMap<Long, StorageContainerChannel> scChannels;
+    private final StorageContainerChannelFactory factory = null;
+    private final ConcurrentMap<Long, StorageContainerChannel> scChannels = null;
 
     public StorageContainerChannelManager(StorageServerChannelManager channelManager,
                                           LocationClient locationClient,
-                                          OrderedScheduler scheduler) {
-        this((scId) -> new StorageContainerChannel(
+                                          Object scheduler) {
+        /*this((scId) -> new StorageContainerChannel(
             scId,
             channelManager,
             locationClient,
-            scheduler.chooseThread(scId)));
+            scheduler.chooseThread(scId)));*/
     }
 
     @VisibleForTesting
     StorageContainerChannelManager(StorageContainerChannelFactory factory) {
-        this.factory = factory;
-        this.scChannels = Maps.newConcurrentMap();
+        //this.factory = factory;
+        //this.scChannels = Maps.newConcurrentMap();
     }
 
     @VisibleForTesting

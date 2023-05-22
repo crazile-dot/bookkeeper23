@@ -20,7 +20,6 @@ package org.apache.bookkeeper.stream.cli.commands;
 import lombok.extern.slf4j.Slf4j;
 import org.apache.bookkeeper.clients.StorageClientBuilder;
 import org.apache.bookkeeper.clients.admin.StorageAdminClient;
-import org.apache.bookkeeper.clients.config.StorageClientSettings;
 import org.apache.bookkeeper.common.net.ServiceURI;
 import org.apache.bookkeeper.tools.common.BKFlags;
 import org.apache.bookkeeper.tools.framework.CliFlags;
@@ -42,10 +41,7 @@ public abstract class AdminCommand<ClientFlagsT extends CliFlags> extends Abstra
                               CompositeConfiguration conf,
                               BKFlags bkFlags,
                               ClientFlagsT cmdFlags) {
-        StorageClientSettings settings = StorageClientSettings.newBuilder()
-            .clientName("bkctl")
-            .serviceUri(serviceURI.getUri().toString())
-            .build();
+        Object settings = null;
 
         try (StorageAdminClient admin = StorageClientBuilder.newBuilder()
             .withSettings(settings)

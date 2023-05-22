@@ -44,7 +44,7 @@ public abstract class BookieCommand<BookieFlagsT extends CliFlags> extends BKCom
         serverConf.loadConf(conf);
 
         if (null != serviceURI) {
-            serverConf.setMetadataServiceUri(serviceURI.getUri().toString());
+           // serverConf.setMetadataServiceUri(serviceURI.getUri().toString());
         }
 
         return apply(serverConf, cmdFlags);

@@ -1,4 +1,4 @@
-/*
+/**
  *
  * Licensed to the Apache Software Foundation (ASF) under one
  * or more contributor license agreements.  See the NOTICE file
@@ -21,41 +21,49 @@
 
 package org.apache.bookkeeper.bookie;
 
+import static org.apache.bookkeeper.bookie.BookKeeperServerStats.JOURNAL_MEMORY_MAX;
+import static org.apache.bookkeeper.bookie.BookKeeperServerStats.JOURNAL_MEMORY_USED;
 import static org.apache.bookkeeper.bookie.BookKeeperServerStats.JOURNAL_SCOPE;
 import static org.apache.bookkeeper.bookie.BookKeeperServerStats.LD_INDEX_SCOPE;
 import static org.apache.bookkeeper.bookie.BookKeeperServerStats.LD_LEDGER_SCOPE;
-
 import com.google.common.annotations.VisibleForTesting;
-import com.google.common.base.Strings;
 import com.google.common.collect.Lists;
 import io.netty.buffer.ByteBuf;
 import io.netty.buffer.ByteBufAllocator;
+import io.netty.buffer.PooledByteBufAllocator;
 import io.netty.buffer.Unpooled;
 import io.netty.buffer.UnpooledByteBufAllocator;
-import io.netty.util.ReferenceCountUtil;
 import java.io.File;
+import java.io.FileNotFoundException;
 import java.io.FilenameFilter;
 import java.io.IOException;
 import java.net.InetAddress;
 import java.net.InetSocketAddress;
+import java.net.URI;
 import java.net.UnknownHostException;
 import java.nio.ByteBuffer;
 import java.nio.file.FileStore;
 import java.nio.file.Files;
 import java.util.ArrayList;
+import java.util.Arrays;
 import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
 import java.util.Optional;
 import java.util.PrimitiveIterator.OfLong;
+import java.util.Set;
 import java.util.concurrent.CompletableFuture;
 import java.util.concurrent.ExecutionException;
 import java.util.concurrent.TimeUnit;
 import java.util.concurrent.atomic.AtomicBoolean;
-import java.util.concurrent.locks.ReentrantLock;
 import java.util.function.Supplier;
 import java.util.stream.Collectors;
+import org.apache.bookkeeper.bookie.BookieException.BookieIllegalOpException;
+import org.apache.bookkeeper.bookie.BookieException.CookieNotFoundException;
 import org.apache.bookkeeper.bookie.BookieException.DiskPartitionDuplicationException;
+import org.apache.bookkeeper.bookie.BookieException.InvalidCookieException;
+import org.apache.bookkeeper.bookie.BookieException.MetadataStoreException;
+import org.apache.bookkeeper.bookie.BookieException.UnknownBookieIdException;
 import org.apache.bookkeeper.bookie.CheckpointSource.Checkpoint;
 import org.apache.bookkeeper.bookie.Journal.JournalScanner;
 import org.apache.bookkeeper.bookie.LedgerDirsManager.LedgerDirsListener;
@@ -66,21 +74,31 @@ import org.apache.bookkeeper.common.util.Watcher;
 import org.apache.bookkeeper.conf.ServerConfiguration;
 import org.apache.bookkeeper.discover.BookieServiceInfo;
 import org.apache.bookkeeper.discover.RegistrationManager;
+import org.apache.bookkeeper.meta.LedgerManager;
+import org.apache.bookkeeper.meta.LedgerManagerFactory;
+import org.apache.bookkeeper.meta.MetadataBookieDriver;
+import org.apache.bookkeeper.meta.MetadataDrivers;
+import org.apache.bookkeeper.meta.exceptions.MetadataException;
 import org.apache.bookkeeper.net.BookieId;
 import org.apache.bookkeeper.net.BookieSocketAddress;
 import org.apache.bookkeeper.net.DNS;
-import org.apache.bookkeeper.proto.BookieRequestHandler;
 import org.apache.bookkeeper.proto.BookkeeperInternalCallbacks.WriteCallback;
+import org.apache.bookkeeper.proto.SimpleBookieServiceInfoProvider;
+import org.apache.bookkeeper.stats.Gauge;
 import org.apache.bookkeeper.stats.NullStatsLogger;
 import org.apache.bookkeeper.stats.StatsLogger;
-import org.apache.bookkeeper.stats.ThreadRegistry;
+import org.apache.bookkeeper.stats.annotations.StatsDoc;
 import org.apache.bookkeeper.util.BookKeeperConstants;
 import org.apache.bookkeeper.util.DiskChecker;
 import org.apache.bookkeeper.util.IOUtils;
 import org.apache.bookkeeper.util.MathUtils;
 import org.apache.bookkeeper.util.collections.ConcurrentLongHashMap;
+import org.apache.bookkeeper.versioning.Version;
+import org.apache.bookkeeper.versioning.Versioned;
+import org.apache.commons.configuration.ConfigurationException;
 import org.apache.commons.io.FileUtils;
 import org.apache.commons.lang3.mutable.MutableBoolean;
+import org.apache.commons.lang3.tuple.Pair;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
@@ -95,8 +113,9 @@ public class BookieImpl extends BookieCriticalThread implements Bookie {
     final ServerConfiguration conf;
 
     final SyncThread syncThread;
+    final LedgerManagerFactory ledgerManagerFactory;
+    final LedgerManager ledgerManager;
     final LedgerStorage ledgerStorage;
-    final RegistrationManager registrationManager;
     final List<Journal> journals;
 
     final HandleFactory handles;
@@ -112,10 +131,12 @@ public class BookieImpl extends BookieCriticalThread implements Bookie {
     private final LedgerDirsManager indexDirsManager;
     LedgerDirsMonitor dirsMonitor;
 
+    // Registration Manager for managing registration
+    protected final MetadataBookieDriver metadataDriver;
+
     private int exitCode = ExitCode.OK;
 
-    private final ConcurrentLongHashMap<byte[]> masterKeyCache =
-            ConcurrentLongHashMap.<byte[]>newBuilder().autoShrink(true).build();
+    private final ConcurrentLongHashMap<byte[]> masterKeyCache = new ConcurrentLongHashMap<>();
 
     protected StateManager stateManager;
 
@@ -126,6 +147,18 @@ public class BookieImpl extends BookieCriticalThread implements Bookie {
     private final ByteBufAllocator allocator;
 
     private final boolean writeDataToJournal;
+
+    @StatsDoc(
+            name = JOURNAL_MEMORY_MAX,
+            help = "The max amount of memory in bytes that can be used by the bookie journal"
+    )
+    private final Gauge<Long> journalMemoryMaxStats;
+
+    @StatsDoc(
+            name = JOURNAL_MEMORY_USED,
+            help = "The actual amount of memory in bytes currently used by the bookie journal"
+    )
+    private final Gauge<Long> journalMemoryUsedStats;
 
     // Write Callback do nothing
     static class NopWriteCallback implements WriteCallback {
@@ -173,22 +206,27 @@ public class BookieImpl extends BookieCriticalThread implements Bookie {
      * This means that the configuration has stayed the same as the
      * first run and the filesystem structure is up to date.
      */
-    private void checkEnvironment()
-            throws BookieException, IOException, InterruptedException {
+    private void checkEnvironment(MetadataBookieDriver metadataDriver)
+            throws BookieException, IOException {
         List<File> allLedgerDirs = new ArrayList<File>(ledgerDirsManager.getAllLedgerDirs().size()
                 + indexDirsManager.getAllLedgerDirs().size());
         allLedgerDirs.addAll(ledgerDirsManager.getAllLedgerDirs());
         if (indexDirsManager != ledgerDirsManager) {
             allLedgerDirs.addAll(indexDirsManager.getAllLedgerDirs());
         }
+        if (metadataDriver == null) { // exists only for testing, just make sure directories are correct
 
-        for (File journalDirectory : journalDirectories) {
-            checkDirectoryStructure(journalDirectory);
+            for (File journalDirectory : journalDirectories) {
+                checkDirectoryStructure(journalDirectory);
+            }
+
+            for (File dir : allLedgerDirs) {
+                checkDirectoryStructure(dir);
+            }
+            return;
         }
 
-        for (File dir : allLedgerDirs) {
-            checkDirectoryStructure(dir);
-        }
+        checkEnvironmentWithStorageExpansion(conf, metadataDriver, journalDirectories, allLedgerDirs);
 
         checkIfDirsOnSameDiskPartition(allLedgerDirs);
         checkIfDirsOnSameDiskPartition(journalDirectories);
@@ -237,6 +275,239 @@ public class BookieImpl extends BookieCriticalThread implements Bookie {
         });
         if (isDuplicationFoundAndNotAllowed.getValue()) {
             throw new BookieException.DiskPartitionDuplicationException();
+        }
+    }
+
+    static List<BookieId> possibleBookieIds(ServerConfiguration conf)
+            throws BookieException {
+        // we need to loop through all possible bookie identifiers to ensure it is treated as a new environment
+        // just because of bad configuration
+        List<BookieId> addresses = Lists.newArrayListWithExpectedSize(3);
+        // we are checking all possibilities here, so we don't need to fail if we can only get
+        // loopback address. it will fail anyway when the bookie attempts to listen on loopback address.
+        try {
+            // ip address
+            addresses.add(getBookieAddress(
+                new ServerConfiguration(conf)
+                    .setUseHostNameAsBookieID(false)
+                    .setAdvertisedAddress(null)
+                    .setAllowLoopback(true)
+            ).toBookieId());
+            // host name
+            addresses.add(getBookieAddress(
+                new ServerConfiguration(conf)
+                    .setUseHostNameAsBookieID(true)
+                    .setAdvertisedAddress(null)
+                    .setAllowLoopback(true)
+            ).toBookieId());
+            // advertised address
+            if (null != conf.getAdvertisedAddress()) {
+                addresses.add(getBookieAddress(conf).toBookieId());
+            }
+            if (null != conf.getBookieId()) {
+                addresses.add(BookieId.parse(conf.getBookieId()));
+            }
+        } catch (UnknownHostException e) {
+            throw new UnknownBookieIdException(e);
+        }
+        return addresses;
+    }
+
+    static Versioned<Cookie> readAndVerifyCookieFromRegistrationManager(
+            Cookie masterCookie, RegistrationManager rm,
+            List<BookieId> addresses, boolean allowExpansion)
+            throws BookieException {
+        Versioned<Cookie> rmCookie = null;
+        for (BookieId address : addresses) {
+            try {
+                rmCookie = Cookie.readFromRegistrationManager(rm, address);
+                // If allowStorageExpansion option is set, we should
+                // make sure that the new set of ledger/index dirs
+                // is a super set of the old; else, we fail the cookie check
+                if (allowExpansion) {
+                    masterCookie.verifyIsSuperSet(rmCookie.getValue());
+                } else {
+                    masterCookie.verify(rmCookie.getValue());
+                }
+            } catch (CookieNotFoundException e) {
+                continue;
+            }
+        }
+        return rmCookie;
+    }
+
+    private static Pair<List<File>, List<Cookie>> verifyAndGetMissingDirs(
+            Cookie masterCookie, boolean allowExpansion, List<File> dirs)
+            throws InvalidCookieException, IOException {
+        List<File> missingDirs = Lists.newArrayList();
+        List<Cookie> existedCookies = Lists.newArrayList();
+        for (File dir : dirs) {
+            checkDirectoryStructure(dir);
+            try {
+                Cookie c = Cookie.readFromDirectory(dir);
+                if (allowExpansion) {
+                    masterCookie.verifyIsSuperSet(c);
+                } else {
+                    masterCookie.verify(c);
+                }
+                existedCookies.add(c);
+            } catch (FileNotFoundException fnf) {
+                missingDirs.add(dir);
+            }
+        }
+        return Pair.of(missingDirs, existedCookies);
+    }
+
+    private static void stampNewCookie(ServerConfiguration conf,
+                                       Cookie masterCookie,
+                                       RegistrationManager rm,
+                                       Version version,
+                                       List<File> journalDirectories,
+                                       List<File> allLedgerDirs)
+            throws BookieException, IOException {
+        // backfill all the directories that miss cookies (for storage expansion)
+        LOG.info("Stamping new cookies on all dirs {} {}",
+                 journalDirectories, allLedgerDirs);
+        for (File journalDirectory : journalDirectories) {
+            masterCookie.writeToDirectory(journalDirectory);
+        }
+        for (File dir : allLedgerDirs) {
+            masterCookie.writeToDirectory(dir);
+        }
+        masterCookie.writeToRegistrationManager(rm, conf, version);
+    }
+
+    public static void checkEnvironmentWithStorageExpansion(
+            ServerConfiguration conf,
+            MetadataBookieDriver metadataDriver,
+            List<File> journalDirectories,
+            List<File> allLedgerDirs) throws BookieException {
+        RegistrationManager rm = metadataDriver.getRegistrationManager();
+        try {
+            // 1. retrieve the instance id
+            String instanceId = rm.getClusterInstanceId();
+
+            // 2. build the master cookie from the configuration
+            Cookie.Builder builder = Cookie.generateCookie(conf);
+            if (null != instanceId) {
+                builder.setInstanceId(instanceId);
+            }
+            Cookie masterCookie = builder.build();
+            boolean allowExpansion = conf.getAllowStorageExpansion();
+
+            // 3. read the cookie from registration manager. it is the `source-of-truth` of a given bookie.
+            //    if it doesn't exist in registration manager, this bookie is a new bookie, otherwise it is
+            //    an old bookie.
+            List<BookieId> possibleBookieIds = possibleBookieIds(conf);
+            final Versioned<Cookie> rmCookie = readAndVerifyCookieFromRegistrationManager(
+                        masterCookie, rm, possibleBookieIds, allowExpansion);
+
+            // 4. check if the cookie appear in all the directories.
+            List<File> missedCookieDirs = new ArrayList<>();
+            List<Cookie> existingCookies = Lists.newArrayList();
+            if (null != rmCookie) {
+                existingCookies.add(rmCookie.getValue());
+            }
+
+            // 4.1 verify the cookies in journal directories
+            Pair<List<File>, List<Cookie>> journalResult =
+                verifyAndGetMissingDirs(masterCookie,
+                                        allowExpansion, journalDirectories);
+            missedCookieDirs.addAll(journalResult.getLeft());
+            existingCookies.addAll(journalResult.getRight());
+            // 4.2. verify the cookies in ledger directories
+            Pair<List<File>, List<Cookie>> ledgerResult =
+                verifyAndGetMissingDirs(masterCookie,
+                                        allowExpansion, allLedgerDirs);
+            missedCookieDirs.addAll(ledgerResult.getLeft());
+            existingCookies.addAll(ledgerResult.getRight());
+
+            // 5. if there are directories missing cookies,
+            //    this is either a:
+            //    - new environment
+            //    - a directory is being added
+            //    - a directory has been corrupted/wiped, which is an error
+            if (!missedCookieDirs.isEmpty()) {
+                if (rmCookie == null) {
+                    // 5.1 new environment: all directories should be empty
+                    verifyDirsForNewEnvironment(missedCookieDirs);
+                    stampNewCookie(conf, masterCookie, rm, Version.NEW,
+                                   journalDirectories, allLedgerDirs);
+                } else if (allowExpansion) {
+                    // 5.2 storage is expanding
+                    Set<File> knownDirs = getKnownDirs(existingCookies);
+                    verifyDirsForStorageExpansion(missedCookieDirs, knownDirs);
+                    stampNewCookie(conf, masterCookie,
+                                   rm, rmCookie.getVersion(),
+                                   journalDirectories, allLedgerDirs);
+                } else {
+                    // 5.3 Cookie-less directories and
+                    //     we can't do anything with them
+                    LOG.error("There are directories without a cookie,"
+                              + " and this is neither a new environment,"
+                              + " nor is storage expansion enabled. "
+                              + "Empty directories are {}", missedCookieDirs);
+                    throw new InvalidCookieException();
+                }
+            } else {
+                if (rmCookie == null) {
+                    // No corresponding cookie found in registration manager. The bookie should fail to come up.
+                    LOG.error("Cookie for this bookie is not stored in metadata store. Bookie failing to come up");
+                    throw new InvalidCookieException();
+                }
+            }
+        } catch (IOException ioe) {
+            LOG.error("Error accessing cookie on disks", ioe);
+            throw new BookieException.InvalidCookieException(ioe);
+        }
+    }
+
+    private static void verifyDirsForNewEnvironment(List<File> missedCookieDirs)
+            throws InvalidCookieException {
+        List<File> nonEmptyDirs = new ArrayList<>();
+        for (File dir : missedCookieDirs) {
+            String[] content = dir.list();
+            if (content != null && content.length != 0) {
+                nonEmptyDirs.add(dir);
+            }
+        }
+        if (!nonEmptyDirs.isEmpty()) {
+            LOG.error("Not all the new directories are empty. New directories that are not empty are: " + nonEmptyDirs);
+            throw new InvalidCookieException();
+        }
+    }
+
+    private static Set<File> getKnownDirs(List<Cookie> cookies) {
+        return cookies.stream()
+            .flatMap((c) -> Arrays.stream(c.getLedgerDirPathsFromCookie()))
+            .map((s) -> new File(s))
+            .collect(Collectors.toSet());
+    }
+
+    private static void verifyDirsForStorageExpansion(
+            List<File> missedCookieDirs,
+            Set<File> existingLedgerDirs) throws InvalidCookieException {
+
+        List<File> dirsMissingData = new ArrayList<File>();
+        List<File> nonEmptyDirs = new ArrayList<File>();
+        for (File dir : missedCookieDirs) {
+            if (existingLedgerDirs.contains(dir.getParentFile())) {
+                // if one of the existing ledger dirs doesn't have cookie,
+                // let us not proceed further
+                dirsMissingData.add(dir);
+                continue;
+            }
+            String[] content = dir.list();
+            if (content != null && content.length != 0) {
+                nonEmptyDirs.add(dir);
+            }
+        }
+        if (dirsMissingData.size() > 0 || nonEmptyDirs.size() > 0) {
+            LOG.error("Either not all local directories have cookies or directories being added "
+                    + " newly are not empty. "
+                    + "Directories missing cookie file are: " + dirsMissingData
+                    + " New directories that are not empty are: " + nonEmptyDirs);
+            throw new InvalidCookieException();
         }
     }
 
@@ -328,6 +599,18 @@ public class BookieImpl extends BookieCriticalThread implements Bookie {
         return currentDirs;
     }
 
+    public BookieImpl(ServerConfiguration conf)
+            throws IOException, InterruptedException, BookieException {
+        this(conf, NullStatsLogger.INSTANCE, PooledByteBufAllocator.DEFAULT, new SimpleBookieServiceInfoProvider(conf));
+    }
+
+    private static LedgerStorage buildLedgerStorage(ServerConfiguration conf) throws IOException {
+        // Instantiate the ledger storage implementation
+        String ledgerStorageClass = conf.getLedgerStorageClass();
+        LOG.info("Using ledger storage: {}", ledgerStorageClass);
+        return LedgerStorageFactory.createLedgerStorage(ledgerStorageClass);
+    }
+
     /**
      * Initialize LedgerStorage instance without checkpointing for use within the shell
      * and other RO users.  ledgerStorage must not have already been initialized.
@@ -344,51 +627,45 @@ public class BookieImpl extends BookieCriticalThread implements Bookie {
         StatsLogger statsLogger = NullStatsLogger.INSTANCE;
         DiskChecker diskChecker = new DiskChecker(conf.getDiskUsageThreshold(), conf.getDiskUsageWarnThreshold());
 
-        LedgerDirsManager ledgerDirsManager = BookieResources.createLedgerDirsManager(
+        LedgerDirsManager ledgerDirsManager = createLedgerDirsManager(
                 conf, diskChecker, statsLogger.scope(LD_LEDGER_SCOPE));
-        LedgerDirsManager indexDirsManager = BookieResources.createIndexDirsManager(
+        LedgerDirsManager indexDirsManager = createIndexDirsManager(
                 conf, diskChecker, statsLogger.scope(LD_INDEX_SCOPE), ledgerDirsManager);
 
         if (null == ledgerStorage) {
-            ledgerStorage = BookieResources.createLedgerStorage(conf, null,
-                                                                ledgerDirsManager,
-                                                                indexDirsManager,
-                                                                statsLogger,
-                                                                UnpooledByteBufAllocator.DEFAULT);
-        } else {
-            ledgerStorage.initialize(
+            ledgerStorage = buildLedgerStorage(conf);
+        }
+
+        CheckpointSource checkpointSource = new CheckpointSource() {
+            @Override
+            public Checkpoint newCheckpoint() {
+                return Checkpoint.MAX;
+            }
+
+            @Override
+            public void checkpointComplete(Checkpoint checkpoint, boolean compact)
+                    throws IOException {
+            }
+        };
+
+        Checkpointer checkpointer = Checkpointer.NULL;
+
+        ledgerStorage.initialize(
                 conf,
                 null,
                 ledgerDirsManager,
                 indexDirsManager,
+                null,
+                checkpointSource,
+                checkpointer,
                 statsLogger,
                 UnpooledByteBufAllocator.DEFAULT);
-        }
 
-        ledgerStorage.setCheckpointSource(new CheckpointSource() {
-                @Override
-                public Checkpoint newCheckpoint() {
-                    return Checkpoint.MIN;
-                }
-
-                @Override
-                public void checkpointComplete(Checkpoint checkpoint, boolean compact)
-                        throws IOException {
-                }
-            });
-        ledgerStorage.setCheckpointer(Checkpointer.NULL);
         return ledgerStorage;
     }
 
-    public BookieImpl(ServerConfiguration conf,
-                      RegistrationManager registrationManager,
-                      LedgerStorage storage,
-                      DiskChecker diskChecker,
-                      LedgerDirsManager ledgerDirsManager,
-                      LedgerDirsManager indexDirsManager,
-                      StatsLogger statsLogger,
-                      ByteBufAllocator allocator,
-                      Supplier<BookieServiceInfo> bookieServiceInfoProvider)
+    public BookieImpl(ServerConfiguration conf, StatsLogger statsLogger,
+                      ByteBufAllocator allocator, Supplier<BookieServiceInfo> bookieServiceInfoProvider)
             throws IOException, InterruptedException, BookieException {
         super("Bookie-" + conf.getBookiePort());
         this.bookieServiceInfoProvider = bookieServiceInfoProvider;
@@ -398,14 +675,30 @@ public class BookieImpl extends BookieCriticalThread implements Bookie {
         for (File journalDirectory : conf.getJournalDirs()) {
             this.journalDirectories.add(getCurrentDirectory(journalDirectory));
         }
-        this.ledgerDirsManager = ledgerDirsManager;
-        this.indexDirsManager = indexDirsManager;
+        DiskChecker diskChecker = createDiskChecker(conf);
+        this.ledgerDirsManager = createLedgerDirsManager(conf, diskChecker, statsLogger.scope(LD_LEDGER_SCOPE));
+        this.indexDirsManager = createIndexDirsManager(conf, diskChecker, statsLogger.scope(LD_INDEX_SCOPE),
+                                                       this.ledgerDirsManager);
         this.writeDataToJournal = conf.getJournalWriteData();
         this.allocator = allocator;
-        this.registrationManager = registrationManager;
-        stateManager = initializeStateManager();
-        checkEnvironment();
 
+        // instantiate zookeeper client to initialize ledger manager
+        this.metadataDriver = instantiateMetadataDriver(conf);
+        checkEnvironment(this.metadataDriver);
+        try {
+            if (this.metadataDriver != null) {
+                // current the registration manager is zookeeper only
+                ledgerManagerFactory = metadataDriver.getLedgerManagerFactory();
+                LOG.info("instantiate ledger manager {}", ledgerManagerFactory.getClass().getName());
+                ledgerManager = ledgerManagerFactory.newLedgerManager();
+            } else {
+                ledgerManagerFactory = null;
+                ledgerManager = null;
+            }
+        } catch (MetadataException e) {
+            throw new MetadataStoreException("Failed to initialize ledger manager", e);
+        }
+        stateManager = initializeStateManager();
         // register shutdown handler using trigger mode
         stateManager.setShutdownHandler(exitCode -> triggerBookieShutdown(exitCode));
         // Initialise dirsMonitor. This would look through all the
@@ -428,19 +721,18 @@ public class BookieImpl extends BookieCriticalThread implements Bookie {
             }
         }
 
-        JournalAliveListener journalAliveListener =
-                () -> BookieImpl.this.triggerBookieShutdown(ExitCode.BOOKIE_EXCEPTION);
         // instantiate the journals
         journals = Lists.newArrayList();
         for (int i = 0; i < journalDirectories.size(); i++) {
             journals.add(new Journal(i, journalDirectories.get(i),
-                    conf, ledgerDirsManager, statsLogger.scope(JOURNAL_SCOPE), allocator, journalAliveListener));
+                    conf, ledgerDirsManager, statsLogger.scope(JOURNAL_SCOPE), allocator));
         }
 
         this.entryLogPerLedgerEnabled = conf.isEntryLogPerLedgerEnabled();
         CheckpointSource checkpointSource = new CheckpointSourceList(journals);
 
-        this.ledgerStorage = storage;
+        ledgerStorage = buildLedgerStorage(conf);
+
         boolean isDbLedgerStorage = ledgerStorage instanceof DbLedgerStorage;
 
         /*
@@ -457,7 +749,7 @@ public class BookieImpl extends BookieCriticalThread implements Bookie {
          * 2) DbLedgerStorage
          */
         if (entryLogPerLedgerEnabled || isDbLedgerStorage) {
-            syncThread = new SyncThread(conf, getLedgerDirsListener(), ledgerStorage, checkpointSource, statsLogger) {
+            syncThread = new SyncThread(conf, getLedgerDirsListener(), ledgerStorage, checkpointSource) {
                 @Override
                 public void startCheckpoint(Checkpoint checkpoint) {
                     /*
@@ -476,38 +768,64 @@ public class BookieImpl extends BookieCriticalThread implements Bookie {
                 }
             };
         } else {
-            syncThread = new SyncThread(conf, getLedgerDirsListener(), ledgerStorage, checkpointSource, statsLogger);
+            syncThread = new SyncThread(conf, getLedgerDirsListener(), ledgerStorage, checkpointSource);
         }
 
-        LedgerStorage.LedgerDeletionListener ledgerDeletionListener = new LedgerStorage.LedgerDeletionListener() {
-            @Override
-            public void ledgerDeleted(long ledgerId) {
-                masterKeyCache.remove(ledgerId);
-            }
-        };
+        ledgerStorage.initialize(
+            conf,
+            ledgerManager,
+            ledgerDirsManager,
+            indexDirsManager,
+            stateManager,
+            checkpointSource,
+            syncThread,
+            statsLogger,
+            allocator);
 
-        ledgerStorage.setStateManager(stateManager);
-        ledgerStorage.setCheckpointSource(checkpointSource);
-        ledgerStorage.setCheckpointer(syncThread);
-        ledgerStorage.registerLedgerDeletionListener(ledgerDeletionListener);
+
         handles = new HandleFactoryImpl(ledgerStorage);
 
         // Expose Stats
-        this.bookieStats = new BookieStats(statsLogger, journalDirectories.size(), conf.getJournalQueueSize());
+        this.bookieStats = new BookieStats(statsLogger);
+        journalMemoryMaxStats = new Gauge<Long>() {
+            final long journalMaxMemory = conf.getJournalMaxMemorySizeMb() * 1024 * 1024;
+
+            @Override
+            public Long getDefaultValue() {
+                return journalMaxMemory;
+            }
+
+            @Override
+            public Long getSample() {
+                return journalMaxMemory;
+            }
+        };
+        statsLogger.scope(JOURNAL_SCOPE).registerGauge(JOURNAL_MEMORY_MAX, journalMemoryMaxStats);
+
+        journalMemoryUsedStats = new Gauge<Long>() {
+            @Override
+            public Long getDefaultValue() {
+                return -1L;
+            }
+
+            @Override
+            public Long getSample() {
+                long totalMemory = 0L;
+                for (int i = 0; i < journals.size(); i++) {
+                    totalMemory += journals.get(i).getMemoryUsage();
+                }
+                return totalMemory;
+            }
+        };
+        statsLogger.scope(JOURNAL_SCOPE).registerGauge(JOURNAL_MEMORY_USED, journalMemoryUsedStats);
     }
 
     StateManager initializeStateManager() throws IOException {
-        return new BookieStateManager(conf, statsLogger, registrationManager,
+        return new BookieStateManager(conf, statsLogger, metadataDriver,
                 ledgerDirsManager, bookieServiceInfoProvider);
     }
 
     void readJournal() throws IOException, BookieException {
-        if (!conf.getJournalWriteData()) {
-            LOG.warn("Journal disabled for add entry requests. Running BookKeeper this way can "
-                    + "lead to data loss. It is recommended to use data integrity checking when "
-                    + "running without the journal to minimize data loss risk");
-        }
-
         long startTs = System.currentTimeMillis();
         JournalScanner scanner = new JournalScanner() {
             @Override
@@ -617,8 +935,7 @@ public class BookieImpl extends BookieCriticalThread implements Bookie {
         // validate filtered log ids only when we have markedLogId
         if (markedLog.getLogFileId() > 0) {
             if (logs.size() == 0 || logs.get(0) != markedLog.getLogFileId()) {
-                String path = journal.getJournalDirectory().getAbsolutePath();
-                throw new IOException("Recovery log " + markedLog.getLogFileId() + " is missing at " + path);
+                throw new IOException("Recovery log " + markedLog.getLogFileId() + " is missing");
             }
         }
 
@@ -642,7 +959,6 @@ public class BookieImpl extends BookieCriticalThread implements Bookie {
     @Override
     public synchronized void start() {
         setDaemon(true);
-        ThreadRegistry.register("BookieThread", 0);
         if (LOG.isDebugEnabled()) {
             LOG.debug("I'm starting a bookie with journal directories {}",
                     journalDirectories.stream().map(File::getName).collect(Collectors.joining(", ")));
@@ -754,9 +1070,6 @@ public class BookieImpl extends BookieCriticalThread implements Bookie {
 
             @Override
             public void diskWritable(File disk) {
-                if (conf.isReadOnlyModeOnAnyDiskFullEnabled()) {
-                    return;
-                }
                 // Transition to writable mode when a disk becomes writable again.
                 stateManager.setHighPriorityWritesAvailability(true);
                 stateManager.transitionToWritableMode();
@@ -764,29 +1077,39 @@ public class BookieImpl extends BookieCriticalThread implements Bookie {
 
             @Override
             public void diskJustWritable(File disk) {
-                if (conf.isReadOnlyModeOnAnyDiskFullEnabled()) {
-                    return;
-                }
-                // Transition to writable mode when a disk becomes writable again.
-                stateManager.setHighPriorityWritesAvailability(true);
-                stateManager.transitionToWritableMode();
-            }
-
-            @Override
-            public void anyDiskFull(boolean highPriorityWritesAllowed) {
-                if (conf.isReadOnlyModeOnAnyDiskFullEnabled()) {
-                    stateManager.setHighPriorityWritesAvailability(highPriorityWritesAllowed);
-                    stateManager.transitionToReadOnlyMode();
-                }
-            }
-
-            @Override
-            public void allDisksWritable() {
                 // Transition to writable mode when a disk becomes writable again.
                 stateManager.setHighPriorityWritesAvailability(true);
                 stateManager.transitionToWritableMode();
             }
         };
+    }
+
+    /**
+     * Instantiate the metadata driver for the Bookie.
+     */
+    private MetadataBookieDriver instantiateMetadataDriver(ServerConfiguration conf) throws BookieException {
+        try {
+            String metadataServiceUriStr = conf.getMetadataServiceUri();
+            if (null == metadataServiceUriStr) {
+                return null;
+            }
+
+            MetadataBookieDriver driver = MetadataDrivers.getBookieDriver(
+                URI.create(metadataServiceUriStr));
+            driver.initialize(
+                conf,
+                () -> {
+                    stateManager.forceToUnregistered();
+                    // schedule a re-register operation
+                    stateManager.registerBookie(false);
+                },
+                statsLogger);
+            return driver;
+        } catch (MetadataException me) {
+            throw new MetadataStoreException("Failed to initialize metadata bookie driver", me);
+        } catch (ConfigurationException e) {
+            throw new BookieIllegalOpException(e);
+        }
     }
 
     /*
@@ -811,9 +1134,30 @@ public class BookieImpl extends BookieCriticalThread implements Bookie {
 
     @Override
     public void run() {
-        // start journals
-        for (Journal journal: journals) {
-            journal.start();
+        // bookie thread wait for journal thread
+        try {
+            // start journals
+            for (Journal journal: journals) {
+                journal.start();
+            }
+
+            // wait until journal quits
+            for (Journal journal: journals) {
+
+                journal.joinThread();
+            }
+            LOG.info("Journal thread(s) quit.");
+        } catch (InterruptedException ie) {
+            Thread.currentThread().interrupt();
+            LOG.warn("Interrupted on running journal thread : ", ie);
+        }
+        // if the journal thread quits due to shutting down, it is ok
+        if (!stateManager.isShuttingDown()) {
+            // some error found in journal thread and it quits
+            // following add operations to it would hang unit client timeout
+            // so we should let bookie server exists
+            LOG.error("Journal manager quits unexpectedly.");
+            triggerBookieShutdown(ExitCode.BOOKIE_EXCEPTION);
         }
     }
 
@@ -841,13 +1185,12 @@ public class BookieImpl extends BookieCriticalThread implements Bookie {
     public int shutdown() {
         return shutdown(ExitCode.OK);
     }
+
     // internal shutdown method to let shutdown bookie gracefully
     // when encountering exception
-    ReentrantLock lock = new ReentrantLock(true);
-    int shutdown(int exitCode) {
-        lock.lock();
+    synchronized int shutdown(int exitCode) {
         try {
-            if (isRunning()) {
+            if (isRunning()) { // avoid shutdown twice
                 // the exitCode only set when first shutdown usually due to exception found
                 LOG.info("Shutting down Bookie-{} with exitCode {}",
                          conf.getBookiePort(), exitCode);
@@ -868,12 +1211,29 @@ public class BookieImpl extends BookieCriticalThread implements Bookie {
                 for (Journal journal : journals) {
                     journal.shutdown();
                 }
+                this.join();
 
                 // Shutdown the EntryLogger which has the GarbageCollector Thread running
                 ledgerStorage.shutdown();
 
+                // close Ledger Manager
+                try {
+                    if (null != ledgerManager) {
+                        ledgerManager.close();
+                    }
+                    if (null != ledgerManagerFactory) {
+                        ledgerManagerFactory.close();
+                    }
+                } catch (IOException ie) {
+                    LOG.error("Failed to close active ledger manager : ", ie);
+                }
+
                 //Shutdown disk checker
                 dirsMonitor.shutdown();
+            }
+            // Shutdown the ZK client
+            if (metadataDriver != null) {
+                metadataDriver.close();
             }
         } catch (InterruptedException ie) {
             Thread.currentThread().interrupt();
@@ -882,7 +1242,6 @@ public class BookieImpl extends BookieCriticalThread implements Bookie {
             LOG.error("Got Exception while trying to shutdown Bookie", e);
             throw e;
         } finally {
-            lock.unlock();
             // setting running to false here, so watch thread
             // in bookie server know it only after bookie shut down
             stateManager.close();
@@ -909,17 +1268,6 @@ public class BookieImpl extends BookieCriticalThread implements Bookie {
         return journals.get(MathUtils.signSafeMod(ledgerId, journals.size()));
     }
 
-    @VisibleForTesting
-    public ByteBuf createMasterKeyEntry(long ledgerId, byte[] masterKey) {
-        // new handle, we should add the key to journal ensure we can rebuild
-        ByteBuf bb = allocator.directBuffer(8 + 8 + 4 + masterKey.length);
-        bb.writeLong(ledgerId);
-        bb.writeLong(METAENTRY_ID_LEDGER_KEY);
-        bb.writeInt(masterKey.length);
-        bb.writeBytes(masterKey);
-        return bb;
-    }
-
     /**
      * Add an entry to a ledger as specified by handle.
      */
@@ -929,7 +1277,7 @@ public class BookieImpl extends BookieCriticalThread implements Bookie {
         long ledgerId = handle.getLedgerId();
         long entryId = handle.addEntry(entry);
 
-        bookieStats.getWriteBytes().addCount(entry.readableBytes());
+        bookieStats.getWriteBytes().add(entry.readableBytes());
 
         // journal `addEntry` should happen after the entry is added to ledger storage.
         // otherwise the journal entry can potentially be rolled before the ledger is created in ledger storage.
@@ -937,21 +1285,20 @@ public class BookieImpl extends BookieCriticalThread implements Bookie {
             // Force the load into masterKey cache
             byte[] oldValue = masterKeyCache.putIfAbsent(ledgerId, masterKey);
             if (oldValue == null) {
-                ByteBuf masterKeyEntry = createMasterKeyEntry(ledgerId, masterKey);
-                try {
-                    getJournal(ledgerId).logAddEntry(
-                            masterKeyEntry, false /* ackBeforeSync */, new NopWriteCallback(), null);
-                } finally {
-                    ReferenceCountUtil.release(masterKeyEntry);
-                }
+                // new handle, we should add the key to journal ensure we can rebuild
+                ByteBuffer bb = ByteBuffer.allocate(8 + 8 + 4 + masterKey.length);
+                bb.putLong(ledgerId);
+                bb.putLong(METAENTRY_ID_LEDGER_KEY);
+                bb.putInt(masterKey.length);
+                bb.put(masterKey);
+                bb.flip();
+
+                getJournal(ledgerId).logAddEntry(bb, false /* ackBeforeSync */, new NopWriteCallback(), null);
             }
         }
 
         if (!writeDataToJournal) {
             cb.writeComplete(0, ledgerId, entryId, null, ctx);
-            if (ctx instanceof BookieRequestHandler) {
-                ((BookieRequestHandler) ctx).flushPendingResponse();
-            }
             return;
         }
 
@@ -992,12 +1339,11 @@ public class BookieImpl extends BookieCriticalThread implements Bookie {
                 bookieStats.getAddBytesStats().registerFailedValue(entrySize);
             }
 
-            ReferenceCountUtil.release(entry);
+            entry.release();
         }
     }
 
-    @VisibleForTesting
-    public ByteBuf createExplicitLACEntry(long ledgerId, ByteBuf explicitLac) {
+    private ByteBuf createExplicitLACEntry(long ledgerId, ByteBuf explicitLac) {
         ByteBuf bb = allocator.directBuffer(8 + 8 + 4 + explicitLac.capacity());
         bb.writeLong(ledgerId);
         bb.writeLong(METAENTRY_ID_LEDGER_EXPLICITLAC);
@@ -1008,7 +1354,6 @@ public class BookieImpl extends BookieCriticalThread implements Bookie {
 
     public void setExplicitLac(ByteBuf entry, WriteCallback writeCallback, Object ctx, byte[] masterKey)
             throws IOException, InterruptedException, BookieException {
-        ByteBuf explicitLACEntry = null;
         try {
             long ledgerId = entry.getLong(entry.readerIndex());
             LedgerDescriptor handle = handles.getHandle(ledgerId, masterKey);
@@ -1016,21 +1361,16 @@ public class BookieImpl extends BookieCriticalThread implements Bookie {
                 entry.markReaderIndex();
                 handle.setExplicitLac(entry);
                 entry.resetReaderIndex();
-                explicitLACEntry = createExplicitLACEntry(ledgerId, entry);
+                ByteBuf explicitLACEntry = createExplicitLACEntry(ledgerId, entry);
                 getJournal(ledgerId).logAddEntry(explicitLACEntry, false /* ackBeforeSync */, writeCallback, ctx);
             }
         } catch (NoWritableLedgerDirException e) {
             stateManager.transitionToReadOnlyMode();
             throw new IOException(e);
-        } finally {
-            ReferenceCountUtil.release(entry);
-            if (explicitLACEntry != null) {
-                ReferenceCountUtil.release(explicitLACEntry);
-            }
         }
     }
 
-    public ByteBuf getExplicitLac(long ledgerId) throws IOException, Bookie.NoLedgerException, BookieException {
+    public ByteBuf getExplicitLac(long ledgerId) throws IOException, Bookie.NoLedgerException {
         ByteBuf lac;
         LedgerDescriptor handle = handles.getReadOnlyHandle(ledgerId);
         synchronized (handle) {
@@ -1086,7 +1426,7 @@ public class BookieImpl extends BookieCriticalThread implements Bookie {
                 bookieStats.getAddBytesStats().registerFailedValue(entrySize);
             }
 
-            ReferenceCountUtil.release(entry);
+            entry.release();
         }
     }
 
@@ -1105,7 +1445,7 @@ public class BookieImpl extends BookieCriticalThread implements Bookie {
     }
 
     public ByteBuf readEntry(long ledgerId, long entryId)
-            throws IOException, NoLedgerException, BookieException {
+            throws IOException, NoLedgerException {
         long requestNanos = MathUtils.nowInNano();
         boolean success = false;
         int entrySize = 0;
@@ -1115,8 +1455,7 @@ public class BookieImpl extends BookieCriticalThread implements Bookie {
                 LOG.trace("Reading {}@{}", entryId, ledgerId);
             }
             ByteBuf entry = handle.readEntry(entryId);
-            entrySize = entry.readableBytes();
-            bookieStats.getReadBytes().addCount(entrySize);
+            bookieStats.getReadBytes().add(entry.readableBytes());
             success = true;
             return entry;
         } finally {
@@ -1126,12 +1465,12 @@ public class BookieImpl extends BookieCriticalThread implements Bookie {
                 bookieStats.getReadBytesStats().registerSuccessfulValue(entrySize);
             } else {
                 bookieStats.getReadEntryStats().registerFailedEvent(elapsedNanos, TimeUnit.NANOSECONDS);
-                bookieStats.getReadBytesStats().registerFailedValue(entrySize);
+                bookieStats.getReadEntryStats().registerFailedValue(entrySize);
             }
         }
     }
 
-    public long readLastAddConfirmed(long ledgerId) throws IOException, BookieException {
+    public long readLastAddConfirmed(long ledgerId) throws IOException {
         LedgerDescriptor handle = handles.getReadOnlyHandle(ledgerId);
         return handle.getLastAddConfirmed();
     }
@@ -1159,6 +1498,34 @@ public class BookieImpl extends BookieCriticalThread implements Bookie {
     @VisibleForTesting
     public BookieStateManager getStateManager() {
         return (BookieStateManager) this.stateManager;
+    }
+
+    @VisibleForTesting
+    public LedgerManagerFactory getLedgerManagerFactory() {
+        return ledgerManagerFactory;
+    }
+
+    // The rest of the code is test stuff
+    static class CounterCallback implements WriteCallback {
+        int count;
+
+        @Override
+        public synchronized void writeComplete(int rc, long l, long e, BookieId addr, Object ctx) {
+            count--;
+            if (count == 0) {
+                notifyAll();
+            }
+        }
+
+        public synchronized void incCount() {
+            count++;
+        }
+
+        public synchronized void waitZero() throws InterruptedException {
+            while (count > 0) {
+                wait();
+            }
+        }
     }
 
     public ByteBufAllocator getAllocator() {
@@ -1224,15 +1591,6 @@ public class BookieImpl extends BookieCriticalThread implements Bookie {
             }
         }
 
-        // Clean up metadata directories if they are separate from the
-        // ledger dirs
-        if (!Strings.isNullOrEmpty(conf.getGcEntryLogMetadataCachePath())) {
-            File metadataDir = new File(conf.getGcEntryLogMetadataCachePath());
-            if (!cleanDir(metadataDir)) {
-                LOG.error("Formatting ledger metadata directory {} failed", metadataDir);
-                return false;
-            }
-        }
         LOG.info("Bookie format completed successfully");
         return true;
     }
@@ -1263,6 +1621,25 @@ public class BookieImpl extends BookieCriticalThread implements Bookie {
      */
     public int getExitCode() {
         return exitCode;
+    }
+
+    static DiskChecker createDiskChecker(ServerConfiguration conf) {
+        return new DiskChecker(conf.getDiskUsageThreshold(), conf.getDiskUsageWarnThreshold());
+    }
+
+    static LedgerDirsManager createLedgerDirsManager(ServerConfiguration conf, DiskChecker diskChecker,
+                                                     StatsLogger statsLogger) {
+        return new LedgerDirsManager(conf, conf.getLedgerDirs(), diskChecker, statsLogger);
+    }
+
+    static LedgerDirsManager createIndexDirsManager(ServerConfiguration conf, DiskChecker diskChecker,
+                                                    StatsLogger statsLogger, LedgerDirsManager fallback) {
+        File[] idxDirs = conf.getIndexDirs();
+        if (null == idxDirs) {
+            return fallback;
+        } else {
+            return new LedgerDirsManager(conf, idxDirs, diskChecker, statsLogger);
+        }
     }
 
     public OfLong getListOfEntriesOfLedger(long ledgerId) throws IOException, NoLedgerException {

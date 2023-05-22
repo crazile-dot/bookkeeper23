@@ -1,0 +1,372 @@
+<?xml version="1.0" encoding="UTF-8"?><!DOCTYPE html PUBLIC "-//W3C//DTD XHTML 1.0 Strict//EN" "http://www.w3.org/TR/xhtml1/DTD/xhtml1-strict.dtd"><html xmlns="http://www.w3.org/1999/xhtml" lang="it"><head><meta http-equiv="Content-Type" content="text/html;charset=UTF-8"/><link rel="stylesheet" href="../../jacoco-resources/report.css" type="text/css"/><link rel="shortcut icon" href="../../jacoco-resources/report.gif" type="image/gif"/><title>ConfigKey.java</title><link rel="stylesheet" href="../../jacoco-resources/prettify.css" type="text/css"/><script type="text/javascript" src="../../jacoco-resources/prettify.js"></script></head><body onload="window['PR_TAB_WIDTH']=4;prettyPrint()"><div class="breadcrumb" id="breadcrumb"><span class="info"><a href="../../jacoco-sessions.html" class="el_session">Sessions</a></span><a href="../../index.html" class="el_report">Tests</a> &gt; <a href="../index.html" class="el_bundle">bookkeeper-common</a> &gt; <a href="index.source.html" class="el_package">org.apache.bookkeeper.common.conf</a> &gt; <span class="el_source">ConfigKey.java</span></div><h1>ConfigKey.java</h1><pre class="source lang-java linenums">/*
+ * Licensed to the Apache Software Foundation (ASF) under one
+ * or more contributor license agreements.  See the NOTICE file
+ * distributed with this work for additional information
+ * regarding copyright ownership.  The ASF licenses this file
+ * to you under the Apache License, Version 2.0 (the
+ * &quot;License&quot;); you may not use this file except in compliance
+ * with the License.  You may obtain a copy of the License at
+ *
+ *   http://www.apache.org/licenses/LICENSE-2.0
+ *
+ * Unless required by applicable law or agreed to in writing,
+ * software distributed under the License is distributed on an
+ * &quot;AS IS&quot; BASIS, WITHOUT WARRANTIES OR CONDITIONS OF ANY
+ * KIND, either express or implied.  See the License for the
+ * specific language governing permissions and limitations
+ * under the License.
+ */
+
+package org.apache.bookkeeper.common.conf;
+
+import static com.google.common.base.Preconditions.checkArgument;
+
+import java.util.Collections;
+import java.util.Comparator;
+import java.util.List;
+import java.util.Objects;
+import lombok.Builder;
+import lombok.Builder.Default;
+import lombok.Data;
+import lombok.experimental.Accessors;
+import lombok.extern.slf4j.Slf4j;
+import org.apache.bookkeeper.common.annotation.InterfaceAudience.Public;
+import org.apache.bookkeeper.common.conf.validators.NullValidator;
+import org.apache.bookkeeper.common.util.ReflectionUtils;
+import org.apache.commons.configuration.Configuration;
+import org.apache.commons.configuration.ConfigurationException;
+
+/**
+ * A configuration key in a configuration.
+ */
+<span class="nc" id="L42">@Data</span>
+<span class="nc bnc" id="L43" title="All 28 branches missed.">@Builder(builderMethodName = &quot;internalBuilder&quot;)</span>
+@Accessors(fluent = true)
+@Public
+<span class="nc" id="L46">@Slf4j</span>
+public class ConfigKey {
+
+<span class="nc" id="L49">    public static final Comparator&lt;ConfigKey&gt; ORDERING = (o1, o2) -&gt; {</span>
+<span class="nc" id="L50">        int ret = Integer.compare(o1.orderInGroup, o2.orderInGroup);</span>
+<span class="nc bnc" id="L51" title="All 2 branches missed.">        if (ret == 0) {</span>
+<span class="nc" id="L52">            return o1.name().compareTo(o2.name());</span>
+        } else {
+<span class="nc" id="L54">            return ret;</span>
+        }
+    };
+
+    /**
+     * Build a config key of &lt;tt&gt;name&lt;/tt&gt;.
+     *
+     * @param name config key name
+     * @return config key builder
+     */
+    public static ConfigKeyBuilder builder(String name) {
+<span class="nc" id="L65">        return internalBuilder().name(name);</span>
+    }
+
+    /**
+     * Flag indicates whether the setting is required.
+     */
+    @Default
+<span class="nc" id="L72">    private boolean required = false;</span>
+
+    /**
+     * Name of the configuration setting.
+     */
+<span class="nc" id="L77">    private String name;</span>
+
+    /**
+     * Type of the configuration setting.
+     */
+    @Default
+<span class="nc" id="L83">    private Type type = Type.STRING;</span>
+
+    /**
+     * Description of the configuration setting.
+     */
+    @Default
+<span class="nc" id="L89">    private String description = &quot;&quot;;</span>
+
+    /**
+     * Documentation of the configuration setting.
+     */
+    @Default
+<span class="nc" id="L95">    private String documentation = &quot;&quot;;</span>
+
+    /**
+     * Default value as a string representation.
+     */
+    @Default
+<span class="nc" id="L101">    private Object defaultValue = null;</span>
+
+    private String defaultValueAsString() {
+<span class="nc bnc" id="L104" title="All 2 branches missed.">        if (null == defaultValue) {</span>
+<span class="nc" id="L105">            return null;</span>
+<span class="nc bnc" id="L106" title="All 2 branches missed.">        } else if (defaultValue instanceof String) {</span>
+<span class="nc" id="L107">            return (String) defaultValue;</span>
+<span class="nc bnc" id="L108" title="All 2 branches missed.">        } else if (defaultValue instanceof Class) {</span>
+<span class="nc" id="L109">            return ((Class) defaultValue).getName();</span>
+        } else {
+<span class="nc" id="L111">            return defaultValue.toString();</span>
+        }
+    }
+
+    /**
+     * The list of options for this setting.
+     */
+    @Default
+<span class="nc" id="L119">    private List&lt;String&gt; optionValues = Collections.emptyList();</span>
+
+    /**
+     * The validator used for validating configuration value.
+     */
+    @Default
+<span class="nc" id="L125">    private Validator validator = NullValidator.of();</span>
+
+    /**
+     * The key-group to group settings together.
+     */
+    @Default
+<span class="nc" id="L131">    private ConfigKeyGroup group = ConfigKeyGroup.DEFAULT;</span>
+
+    /**
+     * The order of the setting in the key-group.
+     */
+    @Default
+<span class="nc" id="L137">    private int orderInGroup = Integer.MIN_VALUE;</span>
+
+    /**
+     * The list of settings dependents on this setting.
+     */
+    @Default
+<span class="nc" id="L143">    private List&lt;String&gt; dependents = Collections.emptyList();</span>
+
+    /**
+     * Whether this setting is deprecated or not.
+     */
+    @Default
+<span class="nc" id="L149">    private boolean deprecated = false;</span>
+
+    /**
+     * The config key that deprecates this key.
+     */
+    @Default
+<span class="nc" id="L155">    private String deprecatedByConfigKey = &quot;&quot;;</span>
+
+    /**
+     * The version when this settings was deprecated.
+     */
+    @Default
+<span class="nc" id="L161">    private String deprecatedSince = &quot;&quot;;</span>
+
+    /**
+     * The version when this setting was introduced.
+     */
+    @Default
+<span class="nc" id="L167">    private String since = &quot;&quot;;</span>
+
+    /**
+     * {@inheritDoc}
+     */
+    @Override
+    public boolean equals(Object o) {
+<span class="nc bnc" id="L174" title="All 2 branches missed.">        if (!(o instanceof ConfigKey)) {</span>
+<span class="nc" id="L175">            return false;</span>
+        }
+<span class="nc" id="L177">        ConfigKey other = (ConfigKey) o;</span>
+<span class="nc" id="L178">        return Objects.equals(name, other.name);</span>
+    }
+
+    /**
+     * {@inheritDoc}
+     */
+    @Override
+    public int hashCode() {
+<span class="nc" id="L186">        return name.hashCode();</span>
+    }
+
+    /**
+     * Validate the setting is valid in the provided config &lt;tt&gt;conf&lt;/tt&gt;.
+     *
+     * @param conf configuration to test
+     */
+    public void validate(Configuration conf) throws ConfigException {
+<span class="nc bnc" id="L195" title="All 4 branches missed.">        if (conf.containsKey(name()) &amp;&amp; validator() != null) {</span>
+<span class="nc" id="L196">            Object value = get(conf);</span>
+<span class="nc bnc" id="L197" title="All 2 branches missed.">            if (!validator().validate(name(), value)) {</span>
+<span class="nc" id="L198">                throw new ConfigException(&quot;Invalid setting of '&quot; + name()</span>
+                    + &quot;' found the configuration: value = '&quot; + value + &quot;', requirement = '&quot; + validator + &quot;'&quot;);
+            }
+<span class="nc bnc" id="L201" title="All 2 branches missed.">        } else if (required()) { // missing config on a required field</span>
+<span class="nc" id="L202">            throw new ConfigException(</span>
+<span class="nc" id="L203">                &quot;Setting '&quot; + name() + &quot;' is required but missing in the configuration&quot;);</span>
+        }
+<span class="nc" id="L205">    }</span>
+
+    /**
+     * Update the setting &lt;tt&gt;name&lt;/tt&gt; in the configuration &lt;tt&gt;conf&lt;/tt&gt; with the provided &lt;tt&gt;value&lt;/tt&gt;.
+     *
+     * @param conf configuration to set
+     * @param value value of the setting
+     */
+    public void set(Configuration conf, Object value) {
+<span class="nc bnc" id="L214" title="All 2 branches missed.">        if (!type().validator().validate(name(), value)) {</span>
+<span class="nc" id="L215">            throw new IllegalArgumentException(</span>
+<span class="nc" id="L216">                &quot;Invalid value '&quot; + value + &quot;' to set on setting '&quot; + name() + &quot;': expected type = &quot; + type);</span>
+        }
+
+<span class="nc bnc" id="L219" title="All 4 branches missed.">        if (null != validator() &amp;&amp; !validator().validate(name(), value)) {</span>
+<span class="nc" id="L220">            throw new IllegalArgumentException(</span>
+<span class="nc" id="L221">                &quot;Invalid value '&quot; + value + &quot;' to set on setting '&quot; + name() + &quot;': required '&quot; + validator() + &quot;'&quot;);</span>
+        }
+
+<span class="nc bnc" id="L224" title="All 2 branches missed.">        if (value instanceof Class) {</span>
+<span class="nc" id="L225">            conf.setProperty(name(), ((Class) value).getName());</span>
+        } else {
+<span class="nc" id="L227">            conf.setProperty(name(), value);</span>
+        }
+<span class="nc" id="L229">    }</span>
+
+    /**
+     * Retrieve the setting from the configuration &lt;tt&gt;conf&lt;/tt&gt; as a {@link Long} value.
+     *
+     * @param conf configuration to retrieve the setting
+     * @return the value as a long number
+     */
+    public long getLong(Configuration conf) {
+<span class="nc bnc" id="L238" title="All 2 branches missed.">        checkArgument(type() == Type.LONG, &quot;'&quot; + name() + &quot;' is NOT a LONG numeric setting&quot;);</span>
+<span class="nc" id="L239">        return conf.getLong(name(), (Long) defaultValue());</span>
+    }
+
+    /**
+     * Retrieve the setting from the configuration &lt;tt&gt;conf&lt;/tt&gt; as a {@link Integer} value.
+     *
+     * @param conf configuration to retrieve the setting
+     * @return the value as an integer number
+     */
+    public int getInt(Configuration conf) {
+<span class="nc bnc" id="L249" title="All 2 branches missed.">        checkArgument(type() == Type.INT, &quot;'&quot; + name() + &quot;' is NOT a INT numeric setting&quot;);</span>
+<span class="nc" id="L250">        return conf.getInt(name(), (Integer) defaultValue());</span>
+    }
+
+    /**
+     * Retrieve the setting from the configuration &lt;tt&gt;conf&lt;/tt&gt; as a {@link Short} value.
+     *
+     * @param conf configuration to retrieve the setting
+     * @return the value as a short number
+     */
+    public short getShort(Configuration conf) {
+<span class="nc bnc" id="L260" title="All 2 branches missed.">        checkArgument(type() == Type.SHORT, &quot;'&quot; + name() + &quot;' is NOT a SHORT numeric setting&quot;);</span>
+<span class="nc" id="L261">        return conf.getShort(name(), (Short) defaultValue());</span>
+    }
+
+    /**
+     * Retrieve the setting from the configuration &lt;tt&gt;conf&lt;/tt&gt; as a {@link Boolean} value.
+     *
+     * @param conf configuration to retrieve the setting
+     * @return the value as a boolean flag
+     */
+    public boolean getBoolean(Configuration conf) {
+<span class="nc bnc" id="L271" title="All 2 branches missed.">        checkArgument(type() == Type.BOOLEAN, &quot;'&quot; + name() + &quot;' is NOT a BOOL numeric setting&quot;);</span>
+<span class="nc" id="L272">        return conf.getBoolean(name(), (Boolean) defaultValue());</span>
+    }
+
+    /**
+     * Retrieve the setting from the configuration &lt;tt&gt;conf&lt;/tt&gt; as a {@link Double} value.
+     *
+     * @param conf configuration to retrieve the setting
+     * @return the value as a double number
+     */
+    public double getDouble(Configuration conf) {
+<span class="nc bnc" id="L282" title="All 2 branches missed.">        checkArgument(type() == Type.DOUBLE, &quot;'&quot; + name() + &quot;' is NOT a DOUBLE numeric setting&quot;);</span>
+<span class="nc" id="L283">        return conf.getDouble(name(), (Double) defaultValue());</span>
+    }
+
+    /**
+     * Retrieve the setting from the configuration &lt;tt&gt;conf&lt;/tt&gt; as a {@link String} value.
+     *
+     * @param conf configuration to retrieve the setting
+     * @return the value as a string.
+     */
+    public String getString(Configuration conf) {
+<span class="nc" id="L293">        return conf.getString(name(), defaultValueAsString());</span>
+    }
+
+    /**
+     * Retrieve the setting from the configuration &lt;tt&gt;conf&lt;/tt&gt; as a {@link Class} value.
+     *
+     * @param conf configuration to retrieve the setting
+     * @return the value as a class
+     */
+    @SuppressWarnings(&quot;unchecked&quot;)
+    public &lt;T&gt; Class&lt;? extends T&gt; getClass(Configuration conf, Class&lt;T&gt; interfaceCls) {
+<span class="nc bnc" id="L304" title="All 2 branches missed.">        checkArgument(type() == Type.CLASS, &quot;'&quot; + name() + &quot;' is NOT a CLASS setting&quot;);</span>
+        try {
+<span class="nc" id="L306">            Class&lt;? extends T&gt; defaultClass = (Class&lt;? extends T&gt;) defaultValue();</span>
+<span class="nc" id="L307">            return ReflectionUtils.getClass(conf, name(), defaultClass, interfaceCls, getClass().getClassLoader());</span>
+<span class="nc" id="L308">        } catch (ConfigurationException e) {</span>
+<span class="nc" id="L309">            throw new IllegalArgumentException(&quot;Invalid class is set to setting '&quot; + name() + &quot;': &quot;, e);</span>
+        }
+    }
+
+    /**
+     * Retrieve the setting from the configuration &lt;tt&gt;conf&lt;/tt&gt; as a {@link Class} value.
+     *
+     * @param conf configuration to retrieve the setting
+     * @return the value as a class
+     */
+    @SuppressWarnings(&quot;unchecked&quot;)
+    public Class&lt;?&gt; getClass(Configuration conf) {
+<span class="nc bnc" id="L321" title="All 2 branches missed.">        checkArgument(type() == Type.CLASS, &quot;'&quot; + name() + &quot;' is NOT a CLASS setting&quot;);</span>
+        try {
+<span class="nc" id="L323">            Class&lt;?&gt; defaultClass = (Class&lt;?&gt;) defaultValue();</span>
+<span class="nc" id="L324">            return ReflectionUtils.getClass(conf, name(), defaultClass, getClass().getClassLoader());</span>
+<span class="nc" id="L325">        } catch (ConfigurationException e) {</span>
+<span class="nc" id="L326">            throw new IllegalArgumentException(&quot;Invalid class is set to setting '&quot; + name() + &quot;': &quot;, e);</span>
+        }
+    }
+
+    /**
+     * Retrieve the setting from the configuration &lt;tt&gt;conf&lt;/tt&gt; as a {@link Class} value.
+     *
+     * @param conf configuration to retrieve the setting
+     * @return the value as list of values
+     */
+    @SuppressWarnings(&quot;unchecked&quot;)
+    public List&lt;Object&gt; getList(Configuration conf) {
+<span class="nc bnc" id="L338" title="All 2 branches missed.">        checkArgument(type() == Type.LIST, &quot;'&quot; + name() + &quot;' is NOT a LIST setting&quot;);</span>
+<span class="nc" id="L339">        List&lt;Object&gt; list = (List&lt;Object&gt;) defaultValue();</span>
+<span class="nc bnc" id="L340" title="All 2 branches missed.">        if (null == list) {</span>
+<span class="nc" id="L341">            list = Collections.emptyList();</span>
+        }
+<span class="nc" id="L343">        return conf.getList(name(), list);</span>
+    }
+
+    /**
+     * Retrieve the setting value from the provided &lt;tt&gt;conf&lt;/tt&gt;.
+     *
+     * @return the setting value
+     */
+    public Object get(Configuration conf) {
+<span class="nc bnc" id="L352" title="All 8 branches missed.">        switch (type()) {</span>
+            case LONG:
+<span class="nc" id="L354">                return getLong(conf);</span>
+            case INT:
+<span class="nc" id="L356">                return getInt(conf);</span>
+            case SHORT:
+<span class="nc" id="L358">                return getShort(conf);</span>
+            case DOUBLE:
+<span class="nc" id="L360">                return getDouble(conf);</span>
+            case BOOLEAN:
+<span class="nc" id="L362">                return getBoolean(conf);</span>
+            case LIST:
+<span class="nc" id="L364">                return getList(conf);</span>
+            case CLASS:
+<span class="nc" id="L366">                return getClass(conf);</span>
+            default:
+<span class="nc" id="L368">                return getString(conf);</span>
+        }
+    }
+}
+</pre><div class="footer"><span class="right">Created with <a href="http://www.jacoco.org/jacoco">JaCoCo</a> 0.8.2.201808211720</span></div></body></html>

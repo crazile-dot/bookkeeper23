@@ -33,19 +33,18 @@ import java.util.concurrent.CompletableFuture;
 import org.apache.bookkeeper.api.StorageClient;
 import org.apache.bookkeeper.clients.SimpleClientBase;
 import org.apache.bookkeeper.clients.SimpleStorageClientImpl;
-import org.apache.bookkeeper.clients.config.StorageClientSettings;
 import org.apache.bookkeeper.clients.utils.ClientResources;
 import org.apache.bookkeeper.clients.utils.GrpcUtils;
 import org.apache.bookkeeper.common.concurrent.FutureUtils;
-import org.apache.bookkeeper.common.util.OrderedScheduler;
+//import org.apache.bookkeeper.common.util.OrderedScheduler;
 import org.apache.bookkeeper.common.util.SharedResourceManager.Resource;
-import org.apache.bookkeeper.stream.proto.NamespaceConfiguration;
+/*import org.apache.bookkeeper.stream.proto.NamespaceConfiguration;
 import org.apache.bookkeeper.stream.proto.NamespaceProperties;
 import org.apache.bookkeeper.stream.proto.StreamConfiguration;
 import org.apache.bookkeeper.stream.proto.StreamProperties;
 import org.apache.bookkeeper.stream.proto.storage.RootRangeServiceGrpc;
 import org.apache.bookkeeper.stream.proto.storage.RootRangeServiceGrpc.RootRangeServiceFutureStub;
-import org.apache.bookkeeper.stream.proto.storage.StatusCode;
+import org.apache.bookkeeper.stream.proto.storage.StatusCode;*/
 
 /**
  * A simple implementation of {@link StorageAdminClient}.
@@ -54,20 +53,20 @@ import org.apache.bookkeeper.stream.proto.storage.StatusCode;
  * just make simple grpc calls to the storage service, the storage service handles the grpc requests
  * and handle proper routing at the server side.
  */
-public class SimpleStorageAdminClientImpl extends SimpleClientBase implements StorageAdminClient {
+public abstract class SimpleStorageAdminClientImpl extends SimpleClientBase implements StorageAdminClient {
 
-    private final RootRangeServiceFutureStub rootRangeService;
+    private final Object rootRangeService = 0;
 
-    public SimpleStorageAdminClientImpl(StorageClientSettings settings) {
-        this(settings, ClientResources.create().scheduler());
+    public SimpleStorageAdminClientImpl(Object settings) {
+        this(null, null);
     }
 
-    public SimpleStorageAdminClientImpl(StorageClientSettings settings,
-                                        Resource<OrderedScheduler> schedulerResource) {
+    public SimpleStorageAdminClientImpl(Object settings,
+                                        Resource<Object> schedulerResource) {
         super(settings, schedulerResource);
-        this.rootRangeService = GrpcUtils.configureGrpcStub(
+        /*this.rootRangeService = GrpcUtils.configureGrpcStub(
             RootRangeServiceGrpc.newFutureStub(channel),
-            Optional.empty());
+            Optional.empty());*/
     }
 
     @Override
@@ -81,8 +80,8 @@ public class SimpleStorageAdminClientImpl extends SimpleClientBase implements St
     }
 
     @Override
-    public CompletableFuture<NamespaceProperties> createNamespace(String namespace, NamespaceConfiguration conf) {
-        return retryUtils.execute(() ->
+    public CompletableFuture<Object> createNamespace(String namespace, Object conf) {
+        /*return retryUtils.execute(() ->
             fromListenableFuture(rootRangeService.createNamespace(createCreateNamespaceRequest(namespace, conf)))
         ).thenCompose(resp -> {
             if (StatusCode.SUCCESS == resp.getCode()) {
@@ -90,12 +89,13 @@ public class SimpleStorageAdminClientImpl extends SimpleClientBase implements St
             } else {
                 return FutureUtils.exception(createRootRangeException(namespace, resp.getCode()));
             }
-        });
+        });*/
+        return null;
     }
 
     @Override
     public CompletableFuture<Boolean> deleteNamespace(String namespace) {
-        return retryUtils.execute(() ->
+        /*return retryUtils.execute(() ->
             fromListenableFuture(rootRangeService.deleteNamespace(createDeleteNamespaceRequest(namespace)))
         ).thenCompose(resp -> {
             if (StatusCode.SUCCESS == resp.getCode()) {
@@ -103,12 +103,13 @@ public class SimpleStorageAdminClientImpl extends SimpleClientBase implements St
             } else {
                 return FutureUtils.exception(createRootRangeException(namespace, resp.getCode()));
             }
-        });
+        });*/
+        return null;
     }
 
     @Override
-    public CompletableFuture<NamespaceProperties> getNamespace(String namespace) {
-        return retryUtils.execute(() ->
+    public CompletableFuture<Object> getNamespace(String namespace) {
+        /*return retryUtils.execute(() ->
             fromListenableFuture(rootRangeService.getNamespace(createGetNamespaceRequest(namespace)))
         ).thenCompose(resp -> {
             if (StatusCode.SUCCESS == resp.getCode()) {
@@ -116,14 +117,15 @@ public class SimpleStorageAdminClientImpl extends SimpleClientBase implements St
             } else {
                 return FutureUtils.exception(createRootRangeException(namespace, resp.getCode()));
             }
-        });
+        });*/
+        return null;
     }
 
     @Override
-    public CompletableFuture<StreamProperties> createStream(String namespace,
+    public CompletableFuture<Object> createStream(String namespace,
                                                             String streamName,
-                                                            StreamConfiguration streamConfiguration) {
-        return retryUtils.execute(() ->
+                                                            Object streamConfiguration) {
+        /*return retryUtils.execute(() ->
             fromListenableFuture(rootRangeService.createStream(
                 createCreateStreamRequest(namespace, streamName, streamConfiguration)))
         ).thenCompose(resp -> {
@@ -132,12 +134,13 @@ public class SimpleStorageAdminClientImpl extends SimpleClientBase implements St
             } else {
                 return FutureUtils.exception(createRootRangeException(namespace, resp.getCode()));
             }
-        });
+        });*/
+        return null;
     }
 
     @Override
     public CompletableFuture<Boolean> deleteStream(String namespace, String streamName) {
-        return retryUtils.execute(() ->
+        /*return retryUtils.execute(() ->
             fromListenableFuture(rootRangeService.deleteStream(
                 createDeleteStreamRequest(namespace, streamName)))
         ).thenCompose(resp -> {
@@ -146,12 +149,13 @@ public class SimpleStorageAdminClientImpl extends SimpleClientBase implements St
             } else {
                 return FutureUtils.exception(createRootRangeException(namespace, resp.getCode()));
             }
-        });
+        });*/
+        return null;
     }
 
     @Override
-    public CompletableFuture<StreamProperties> getStream(String namespace, String streamName) {
-        return retryUtils.execute(() ->
+    public CompletableFuture<Object> getStream(String namespace, String streamName) {
+        /*return retryUtils.execute(() ->
             fromListenableFuture(rootRangeService.getStream(
                 createGetStreamRequest(namespace, streamName)))
         ).thenCompose(resp -> {
@@ -160,7 +164,8 @@ public class SimpleStorageAdminClientImpl extends SimpleClientBase implements St
             } else {
                 return FutureUtils.exception(createRootRangeException(namespace, resp.getCode()));
             }
-        });
+        });*/
+        return null;
     }
 
 }

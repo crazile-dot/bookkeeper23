@@ -1,4 +1,4 @@
-/*
+/**
  * Licensed to the Apache Software Foundation (ASF) under one
  * or more contributor license agreements.  See the NOTICE file
  * distributed with this work for additional information
@@ -20,7 +20,7 @@ package org.apache.distributedlog.namespace;
 import java.io.Closeable;
 import java.io.IOException;
 import java.net.URI;
-import org.apache.bookkeeper.common.util.OrderedScheduler;
+//import org.apache.bookkeeper.common.util.OrderedScheduler;
 import org.apache.bookkeeper.feature.FeatureProvider;
 import org.apache.bookkeeper.stats.StatsLogger;
 import org.apache.distributedlog.DistributedLogConfiguration;
@@ -62,7 +62,7 @@ public interface NamespaceDriver extends Closeable {
     NamespaceDriver initialize(DistributedLogConfiguration conf,
                                DynamicDistributedLogConfiguration dynConf,
                                URI namespace,
-                               OrderedScheduler scheduler,
+                               Object scheduler,
                                FeatureProvider featureProvider,
                                AsyncFailureInjector failureInjector,
                                StatsLogger statsLogger,

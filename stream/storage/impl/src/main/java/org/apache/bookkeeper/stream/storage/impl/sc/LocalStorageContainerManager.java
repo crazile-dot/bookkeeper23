@@ -21,7 +21,7 @@ import java.util.concurrent.CompletableFuture;
 import org.apache.bookkeeper.common.component.AbstractLifecycleComponent;
 import org.apache.bookkeeper.common.concurrent.FutureUtils;
 import org.apache.bookkeeper.stats.NullStatsLogger;
-import org.apache.bookkeeper.stream.proto.common.Endpoint;
+//import org.apache.bookkeeper.stream.proto.common.Endpoint;
 import org.apache.bookkeeper.stream.storage.api.sc.StorageContainer;
 import org.apache.bookkeeper.stream.storage.api.sc.StorageContainerManager;
 import org.apache.bookkeeper.stream.storage.api.sc.StorageContainerRegistry;
@@ -30,15 +30,15 @@ import org.apache.bookkeeper.stream.storage.conf.StorageConfiguration;
 /**
  * A local implementation of {@link StorageContainerManager}.
  */
-public class LocalStorageContainerManager
+public abstract class LocalStorageContainerManager
     extends AbstractLifecycleComponent<StorageConfiguration>
     implements StorageContainerManager {
 
-    private final Endpoint myEndpoint;
+    private final Object myEndpoint;
     private final int numStorageContainers;
     private final StorageContainerRegistry registry;
 
-    public LocalStorageContainerManager(Endpoint myEndpoint,
+    public LocalStorageContainerManager(Object myEndpoint,
                                         StorageConfiguration conf,
                                         StorageContainerRegistry scRegistry,
                                         int numStorageContainers) {
@@ -46,11 +46,6 @@ public class LocalStorageContainerManager
         this.myEndpoint = myEndpoint;
         this.registry = scRegistry;
         this.numStorageContainers = numStorageContainers;
-    }
-
-    @Override
-    public Endpoint getStorageContainer(long scId) {
-        return myEndpoint;
     }
 
     @Override

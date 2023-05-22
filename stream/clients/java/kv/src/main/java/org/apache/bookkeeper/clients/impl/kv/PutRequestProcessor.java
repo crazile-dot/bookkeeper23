@@ -40,55 +40,57 @@ import org.apache.bookkeeper.clients.impl.channel.StorageServerChannel;
 import org.apache.bookkeeper.clients.impl.container.StorageContainerChannel;
 import org.apache.bookkeeper.clients.utils.ListenableFutureRpcProcessor;
 import org.apache.bookkeeper.common.util.Backoff.Policy;
-import org.apache.bookkeeper.stream.proto.kv.rpc.PutRequest;
+/*import org.apache.bookkeeper.stream.proto.kv.rpc.PutRequest;
 import org.apache.bookkeeper.stream.proto.kv.rpc.PutResponse;
 import org.apache.bookkeeper.stream.proto.storage.StatusCode;
-
+*/
 /**
  * Request Processor processing table request.
  */
-class PutRequestProcessor<RespT>
-    extends ListenableFutureRpcProcessor<PutRequest, PutResponse, RespT> {
+class PutRequestProcessor<RespT> {
+    //extends ListenableFutureRpcProcessor<PutRequest, PutResponse, RespT> {
 
     public static <T> PutRequestProcessor<T> of(
-        PutRequest request,
-        Function<PutResponse, T> responseFunc,
+        Object request,
+        Function<Object, T> responseFunc,
         StorageContainerChannel channel,
         ScheduledExecutorService executor,
         Policy backoffPolicy) {
         return new PutRequestProcessor<>(request, responseFunc, channel, executor, backoffPolicy);
     }
 
-    private final PutRequest request;
-    private final Function<PutResponse, RespT> responseFunc;
+    private final Object request;
+    private final Function<Object, RespT> responseFunc;
 
-    private PutRequestProcessor(PutRequest request,
-                                Function<PutResponse, RespT> respFunc,
+    private PutRequestProcessor(Object request,
+                                Function<Object, RespT> respFunc,
                                 StorageContainerChannel channel,
                                 ScheduledExecutorService executor,
                                 Policy backoffPolicy) {
-        super(channel, executor, backoffPolicy);
+        //super(channel, executor, backoffPolicy);
         this.request = request;
         this.responseFunc = respFunc;
     }
 
-    @Override
-    protected PutRequest createRequest() {
-        return request;
+    //@Override
+    protected Object createRequest() {
+        return 1;
     }
 
-    @Override
-    protected ListenableFuture<PutResponse> sendRPC(StorageServerChannel rsChannel,
-                                                    PutRequest request) {
-        return rsChannel.getTableService().put(request);
+    //@Override
+    protected ListenableFuture<Object> sendRPC(StorageServerChannel rsChannel,
+                                                    Object request) {
+        //return rsChannel.getTableService().put(request);
+        return null;
     }
 
-    @Override
-    protected RespT processResponse(PutResponse response) throws Exception {
-        if (StatusCode.SUCCESS == response.getHeader().getCode()) {
+    //@Override
+    protected RespT processResponse(Object response) throws Exception {
+        /*if (StatusCode.SUCCESS == response.getHeader().getCode()) {
             return responseFunc.apply(response);
         }
         throw new InternalServerException("Encountered internal server exception : code = "
-            + response.getHeader().getCode());
+            + response.getHeader().getCode());*/
+        return null;
     }
 }

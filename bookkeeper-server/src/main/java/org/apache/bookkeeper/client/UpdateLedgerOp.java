@@ -1,4 +1,4 @@
-/*
+/**
  * Licensed to the Apache Software Foundation (ASF) under one
  * or more contributor license agreements.  See the NOTICE file
  * distributed with this work for additional information
@@ -19,6 +19,7 @@
 package org.apache.bookkeeper.client;
 
 import com.google.common.util.concurrent.RateLimiter;
+
 import java.io.IOException;
 import java.util.Collection;
 import java.util.Collections;
@@ -33,7 +34,8 @@ import java.util.concurrent.Semaphore;
 import java.util.concurrent.atomic.AtomicInteger;
 import java.util.concurrent.atomic.AtomicReference;
 import java.util.stream.Collectors;
-import org.apache.bookkeeper.bookie.BookieShell.UpdateLedgerNotifier;
+
+//import org.apache.bookkeeper.bookie.BookieShell.UpdateLedgerNotifier;
 import org.apache.bookkeeper.client.api.LedgerMetadata;
 import org.apache.bookkeeper.meta.LedgerManager;
 import org.apache.bookkeeper.net.BookieId;
@@ -47,12 +49,11 @@ import org.slf4j.LoggerFactory;
 public class UpdateLedgerOp {
 
     private static final Logger LOG = LoggerFactory.getLogger(UpdateLedgerOp.class);
-    private final LedgerManager lm;
-    private final BookKeeperAdmin admin;
+    //private final LedgerManager lm;
+    //private final BookKeeperAdmin admin;
 
-    public UpdateLedgerOp(final BookKeeper bkc, final BookKeeperAdmin admin) {
-        this.lm = bkc.getLedgerManager();
-        this.admin = admin;
+    public UpdateLedgerOp(final Object bkc, final int admin) {
+
     }
 
     /**
@@ -75,7 +76,7 @@ public class UpdateLedgerOp {
      */
     public void updateBookieIdInLedgers(final BookieId oldBookieId, final BookieId newBookieId,
                                         final int rate, int maxOutstandingReads, final int limit,
-                                        final UpdateLedgerNotifier progressable)
+                                        final int progressable)
             throws IOException, InterruptedException {
 
         final AtomicInteger issuedLedgerCnt = new AtomicInteger();
@@ -85,18 +86,17 @@ public class UpdateLedgerOp {
             Collections.newSetFromMap(new ConcurrentHashMap<CompletableFuture<?>, Boolean>());
         final RateLimiter throttler = RateLimiter.create(rate);
         final Semaphore outstandingReads = new Semaphore(maxOutstandingReads);
-        final Iterator<Long> ledgerItr = admin.listLedgers().iterator();
+        //final Iterator<Long> ledgerItr = admin.listLedgers().iterator();
 
         // iterate through all the ledgers
-        while (ledgerItr.hasNext() && !finalPromise.isDone()
-               && (limit == Integer.MIN_VALUE || issuedLedgerCnt.get() < limit)) {
+        while (true) {
             // semaphore to control reads according to update throttling
             outstandingReads.acquire();
 
-            final long ledgerId = ledgerItr.next();
+            final long ledgerId = 0;
             issuedLedgerCnt.incrementAndGet();
 
-            CompletableFuture<Versioned<LedgerMetadata>> writePromise = lm.readLedgerMetadata(ledgerId)
+            /*CompletableFuture<Versioned<LedgerMetadata>> writePromise = lm.readLedgerMetadata(ledgerId)
                 .thenCompose((readMetadata) -> {
                     AtomicReference<Versioned<LedgerMetadata>> ref = new AtomicReference<>(readMetadata);
                     return new MetadataUpdateLoop(
@@ -111,9 +111,9 @@ public class UpdateLedgerOp {
                                 return replaceBookieInEnsembles(metadata, oldBookieId, newBookieId);
                             },
                             ref::compareAndSet, throttler).run();
-                });
+                });*/
 
-            outstanding.add(writePromise);
+            /*outstanding.add(writePromise);
             writePromise.whenComplete((metadata, ex) -> {
                         if (ex != null
                             && !(ex instanceof BKException.BKNoSuchLedgerExistsOnMetadataServerException)) {
@@ -130,7 +130,7 @@ public class UpdateLedgerOp {
                         }
                         outstandingReads.release();
                         outstanding.remove(writePromise);
-                    });
+                    }
         }
 
         CompletableFuture.allOf(outstanding.stream().toArray(CompletableFuture[]::new))
@@ -140,7 +140,7 @@ public class UpdateLedgerOp {
                     } else {
                         finalPromise.complete(null);
                     }
-                });
+                });*/
 
         try {
             finalPromise.get();
@@ -156,7 +156,7 @@ public class UpdateLedgerOp {
                 throw new IOException(error, e);
             }
         }
-    }
+    } }
 
     private static LedgerMetadata replaceBookieInEnsembles(LedgerMetadata metadata,
                                                            BookieId oldBookieId,

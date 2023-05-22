@@ -59,7 +59,8 @@ import org.slf4j.LoggerFactory;
  * in entry loggers.
  * </p>
  */
-class FileInfo extends Watchable<LastAddConfirmedUpdateNotification> {
+
+public class FileInfo extends Watchable<LastAddConfirmedUpdateNotification> {
     private static final Logger LOG = LoggerFactory.getLogger(FileInfo.class);
 
     static final int NO_MASTER_KEY = -1;
@@ -549,7 +550,6 @@ class FileInfo extends Watchable<LastAddConfirmedUpdateNotification> {
         }
         fc = new RandomAccessFile(newFile, mode).getChannel();
         lf = newFile;
-        deleted = false;
     }
 
     public synchronized byte[] getMasterKey() throws IOException {

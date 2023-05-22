@@ -1,4 +1,4 @@
-/*
+/**
  * Licensed to the Apache Software Foundation (ASF) under one
  * or more contributor license agreements.  See the NOTICE file
  * distributed with this work for additional information
@@ -29,7 +29,7 @@ import java.util.concurrent.CompletableFuture;
 import java.util.concurrent.TimeUnit;
 import java.util.concurrent.atomic.AtomicBoolean;
 import org.apache.bookkeeper.common.concurrent.FutureUtils;
-import org.apache.bookkeeper.common.util.OrderedScheduler;
+//import org.apache.bookkeeper.common.util.OrderedScheduler;
 import org.apache.bookkeeper.feature.FeatureProvider;
 import org.apache.bookkeeper.stats.StatsLogger;
 import org.apache.distributedlog.acl.AccessControlManager;
@@ -72,7 +72,7 @@ import org.slf4j.LoggerFactory;
  * <h4>Utils</h4>
  * <ul>
  * <li> `scope`/factory/thread_pool/* : stats about the ordered scheduler used by this namespace.
- * See {@link OrderedScheduler}.
+ * See {@link }.
  * <li> `scope`/writeLimiter/* : stats about the global write limiter used by this namespace.
  * See {@link PermitLimiter}.
  * </ul>
@@ -90,7 +90,7 @@ public class BKDistributedLogNamespace implements Namespace {
     // namespace driver
     private final NamespaceDriver driver;
     // resources
-    private final OrderedScheduler scheduler;
+   // private final OrderedScheduler scheduler;
     private final PermitLimiter writeLimiter;
     private final AsyncFailureInjector failureInjector;
     // log segment metadata store
@@ -107,7 +107,7 @@ public class BKDistributedLogNamespace implements Namespace {
             DistributedLogConfiguration conf,
             URI uri,
             NamespaceDriver driver,
-            OrderedScheduler scheduler,
+            Object scheduler,
             FeatureProvider featureProvider,
             PermitLimiter writeLimiter,
             AsyncFailureInjector failureInjector,
@@ -118,7 +118,7 @@ public class BKDistributedLogNamespace implements Namespace {
         this.conf = conf;
         this.namespace = uri;
         this.driver = driver;
-        this.scheduler = scheduler;
+        //this.scheduler = scheduler;
         this.featureProvider = featureProvider;
         this.writeLimiter = writeLimiter;
         this.failureInjector = failureInjector;
@@ -301,7 +301,7 @@ public class BKDistributedLogNamespace implements Namespace {
                 uri,                                /* Namespace URI */
                 driver,                             /* Namespace Driver */
                 logSegmentMetadataCache,            /* Log Segment Metadata Cache */
-                scheduler,                          /* DL scheduler */
+                null,                          /* DL scheduler */
                 clientId,                           /* Client Id */
                 regionId,                           /* Region Id */
                 writeLimiter,                       /* Write Limiter */
@@ -339,7 +339,7 @@ public class BKDistributedLogNamespace implements Namespace {
         // shutdown the driver
         Utils.close(driver);
         // Shutdown the schedulers
-        SchedulerUtils.shutdownScheduler(scheduler, conf.getSchedulerShutdownTimeoutMs(),
+        SchedulerUtils.shutdownScheduler(null, conf.getSchedulerShutdownTimeoutMs(),
                 TimeUnit.MILLISECONDS);
         LOG.info("Executor Service Stopped.");
     }

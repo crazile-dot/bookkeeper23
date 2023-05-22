@@ -38,7 +38,7 @@ public interface PerChannelBookieClientPool {
      * @param callback
      *          callback to return channel from channel pool.
      */
-    void obtain(GenericCallback<PerChannelBookieClient> callback, long key);
+    //void obtain(GenericCallback<PerChannelBookieClient> callback, long key);
 
     /**
      * Obtain a channel from channel pool by version to execute operations.
@@ -48,7 +48,7 @@ public interface PerChannelBookieClientPool {
      * @param forceUseV3
      *          whether or not use v3 protocol for connection
      */
-    void obtain(GenericCallback<PerChannelBookieClient> callback, long key, boolean forceUseV3);
+    //void obtain(GenericCallback<PerChannelBookieClient> callback, long key, boolean forceUseV3);
 
     /**
      * Returns status of a client.

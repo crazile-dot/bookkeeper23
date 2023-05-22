@@ -21,13 +21,14 @@
 
 package org.apache.bookkeeper.client;
 
-import static org.apache.bookkeeper.client.BookKeeper.DigestType.fromApiDigestType;
+/*import static org.apache.bookkeeper.client.BookKeeper.DigestType.fromApiDigestType;
 
 import java.security.GeneralSecurityException;
 import java.util.Arrays;
 import java.util.concurrent.CompletableFuture;
 import java.util.concurrent.TimeUnit;
 import java.util.concurrent.locks.ReentrantReadWriteLock;
+
 import org.apache.bookkeeper.client.AsyncCallback.OpenCallback;
 import org.apache.bookkeeper.client.AsyncCallback.ReadLastConfirmedCallback;
 import org.apache.bookkeeper.client.BookKeeper.DigestType;
@@ -47,7 +48,7 @@ import org.slf4j.LoggerFactory;
  * Encapsulates the ledger open operation.
  *
  */
-class LedgerOpenOp {
+/*class LedgerOpenOp {
     static final Logger LOG = LoggerFactory.getLogger(LedgerOpenOp.class);
 
     final BookKeeper bk;
@@ -69,12 +70,12 @@ class LedgerOpenOp {
      *
      * @param bk
      * @param ledgerId
-     * @param digestType Ignored if conf.getEnableDigestTypeAutodetection() is true
+     * @param digestType. Ignored if conf.getEnableDigestTypeAutodetection() is true
      * @param passwd
      * @param cb
      * @param ctx
      */
-    public LedgerOpenOp(BookKeeper bk, BookKeeperClientStats clientStats,
+   /* public LedgerOpenOp(BookKeeper bk, BookKeeperClientStats clientStats,
                         long ledgerId, DigestType digestType, byte[] passwd,
                         OpenCallback cb, Object ctx) {
         this.bk = bk;
@@ -104,33 +105,28 @@ class LedgerOpenOp {
     /**
      * Inititates the ledger open operation.
      */
-    public void initiate() {
+  /*  public void initiate() {
         startTime = MathUtils.nowInNano();
 
         /**
          * Asynchronously read the ledger metadata node.
          */
-        bk.getLedgerManager().readLedgerMetadata(ledgerId)
-                .thenAcceptAsync(this::openWithMetadata, bk.getScheduler().chooseThread(ledgerId))
-                .exceptionally(exception -> {
-                    openComplete(BKException.getExceptionCode(exception), null);
-                    return null;
+    /*    bk.getLedgerManager().readLedgerMetadata(ledgerId)
+            .whenComplete((metadata, exception) -> {
+                    if (exception != null) {
+                        openComplete(BKException.getExceptionCode(exception), null);
+                    } else {
+                        openWithMetadata(metadata);
+                    }
                 });
     }
 
     /**
      * Inititates the ledger open operation without recovery.
      */
-    public void initiateWithoutRecovery() {
+  /*  public void initiateWithoutRecovery() {
         this.doRecovery = false;
         initiate();
-    }
-
-    private CompletableFuture<Void> closeLedgerHandleAsync() {
-        if (lh != null) {
-            return lh.closeAsync();
-        }
-        return CompletableFuture.completedFuture(null);
     }
 
     private void openWithMetadata(Versioned<LedgerMetadata> versionedMetadata) {
@@ -151,7 +147,7 @@ class LedgerOpenOp {
         /* For an administrative open, the default passwords
          * are read from the configuration, but if the metadata
          * already contains passwords, use these instead. */
-        if (administrativeOpen && metadata.hasPassword()) {
+      /*  if (administrativeOpen && metadata.hasPassword()) {
             passwd = metadata.getPassword();
             digestType = fromApiDigestType(metadata.getDigestType());
         } else {
@@ -199,18 +195,10 @@ class LedgerOpenOp {
                 public void safeOperationComplete(int rc, Void result) {
                     if (rc == BKException.Code.OK) {
                         openComplete(BKException.Code.OK, lh);
+                    } else if (rc == BKException.Code.UnauthorizedAccessException) {
+                        openComplete(BKException.Code.UnauthorizedAccessException, null);
                     } else {
-                        closeLedgerHandleAsync().whenComplete((ignore, ex) -> {
-                            if (ex != null) {
-                                LOG.error("Ledger {} close failed", ledgerId, ex);
-                            }
-                            if (rc == BKException.Code.UnauthorizedAccessException
-                                    || rc == BKException.Code.TimeoutException) {
-                                openComplete(bk.getReturnRc(rc), null);
-                            } else {
-                                openComplete(bk.getReturnRc(BKException.Code.LedgerRecoveryException), null);
-                            }
-                        });
+                        openComplete(bk.getReturnRc(BKException.Code.LedgerRecoveryException), null);
                     }
                 }
                 @Override
@@ -223,20 +211,8 @@ class LedgerOpenOp {
                 @Override
                 public void readLastConfirmedComplete(int rc,
                         long lastConfirmed, Object ctx) {
-                    if (rc == BKException.Code.TimeoutException) {
-                        closeLedgerHandleAsync().whenComplete((r, ex) -> {
-                            if (ex != null) {
-                                LOG.error("Ledger {} close failed", ledgerId, ex);
-                            }
-                            openComplete(bk.getReturnRc(rc), null);
-                        });
-                    } else if (rc != BKException.Code.OK) {
-                        closeLedgerHandleAsync().whenComplete((r, ex) -> {
-                            if (ex != null) {
-                                LOG.error("Ledger {} close failed", ledgerId, ex);
-                            }
-                            openComplete(bk.getReturnRc(BKException.Code.ReadException), null);
-                        });
+                    if (rc != BKException.Code.OK) {
+                        openComplete(bk.getReturnRc(BKException.Code.ReadException), null);
                     } else {
                         lh.lastAddConfirmed = lh.lastAddPushed = lastConfirmed;
                         openComplete(BKException.Code.OK, lh);
@@ -253,12 +229,7 @@ class LedgerOpenOp {
         } else {
             openOpLogger.registerSuccessfulEvent(MathUtils.elapsedNanos(startTime), TimeUnit.NANOSECONDS);
         }
-
-        if (lh != null) { // lh is null in case of errors
-            lh.executeOrdered(() -> cb.openComplete(rc, lh, ctx));
-        } else {
-            cb.openComplete(rc, null, ctx);
-        }
+        cb.openComplete(rc, lh, ctx);
     }
 
     static final class OpenBuilderImpl extends OpenBuilderBase {
@@ -305,4 +276,4 @@ class LedgerOpenOp {
         }
     }
 
-}
+}*/

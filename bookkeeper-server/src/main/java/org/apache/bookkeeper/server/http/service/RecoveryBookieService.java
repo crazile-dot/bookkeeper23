@@ -22,10 +22,12 @@ import static com.google.common.base.Preconditions.checkNotNull;
 import static org.apache.bookkeeper.meta.MetadataDrivers.runFunctionWithRegistrationManager;
 
 import com.fasterxml.jackson.annotation.JsonProperty;
+
 import java.util.List;
 import java.util.concurrent.ExecutorService;
+
 import org.apache.bookkeeper.bookie.Cookie;
-import org.apache.bookkeeper.client.BookKeeperAdmin;
+//import org.apache.bookkeeper.client.BookKeeperAdmin;
 import org.apache.bookkeeper.common.util.JsonUtil;
 import org.apache.bookkeeper.conf.ServerConfiguration;
 import org.apache.bookkeeper.http.HttpServer;
@@ -44,6 +46,7 @@ import org.slf4j.LoggerFactory;
  * The parameter of input body should be like this format:
  * {
  *   "bookie_src": [ "bookie_src1", "bookie_src2"... ],
+ *   "bookie_dest": [ "bookie_dest1", "bookie_dest2"... ],
  *   "delete_cookie": &lt;bool_value&gt;
  * }
  */
@@ -52,10 +55,10 @@ public class RecoveryBookieService implements HttpEndpointService {
     static final Logger LOG = LoggerFactory.getLogger(RecoveryBookieService.class);
 
     protected ServerConfiguration conf;
-    protected BookKeeperAdmin bka;
+    //protected BookKeeperAdmin bka;
     protected ExecutorService executor;
 
-    public RecoveryBookieService(ServerConfiguration conf, BookKeeperAdmin bka, ExecutorService executor) {
+   /* public RecoveryBookieService(ServerConfiguration conf, BookKeeperAdmin bka, ExecutorService executor) {
         checkNotNull(conf);
         this.conf = conf;
         this.bka = bka;
@@ -91,10 +94,8 @@ public class RecoveryBookieService implements HttpEndpointService {
 
         try {
             requestJsonBody = JsonUtil.fromJson(requestBody, RecoveryRequestJsonBody.class);
-            if (LOG.isDebugEnabled()) {
-                LOG.debug("bookie_src: [" + requestJsonBody.bookieSrc.get(0)
-                        + "],  delete_cookie: [" + requestJsonBody.deleteCookie + "]");
-            }
+            LOG.debug("bookie_src: [" + requestJsonBody.bookieSrc.get(0)
+                + "],  delete_cookie: [" + requestJsonBody.deleteCookie + "]");
         } catch (JsonUtil.ParseJsonException e) {
             LOG.error("Meet Exception: ", e);
             response.setCode(HttpServer.StatusCode.NOT_FOUND);
@@ -110,7 +111,7 @@ public class RecoveryBookieService implements HttpEndpointService {
                         BookieId bookieSrc = BookieId.parse(bookieSrcSerialized);
                         boolean deleteCookie = requestJsonBody.deleteCookie;
                         LOG.info("Start recovering bookie.");
-                        bka.recoverBookieData(bookieSrc);
+                        //bka.recoverBookieData(bookieSrc);
                         if (deleteCookie) {
                             Versioned<Cookie> cookie = Cookie.readFromRegistrationManager(rm, bookieSrc);
                             cookie.getValue().deleteFromRegistrationManager(rm, bookieSrc, cookie.getVersion());

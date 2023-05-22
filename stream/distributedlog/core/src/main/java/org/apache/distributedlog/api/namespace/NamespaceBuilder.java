@@ -23,7 +23,7 @@ import java.io.IOException;
 import java.net.URI;
 import org.apache.bookkeeper.common.annotation.InterfaceAudience.Public;
 import org.apache.bookkeeper.common.annotation.InterfaceStability.Stable;
-import org.apache.bookkeeper.common.util.OrderedScheduler;
+//import org.apache.bookkeeper.common.util.OrderedScheduler;
 import org.apache.bookkeeper.feature.Feature;
 import org.apache.bookkeeper.feature.FeatureProvider;
 import org.apache.bookkeeper.feature.SettableFeatureProvider;
@@ -230,17 +230,17 @@ public class NamespaceBuilder {
         StatsLogger perLogStatsLogger = normalizePerLogStatsLogger(_statsLogger, _perLogStatsLogger, _conf);
 
         // build the scheduler
-        OrderedScheduler scheduler = OrderedScheduler.newSchedulerBuilder()
+        /*OrderedScheduler scheduler = OrderedScheduler.newSchedulerBuilder()
                 .name("DLM-" + normalizedUri.getPath())
                 .numThreads(_conf.getNumWorkerThreads())
-                .build();
+                .build();*/
 
         // initialize the namespace driver
         driver.initialize(
                 _conf,
                 _dynConf,
                 normalizedUri,
-                scheduler,
+                null,
                 featureProvider,
                 failureInjector,
                 _statsLogger,
@@ -267,7 +267,7 @@ public class NamespaceBuilder {
                 _conf,
                 normalizedUri,
                 driver,
-                scheduler,
+                null,
                 featureProvider,
                 writeLimiter,
                 failureInjector,

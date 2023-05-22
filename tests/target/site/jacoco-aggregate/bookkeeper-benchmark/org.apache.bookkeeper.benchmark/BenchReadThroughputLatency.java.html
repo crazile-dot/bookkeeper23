@@ -1,0 +1,268 @@
+<?xml version="1.0" encoding="UTF-8"?><!DOCTYPE html PUBLIC "-//W3C//DTD XHTML 1.0 Strict//EN" "http://www.w3.org/TR/xhtml1/DTD/xhtml1-strict.dtd"><html xmlns="http://www.w3.org/1999/xhtml" lang="it"><head><meta http-equiv="Content-Type" content="text/html;charset=UTF-8"/><link rel="stylesheet" href="../../jacoco-resources/report.css" type="text/css"/><link rel="shortcut icon" href="../../jacoco-resources/report.gif" type="image/gif"/><title>BenchReadThroughputLatency.java</title><link rel="stylesheet" href="../../jacoco-resources/prettify.css" type="text/css"/><script type="text/javascript" src="../../jacoco-resources/prettify.js"></script></head><body onload="window['PR_TAB_WIDTH']=4;prettyPrint()"><div class="breadcrumb" id="breadcrumb"><span class="info"><a href="../../jacoco-sessions.html" class="el_session">Sessions</a></span><a href="../../index.html" class="el_report">Tests</a> &gt; <a href="../index.html" class="el_bundle">bookkeeper-benchmark</a> &gt; <a href="index.source.html" class="el_package">org.apache.bookkeeper.benchmark</a> &gt; <span class="el_source">BenchReadThroughputLatency.java</span></div><h1>BenchReadThroughputLatency.java</h1><pre class="source lang-java linenums">/*
+ * Licensed to the Apache Software Foundation (ASF) under one
+ * or more contributor license agreements.  See the NOTICE file
+ * distributed with this work for additional information
+ * regarding copyright ownership.  The ASF licenses this file
+ * to you under the Apache License, Version 2.0 (the
+ * &quot;License&quot;); you may not use this file except in compliance
+ * with the License.  You may obtain a copy of the License at
+ *
+ *   http://www.apache.org/licenses/LICENSE-2.0
+ *
+ * Unless required by applicable law or agreed to in writing,
+ * software distributed under the License is distributed on an
+ * &quot;AS IS&quot; BASIS, WITHOUT WARRANTIES OR CONDITIONS OF ANY
+ * KIND, either express or implied.  See the License for the
+ * specific language governing permissions and limitations
+ * under the License.
+ *
+ */
+package org.apache.bookkeeper.benchmark;
+
+import static java.nio.charset.StandardCharsets.UTF_8;
+
+import java.util.ArrayList;
+import java.util.Comparator;
+import java.util.Enumeration;
+import java.util.HashSet;
+import java.util.List;
+import java.util.Set;
+import java.util.concurrent.CountDownLatch;
+import java.util.concurrent.atomic.AtomicInteger;
+import java.util.regex.Matcher;
+import java.util.regex.Pattern;
+//import org.apache.bookkeeper.client.BookKeeper;
+import org.apache.bookkeeper.client.LedgerEntry;
+import org.apache.bookkeeper.client.LedgerHandle;
+import org.apache.bookkeeper.conf.ClientConfiguration;
+import org.apache.bookkeeper.zookeeper.ZooKeeperClient;
+import org.apache.commons.cli.CommandLine;
+import org.apache.commons.cli.CommandLineParser;
+import org.apache.commons.cli.HelpFormatter;
+import org.apache.commons.cli.Options;
+import org.apache.commons.cli.PosixParser;
+import org.apache.zookeeper.WatchedEvent;
+import org.apache.zookeeper.Watcher;
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
+
+/**
+ * A benchmark that benchmarks the read throughput and latency.
+ */
+<span class="nc" id="L52">public class BenchReadThroughputLatency {</span>
+<span class="nc" id="L53">    static final Logger LOG = LoggerFactory.getLogger(BenchReadThroughputLatency.class);</span>
+
+<span class="nc" id="L55">    private static final Pattern LEDGER_PATTERN = Pattern.compile(&quot;L([0-9]+)$&quot;);</span>
+
+<span class="nc" id="L57">    private static final Comparator&lt;String&gt; ZK_LEDGER_COMPARE = new Comparator&lt;String&gt;() {</span>
+        @Override
+        public int compare(String o1, String o2) {
+            try {
+<span class="nc" id="L61">                Matcher m1 = LEDGER_PATTERN.matcher(o1);</span>
+<span class="nc" id="L62">                Matcher m2 = LEDGER_PATTERN.matcher(o2);</span>
+<span class="nc bnc" id="L63" title="All 4 branches missed.">                if (m1.find() &amp;&amp; m2.find()) {</span>
+<span class="nc" id="L64">                    return Integer.parseInt(m1.group(1))</span>
+<span class="nc" id="L65">                        - Integer.parseInt(m2.group(1));</span>
+                } else {
+<span class="nc" id="L67">                    return o1.compareTo(o2);</span>
+                }
+<span class="nc" id="L69">            } catch (Throwable t) {</span>
+<span class="nc" id="L70">                return o1.compareTo(o2);</span>
+            }
+        }
+    };
+
+    private static void readLedger(ClientConfiguration conf, long ledgerId, byte[] passwd) {
+<span class="nc" id="L76">        LOG.info(&quot;Reading ledger {}&quot;, ledgerId);</span>
+        //BookKeeper bk = null;
+<span class="nc" id="L78">        long time = 0;</span>
+<span class="nc" id="L79">        long entriesRead = 0;</span>
+<span class="nc" id="L80">        long lastRead = 0;</span>
+<span class="nc" id="L81">        int nochange = 0;</span>
+
+<span class="nc" id="L83">        long absoluteLimit = 5000000;</span>
+<span class="nc" id="L84">        LedgerHandle lh = null;</span>
+        try {
+            //bk = new BookKeeper(conf);
+            while (true) {
+                /*lh = bk.openLedgerNoRecovery(ledgerId, BookKeeper.DigestType.CRC32,
+                                             passwd);
+                long lastConfirmed = Math.min(lh.getLastAddConfirmed(), absoluteLimit);
+                if (lastConfirmed == lastRead) {
+                    nochange++;
+                    if (nochange == 10) {
+                        break;
+                    } else {
+                        Thread.sleep(1000);
+                        continue;
+                    }
+                } else {
+                    nochange = 0;
+                }*/
+<span class="nc" id="L102">                long starttime = System.nanoTime();</span>
+
+                /*while (lastRead &lt; lastConfirmed) {
+                    long nextLimit = lastRead + 100000;
+                    long readTo = Math.min(nextLimit, lastConfirmed);
+                    Enumeration&lt;LedgerEntry&gt; entries = lh.readEntries(lastRead + 1, readTo);
+                    lastRead = readTo;
+                    while (entries.hasMoreElements()) {
+                        LedgerEntry e = entries.nextElement();
+                        entriesRead++;
+                        if ((entriesRead % 10000) == 0) {
+                            LOG.info(&quot;{} entries read&quot;, entriesRead);
+                        }
+                    }
+                }*/
+<span class="nc" id="L117">                long endtime = System.nanoTime();</span>
+<span class="nc" id="L118">                time += endtime - starttime;</span>
+
+                //lh.close();
+<span class="nc" id="L121">                lh = null;</span>
+<span class="nc" id="L122">                Thread.sleep(1000);</span>
+<span class="nc" id="L123">            }</span>
+<span class="nc" id="L124">        } catch (InterruptedException ie) {</span>
+<span class="nc" id="L125">            Thread.currentThread().interrupt();</span>
+<span class="nc" id="L126">        } catch (Exception e) {</span>
+<span class="nc" id="L127">            LOG.error(&quot;Exception in reader&quot;, e);</span>
+        } finally {
+<span class="nc" id="L129">            LOG.info(&quot;Read {} in {}ms&quot;, entriesRead, time / 1000 / 1000);</span>
+
+            try {
+<span class="nc bnc" id="L132" title="All 2 branches missed.">                if (lh != null) {</span>
+                    //lh.close();
+                }
+                /*if (bk != null) {
+                    bk.close();
+                }*/
+<span class="nc" id="L138">            } catch (Exception e) {</span>
+<span class="nc" id="L139">                LOG.error(&quot;Exception closing stuff&quot;, e);</span>
+<span class="nc" id="L140">            }</span>
+        }
+<span class="nc" id="L142">    }</span>
+
+    private static void usage(Options options) {
+<span class="nc" id="L145">        HelpFormatter formatter = new HelpFormatter();</span>
+<span class="nc" id="L146">        formatter.printHelp(&quot;BenchReadThroughputLatency &lt;options&gt;&quot;, options);</span>
+<span class="nc" id="L147">    }</span>
+
+    @SuppressWarnings(&quot;deprecation&quot;)
+    public static void main(String[] args) throws Exception {
+<span class="nc" id="L151">        Options options = new Options();</span>
+<span class="nc" id="L152">        options.addOption(&quot;ledger&quot;, true, &quot;Ledger to read. If empty, read all ledgers which come available. &quot;</span>
+                          + &quot; Cannot be used with -listen&quot;);
+<span class="nc" id="L154">        options.addOption(&quot;listen&quot;, true, &quot;Listen for creation of &lt;arg&gt; ledgers, and read each one fully&quot;);</span>
+<span class="nc" id="L155">        options.addOption(&quot;password&quot;, true, &quot;Password used to access ledgers (default 'benchPasswd')&quot;);</span>
+<span class="nc" id="L156">        options.addOption(&quot;zookeeper&quot;, true, &quot;Zookeeper ensemble, default \&quot;localhost:2181\&quot;&quot;);</span>
+<span class="nc" id="L157">        options.addOption(&quot;sockettimeout&quot;, true, &quot;Socket timeout for bookkeeper client. In seconds. Default 5&quot;);</span>
+<span class="nc" id="L158">        options.addOption(&quot;help&quot;, false, &quot;This message&quot;);</span>
+
+<span class="nc" id="L160">        CommandLineParser parser = new PosixParser();</span>
+<span class="nc" id="L161">        CommandLine cmd = parser.parse(options, args);</span>
+
+<span class="nc bnc" id="L163" title="All 2 branches missed.">        if (cmd.hasOption(&quot;help&quot;)) {</span>
+<span class="nc" id="L164">            usage(options);</span>
+<span class="nc" id="L165">            System.exit(-1);</span>
+        }
+
+<span class="nc" id="L168">        final String servers = cmd.getOptionValue(&quot;zookeeper&quot;, &quot;localhost:2181&quot;);</span>
+<span class="nc" id="L169">        final byte[] passwd = cmd.getOptionValue(&quot;password&quot;, &quot;benchPasswd&quot;).getBytes(UTF_8);</span>
+<span class="nc" id="L170">        final int sockTimeout = Integer.parseInt(cmd.getOptionValue(&quot;sockettimeout&quot;, &quot;5&quot;));</span>
+<span class="nc bnc" id="L171" title="All 4 branches missed.">        if (cmd.hasOption(&quot;ledger&quot;) &amp;&amp; cmd.hasOption(&quot;listen&quot;)) {</span>
+<span class="nc" id="L172">            LOG.error(&quot;Cannot used -ledger and -listen together&quot;);</span>
+<span class="nc" id="L173">            usage(options);</span>
+<span class="nc" id="L174">            System.exit(-1);</span>
+        }
+
+<span class="nc" id="L177">        final AtomicInteger ledger = new AtomicInteger(0);</span>
+<span class="nc" id="L178">        final AtomicInteger numLedgers = new AtomicInteger(0);</span>
+<span class="nc bnc" id="L179" title="All 2 branches missed.">        if (cmd.hasOption(&quot;ledger&quot;)) {</span>
+<span class="nc" id="L180">            ledger.set(Integer.parseInt(cmd.getOptionValue(&quot;ledger&quot;)));</span>
+<span class="nc bnc" id="L181" title="All 2 branches missed.">        } else if (cmd.hasOption(&quot;listen&quot;)) {</span>
+<span class="nc" id="L182">            numLedgers.set(Integer.parseInt(cmd.getOptionValue(&quot;listen&quot;)));</span>
+        } else {
+<span class="nc" id="L184">            LOG.error(&quot;You must use -ledger or -listen&quot;);</span>
+<span class="nc" id="L185">            usage(options);</span>
+<span class="nc" id="L186">            System.exit(-1);</span>
+        }
+
+<span class="nc" id="L189">        final CountDownLatch shutdownLatch = new CountDownLatch(1);</span>
+<span class="nc" id="L190">        final String nodepath = String.format(&quot;/ledgers/L%010d&quot;, ledger.get());</span>
+
+<span class="nc" id="L192">        final ClientConfiguration conf = new ClientConfiguration();</span>
+<span class="nc" id="L193">        conf.setReadTimeout(sockTimeout).setZkServers(servers);</span>
+
+<span class="nc" id="L195">        try (ZooKeeperClient zk = ZooKeeperClient.newBuilder()</span>
+<span class="nc" id="L196">                .connectString(servers)</span>
+<span class="nc" id="L197">                .sessionTimeoutMs(3000)</span>
+<span class="nc" id="L198">                .build()) {</span>
+<span class="nc" id="L199">            final Set&lt;String&gt; processedLedgers = new HashSet&lt;String&gt;();</span>
+<span class="nc" id="L200">            zk.register(new Watcher() {</span>
+                    @Override
+                    public void process(WatchedEvent event) {
+                        try {
+<span class="nc bnc" id="L204" title="All 2 branches missed.">                            if (event.getType() == Event.EventType.NodeCreated</span>
+<span class="nc bnc" id="L205" title="All 2 branches missed.">                                       &amp;&amp; event.getPath().equals(nodepath)) {</span>
+<span class="nc" id="L206">                                readLedger(conf, ledger.get(), passwd);</span>
+<span class="nc" id="L207">                                shutdownLatch.countDown();</span>
+<span class="nc bnc" id="L208" title="All 2 branches missed.">                            } else if (event.getType() == Event.EventType.NodeChildrenChanged) {</span>
+<span class="nc bnc" id="L209" title="All 2 branches missed.">                                if (numLedgers.get() &lt; 0) {</span>
+<span class="nc" id="L210">                                    return;</span>
+                                }
+<span class="nc" id="L212">                                List&lt;String&gt; children = zk.getChildren(&quot;/ledgers&quot;, true);</span>
+<span class="nc" id="L213">                                List&lt;String&gt; ledgers = new ArrayList&lt;String&gt;();</span>
+<span class="nc bnc" id="L214" title="All 2 branches missed.">                                for (String child : children) {</span>
+<span class="nc bnc" id="L215" title="All 2 branches missed.">                                    if (LEDGER_PATTERN.matcher(child).find()) {</span>
+<span class="nc" id="L216">                                        ledgers.add(child);</span>
+                                    }
+<span class="nc" id="L218">                                }</span>
+<span class="nc bnc" id="L219" title="All 2 branches missed.">                                for (String ledger : ledgers) {</span>
+<span class="nc" id="L220">                                    synchronized (processedLedgers) {</span>
+<span class="nc bnc" id="L221" title="All 2 branches missed.">                                        if (processedLedgers.contains(ledger)) {</span>
+<span class="nc" id="L222">                                            continue;</span>
+                                        }
+<span class="nc" id="L224">                                        final Matcher m = LEDGER_PATTERN.matcher(ledger);</span>
+<span class="nc bnc" id="L225" title="All 2 branches missed.">                                        if (m.find()) {</span>
+<span class="nc" id="L226">                                            int ledgersLeft = numLedgers.decrementAndGet();</span>
+<span class="nc" id="L227">                                            final Long ledgerId = Long.valueOf(m.group(1));</span>
+<span class="nc" id="L228">                                            processedLedgers.add(ledger);</span>
+<span class="nc" id="L229">                                            Thread t = new Thread() {</span>
+                                                @Override
+                                                public void run() {
+<span class="nc" id="L232">                                                    readLedger(conf, ledgerId, passwd);</span>
+<span class="nc" id="L233">                                                }</span>
+                                            };
+<span class="nc" id="L235">                                            t.start();</span>
+<span class="nc bnc" id="L236" title="All 2 branches missed.">                                            if (ledgersLeft &lt;= 0) {</span>
+<span class="nc" id="L237">                                                shutdownLatch.countDown();</span>
+                                            }
+<span class="nc" id="L239">                                        } else {</span>
+<span class="nc" id="L240">                                            LOG.error(&quot;Cant file ledger id in {}&quot;, ledger);</span>
+                                        }
+<span class="nc" id="L242">                                    }</span>
+<span class="nc" id="L243">                                }</span>
+<span class="nc" id="L244">                            } else {</span>
+<span class="nc" id="L245">                                LOG.warn(&quot;Unknown event {}&quot;, event);</span>
+                            }
+<span class="nc" id="L247">                        } catch (Exception e) {</span>
+<span class="nc" id="L248">                            LOG.error(&quot;Exception in watcher&quot;, e);</span>
+<span class="nc" id="L249">                        }</span>
+<span class="nc" id="L250">                    }</span>
+                });
+
+<span class="nc bnc" id="L253" title="All 2 branches missed.">            if (ledger.get() != 0) {</span>
+<span class="nc bnc" id="L254" title="All 2 branches missed.">                if (zk.exists(nodepath, true) != null) {</span>
+<span class="nc" id="L255">                    readLedger(conf, ledger.get(), passwd);</span>
+<span class="nc" id="L256">                    shutdownLatch.countDown();</span>
+                } else {
+<span class="nc" id="L258">                    LOG.info(&quot;Watching for creation of&quot; + nodepath);</span>
+                }
+            } else {
+<span class="nc" id="L261">                zk.getChildren(&quot;/ledgers&quot;, true);</span>
+            }
+<span class="nc" id="L263">            shutdownLatch.await();</span>
+<span class="nc" id="L264">            LOG.info(&quot;Shutting down&quot;);</span>
+        }
+<span class="nc" id="L266">    }</span>
+}
+</pre><div class="footer"><span class="right">Created with <a href="http://www.jacoco.org/jacoco">JaCoCo</a> 0.8.2.201808211720</span></div></body></html>

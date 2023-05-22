@@ -41,9 +41,9 @@ import org.apache.bookkeeper.clients.utils.NetUtils;
 import org.apache.bookkeeper.common.component.AbstractLifecycleComponent;
 import org.apache.bookkeeper.common.concurrent.FutureUtils;
 import org.apache.bookkeeper.stats.StatsLogger;
-import org.apache.bookkeeper.stream.proto.cluster.ClusterAssignmentData;
+/*import org.apache.bookkeeper.stream.proto.cluster.ClusterAssignmentData;
 import org.apache.bookkeeper.stream.proto.cluster.ServerAssignmentData;
-import org.apache.bookkeeper.stream.proto.common.Endpoint;
+import org.apache.bookkeeper.stream.proto.common.Endpoint;*/
 import org.apache.bookkeeper.stream.storage.api.cluster.ClusterMetadataStore;
 import org.apache.bookkeeper.stream.storage.api.sc.StorageContainer;
 import org.apache.bookkeeper.stream.storage.api.sc.StorageContainerManager;
@@ -55,20 +55,20 @@ import org.apache.bookkeeper.util.collections.ConcurrentLongHashMap;
  * A zookeeper based implementation of {@link StorageContainerManager}.
  */
 @Slf4j
-public class ZkStorageContainerManager
+public abstract class ZkStorageContainerManager
     extends AbstractLifecycleComponent<StorageConfiguration>
     implements StorageContainerManager, Consumer<Void> {
 
-    private final Endpoint endpoint;
+    private final Object endpoint;
     private final ClusterMetadataStore metadataStore;
     private final StorageContainerRegistry registry;
     private final ScheduledExecutorService executor;
 
     // for routing purpose
-    private volatile ClusterAssignmentData clusterAssignmentData;
-    private volatile Map<Endpoint, ServerAssignmentData> clusterAssignmentMap;
-    private volatile ServerAssignmentData myAssignmentData;
-    private volatile ConcurrentLongHashMap<Endpoint> containerAssignmentMap;
+    private volatile Object clusterAssignmentData;
+    private volatile Map<Object, Object> clusterAssignmentMap;
+    private volatile Object myAssignmentData;
+    private volatile ConcurrentLongHashMap<Object> containerAssignmentMap;
 
     // a probe task to probe containers and make sure this manager running containers as assigned
     private ScheduledFuture<?> containerProbeTask;
@@ -79,7 +79,7 @@ public class ZkStorageContainerManager
     @Getter(AccessLevel.PACKAGE)
     private final Set<Long> pendingStartStopContainers;
 
-    public ZkStorageContainerManager(Endpoint myEndpoint,
+    public ZkStorageContainerManager(Object myEndpoint,
                                      StorageConfiguration conf,
                                      ClusterMetadataStore clusterMetadataStore,
                                      StorageContainerRegistry registry,
@@ -92,7 +92,7 @@ public class ZkStorageContainerManager
             new ThreadFactoryBuilder().setNameFormat("zk-storage-container-manager").build());
         this.liveContainers = Collections.synchronizedMap(Maps.newConcurrentMap());
         this.pendingStartStopContainers = Collections.synchronizedSet(Sets.newConcurrentHashSet());
-        this.containerAssignmentMap = ConcurrentLongHashMap.<Endpoint>newBuilder().build();
+        this.containerAssignmentMap = new ConcurrentLongHashMap<>();
         this.clusterAssignmentMap = Maps.newHashMap();
         // probe the containers every 1/2 of controller scheduling interval. this ensures the manager
         // can attempt to start containers before controller reassign them.
@@ -132,10 +132,7 @@ public class ZkStorageContainerManager
         executor.shutdown();
     }
 
-    @Override
-    public Endpoint getStorageContainer(long scId) {
-        return containerAssignmentMap.get(scId);
-    }
+
 
     void probeContainers() {
         boolean isMyAssignmentRefreshed = refreshMyAssignment();
@@ -148,19 +145,19 @@ public class ZkStorageContainerManager
             // I don't have any containers assigned to me, so stop containers that I am running.
             stopContainers();
         } else {
-            processMyAssignment(myAssignmentData);
+            //processMyAssignment(myAssignmentData);
         }
     }
 
     private boolean refreshMyAssignment() {
-        ClusterAssignmentData clusterAssignmentData = metadataStore.getClusterAssignmentData();
+        //ClusterAssignmentData clusterAssignmentData = metadataStore.getClusterAssignmentData();
 
         if (null == clusterAssignmentData) {
             log.info("Cluster assignment data is empty, so skip refreshing");
             return false;
         }
 
-        Map<Endpoint, ServerAssignmentData> newAssignmentMap = clusterAssignmentData.getServersMap().entrySet()
+        /*Map<Endpoint, ServerAssignmentData> newAssignmentMap = clusterAssignmentData.getServersMap().entrySet()
             .stream()
             .collect(Collectors.toMap(
                 e -> NetUtils.parseEndpoint(e.getKey()),
@@ -178,40 +175,40 @@ public class ZkStorageContainerManager
         processServersAssignmentChanged(commonServers, clusterAssignmentMap, newAssignmentMap);
 
         this.clusterAssignmentMap = newAssignmentMap;
-        myAssignmentData = newAssignmentMap.get(endpoint);
+        myAssignmentData = newAssignmentMap.get(endpoint);*/
         return true;
     }
 
-    private void processServersJoined(Set<Endpoint> serversJoined,
-                                      Map<Endpoint, ServerAssignmentData> newAssignmentMap) {
+    private void processServersJoined(Set<Object> serversJoined,
+                                      Map<Object, Object> newAssignmentMap) {
         if (!serversJoined.isEmpty()) {
             log.info("Servers joined : {}", serversJoined);
         }
-        serversJoined.forEach(ep -> {
+       /* serversJoined.forEach(ep -> {
             ServerAssignmentData sad = newAssignmentMap.get(ep);
             if (null != sad) {
                 sad.getContainersList().forEach(container -> containerAssignmentMap.put(container, ep));
             }
-        });
+        });*/
     }
 
-    private void processServersLeft(Set<Endpoint> serversLeft,
-                                    Map<Endpoint, ServerAssignmentData> oldAssignmentMap) {
+    private void processServersLeft(Set<Object> serversLeft,
+                                    Map<Object, Object> oldAssignmentMap) {
         if (!serversLeft.isEmpty()) {
             log.info("Servers left : {}", serversLeft);
         }
         serversLeft.forEach(ep -> {
-            ServerAssignmentData sad = oldAssignmentMap.get(ep);
+            Object sad = oldAssignmentMap.get(ep);
             if (null != sad) {
-                sad.getContainersList().forEach(container -> containerAssignmentMap.remove(container, ep));
+                //sad.getContainersList().forEach(container -> containerAssignmentMap.remove(container, ep));
             }
         });
     }
 
-    private void processServersAssignmentChanged(Set<Endpoint> commonServers,
-                                                 Map<Endpoint, ServerAssignmentData> oldAssignmentMap,
-                                                 Map<Endpoint, ServerAssignmentData> newAssignmentMap) {
-        commonServers.forEach(ep -> {
+    private void processServersAssignmentChanged(Set<Object> commonServers,
+                                                 Map<Object, Object> oldAssignmentMap,
+                                                 Map<Object, Object> newAssignmentMap) {
+        /*commonServers.forEach(ep -> {
 
             ServerAssignmentData oldSad = oldAssignmentMap.getOrDefault(ep, ServerAssignmentData.getDefaultInstance());
             ServerAssignmentData newSad = newAssignmentMap.getOrDefault(ep, ServerAssignmentData.getDefaultInstance());
@@ -225,7 +222,8 @@ public class ZkStorageContainerManager
                 newSad.getContainersList().forEach(container -> containerAssignmentMap.put(container, ep));
             }
 
-        });
+        });*/
+
     }
 
 
@@ -234,8 +232,8 @@ public class ZkStorageContainerManager
         liveContainerSet.forEach(this::stopStorageContainer);
     }
 
-    private void processMyAssignment(ServerAssignmentData myAssignment) {
-        Set<Long> assignedContainerSet = myAssignment.getContainersList().stream().collect(Collectors.toSet());
+    private void processMyAssignment(Object myAssignment) {
+        Set<Long> assignedContainerSet = null;
         Set<Long> liveContainerSet = Sets.newHashSet(liveContainers.keySet());
 
         Set<Long> containersToStart =

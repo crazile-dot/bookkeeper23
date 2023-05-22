@@ -25,6 +25,7 @@ import static io.etcd.jetcd.common.exception.EtcdExceptionFactory.toEtcdExceptio
 import com.google.common.base.Strings;
 import com.google.protobuf.ByteString;
 import com.google.protobuf.UnsafeByteOperations;
+
 import io.etcd.jetcd.ByteSequence;
 import io.etcd.jetcd.Client;
 import io.etcd.jetcd.EtcdConnectionManager;
@@ -38,6 +39,7 @@ import io.etcd.jetcd.common.exception.EtcdException;
 import io.etcd.jetcd.common.exception.EtcdExceptionFactory;
 import io.etcd.jetcd.options.WatchOption;
 import io.etcd.jetcd.watch.WatchResponseWithError;
+
 import io.grpc.Status;
 import io.grpc.Status.Code;
 import io.grpc.stub.StreamObserver;
@@ -49,7 +51,7 @@ import java.util.concurrent.TimeUnit;
 import java.util.function.BiConsumer;
 import lombok.extern.slf4j.Slf4j;
 import org.apache.bookkeeper.common.concurrent.FutureUtils;
-import org.apache.bookkeeper.common.util.OrderedScheduler;
+//import org.apache.bookkeeper.common.util.OrderedScheduler;
 import org.apache.bookkeeper.util.collections.ConcurrentLongHashMap;
 import org.apache.bookkeeper.util.collections.ConcurrentLongHashSet;
 
@@ -64,13 +66,13 @@ public class EtcdWatchClient implements AutoCloseable {
     private volatile StreamObserver<WatchRequest> grpcWatchStreamObserver;
     // watchers stores a mapping between watchID -> EtcdWatcher.
     private final ConcurrentLongHashMap<EtcdWatcher> watchers =
-            ConcurrentLongHashMap.<EtcdWatcher>newBuilder().build();
+        new ConcurrentLongHashMap<>();
     private final LinkedList<EtcdWatcher> pendingWatchers = new LinkedList<>();
-    private final ConcurrentLongHashSet cancelSet = ConcurrentLongHashSet.newBuilder().build();
+    private final ConcurrentLongHashSet cancelSet = new ConcurrentLongHashSet();
 
     // scheduler
-    private final OrderedScheduler scheduler;
-    private final ScheduledExecutorService watchExecutor;
+    private final Object scheduler = null;
+    private final ScheduledExecutorService watchExecutor = null;
 
     // close state
     private CompletableFuture<Void> closeFuture = null;
@@ -78,11 +80,11 @@ public class EtcdWatchClient implements AutoCloseable {
     public EtcdWatchClient(Client client) {
         this.connMgr = new EtcdConnectionManager(client);
         this.stub = connMgr.newWatchStub();
-        this.scheduler = OrderedScheduler.newSchedulerBuilder()
+        /*this.scheduler = OrderedScheduler.newSchedulerBuilder()
             .name("etcd-watcher-scheduler")
             .numThreads(Runtime.getRuntime().availableProcessors())
-            .build();
-        this.watchExecutor = this.scheduler.chooseThread();
+            .build();*/
+        //this.watchExecutor = this.scheduler.chooseThread();
     }
 
     public synchronized boolean isClosed() {
@@ -102,7 +104,7 @@ public class EtcdWatchClient implements AutoCloseable {
                 throw EtcdExceptionFactory.newClosedWatchClientException();
             }
 
-            EtcdWatcher watcher = new EtcdWatcher(key, watchOption, scheduler.chooseThread(), this);
+            EtcdWatcher watcher = null;
             watcher.addConsumer(consumer);
             pendingWatchers.add(watcher);
             if (pendingWatchers.size() == 1) {
@@ -161,7 +163,7 @@ public class EtcdWatchClient implements AutoCloseable {
             future = closeFuture;
         }
         return future.whenComplete((ignored, cause) -> {
-            this.scheduler.shutdown();
+            //this.scheduler.shutdown();
         });
     }
 
@@ -172,7 +174,7 @@ public class EtcdWatchClient implements AutoCloseable {
         } catch (Exception e) {
             log.warn("Encountered exceptions on closing watch client", e);
         }
-        this.scheduler.forceShutdown(10, TimeUnit.SECONDS);
+        //this.scheduler.forceShutdown(10, TimeUnit.SECONDS);
     }
 
     private StreamObserver<WatchResponse> createWatchStreamObserver() {
@@ -228,7 +230,7 @@ public class EtcdWatchClient implements AutoCloseable {
             return;
         }
         // resume with a delay; avoiding immediate retry on a long connection downtime.
-        scheduler.schedule(this::resume, 500, TimeUnit.MILLISECONDS);
+        //scheduler.schedule(this::resume, 500, TimeUnit.MILLISECONDS);
     }
 
     private void resume() {

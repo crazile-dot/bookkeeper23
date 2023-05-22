@@ -33,7 +33,7 @@ import io.netty.util.HashedWheelTimer;
 import java.util.concurrent.TimeUnit;
 import lombok.Getter;
 import lombok.experimental.Accessors;
-import org.apache.bookkeeper.common.util.OrderedScheduler;
+//import org.apache.bookkeeper.common.util.OrderedScheduler;
 import org.apache.bookkeeper.common.util.SharedResourceManager.Resource;
 
 /**
@@ -51,8 +51,8 @@ public class StorageResources {
         return new StorageResources(spec);
     }
 
-    private static Resource<OrderedScheduler> createSchedulerResource(String name, int numThreads) {
-        return new Resource<OrderedScheduler>() {
+    private static Resource<Object> createSchedulerResource(String name, int numThreads) {
+        /*return new Resource<OrderedScheduler>() {
             @Override
             public OrderedScheduler create() {
                 return OrderedScheduler.newSchedulerBuilder()
@@ -70,13 +70,14 @@ public class StorageResources {
             public String toString() {
                 return name;
             }
-        };
+        };*/
+        return null;
     }
 
-    private final Resource<OrderedScheduler> scheduler;
-    private final Resource<OrderedScheduler> ioWriteScheduler;
-    private final Resource<OrderedScheduler> ioReadScheduler;
-    private final Resource<OrderedScheduler> checkpointScheduler;
+    private final Resource<Object> scheduler;
+    private final Resource<Object> ioWriteScheduler;
+    private final Resource<Object> ioReadScheduler;
+    private final Resource<Object> checkpointScheduler;
     private final Resource<HashedWheelTimer> timer;
 
     private StorageResources(StorageResourcesSpec spec) {

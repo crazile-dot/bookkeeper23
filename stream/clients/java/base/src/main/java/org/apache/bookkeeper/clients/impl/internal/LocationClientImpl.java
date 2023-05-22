@@ -18,57 +18,52 @@
 
 package org.apache.bookkeeper.clients.impl.internal;
 
-import static org.apache.bookkeeper.clients.impl.internal.ProtocolInternalUtils.GetStorageContainerEndpointsFunction;
+//import static org.apache.bookkeeper.clients.impl.internal.ProtocolInternalUtils.GetStorageContainerEndpointsFunction;
 import static org.apache.bookkeeper.common.util.ListenableFutures.fromListenableFuture;
-import static org.apache.bookkeeper.stream.protocol.util.ProtoUtils.createGetStorageContainerEndpointRequest;
 
 import com.google.common.annotations.VisibleForTesting;
 import io.grpc.ManagedChannel;
 import io.grpc.Status;
 import io.grpc.StatusException;
 import io.grpc.StatusRuntimeException;
-import java.util.List;
-import java.util.Optional;
-import java.util.concurrent.CompletableFuture;
+
 import java.util.function.Predicate;
 import java.util.stream.Stream;
+
 import lombok.extern.slf4j.Slf4j;
-import org.apache.bookkeeper.clients.config.StorageClientSettings;
 import org.apache.bookkeeper.clients.impl.internal.api.LocationClient;
 import org.apache.bookkeeper.clients.utils.ClientConstants;
 import org.apache.bookkeeper.clients.utils.GrpcChannels;
-import org.apache.bookkeeper.clients.utils.GrpcUtils;
 import org.apache.bookkeeper.common.util.Backoff;
-import org.apache.bookkeeper.common.util.OrderedScheduler;
-import org.apache.bookkeeper.common.util.Retries;
-import org.apache.bookkeeper.common.util.Revisioned;
-import org.apache.bookkeeper.stream.proto.storage.GetStorageContainerEndpointRequest;
-import org.apache.bookkeeper.stream.proto.storage.OneStorageContainerEndpointResponse;
-import org.apache.bookkeeper.stream.proto.storage.StorageContainerServiceGrpc;
-import org.apache.bookkeeper.stream.proto.storage.StorageContainerServiceGrpc.StorageContainerServiceFutureStub;
+//import org.apache.bookkeeper.common.util.OrderedScheduler;
+
+//import org.apache.bookkeeper.stream.proto.storage.GetStorageContainerEndpointRequest;
+//import org.apache.bookkeeper.stream.proto.storage.OneStorageContainerEndpointResponse;
+//import org.apache.bookkeeper.stream.proto.storage.StorageContainerServiceGrpc;
+//import org.apache.bookkeeper.stream.proto.storage.StorageContainerServiceGrpc.StorageContainerServiceFutureStub;
 
 /**
  * Default Implementation of {@link LocationClient}.
  */
 @Slf4j
-public class LocationClientImpl implements LocationClient {
+public abstract class LocationClientImpl implements LocationClient {
 
-    private final StorageClientSettings settings;
-    private final OrderedScheduler scheduler;
-    private final ManagedChannel channel;
-    private final StorageContainerServiceFutureStub locationService;
+    //private final StorageClientSettings settings;
+    private final Object scheduler;
+    private final ManagedChannel channel = null;
+    private final Object locationService = null;
 
     @SuppressWarnings("deprecation")
-    public LocationClientImpl(StorageClientSettings settings,
-                              OrderedScheduler scheduler) {
-        this.settings = settings;
+    public LocationClientImpl(Object settings,
+                              Object scheduler) {
+        //this.settings = settings;
         this.scheduler = scheduler;
-        this.channel = GrpcChannels.createChannelBuilder(
+        /*this.channel = GrpcChannels.createChannelBuilder(
             settings.serviceUri(), settings
-        ).build();
-        this.locationService = GrpcUtils.configureGrpcStub(
+        ).build();*/
+        /*this.locationService = GrpcUtils.configureGrpcStub(
             StorageContainerServiceGrpc.newFutureStub(channel),
-            Optional.empty());
+            Optional.empty());*/
     }
 
     private Stream<Long> getDefaultBackoffs() {
@@ -83,7 +78,7 @@ public class LocationClientImpl implements LocationClient {
         cause -> shouldRetryOnException(cause);
 
     private static boolean shouldRetryOnException(Throwable cause) {
-        log.error("Not able to locate storage container ", cause);
+        log.error("Not able to locate storage container {}", cause);
         if (cause instanceof StatusRuntimeException || cause instanceof StatusException) {
             Status status;
             if (cause instanceof StatusException) {
@@ -107,7 +102,7 @@ public class LocationClientImpl implements LocationClient {
         }
     }
 
-    @Override
+    /*@Override
     public CompletableFuture<List<OneStorageContainerEndpointResponse>>
     locateStorageContainers(List<Revisioned<Long>> storageContainerIds) {
         GetStorageContainerEndpointRequest request = createGetStorageContainerEndpointRequest(storageContainerIds);
@@ -119,7 +114,7 @@ public class LocationClientImpl implements LocationClient {
                 GetStorageContainerEndpointsFunction),
             scheduler,
             request);
-    }
+    }*/
 
     @Override
     public void close() {

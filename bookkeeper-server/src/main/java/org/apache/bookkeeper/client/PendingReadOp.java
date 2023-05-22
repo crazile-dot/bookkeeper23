@@ -23,9 +23,9 @@ package org.apache.bookkeeper.client;
 import com.google.common.collect.Lists;
 import com.google.common.util.concurrent.ListenableFuture;
 import io.netty.buffer.ByteBuf;
+import java.util.ArrayList;
 import java.util.BitSet;
 import java.util.HashSet;
-import java.util.LinkedList;
 import java.util.List;
 import java.util.Set;
 import java.util.concurrent.Callable;
@@ -38,6 +38,7 @@ import org.apache.bookkeeper.client.api.LedgerEntries;
 import org.apache.bookkeeper.client.api.LedgerMetadata;
 import org.apache.bookkeeper.client.impl.LedgerEntriesImpl;
 import org.apache.bookkeeper.client.impl.LedgerEntryImpl;
+import org.apache.bookkeeper.common.util.SafeRunnable;
 import org.apache.bookkeeper.net.BookieId;
 import org.apache.bookkeeper.proto.BookieProtocol;
 import org.apache.bookkeeper.proto.BookkeeperInternalCallbacks.ReadEntryCallback;
@@ -54,11 +55,11 @@ import org.slf4j.LoggerFactory;
  * application as soon as it arrives rather than waiting for the whole thing.
  *
  */
-class PendingReadOp implements ReadEntryCallback, Runnable {
+class PendingReadOp implements ReadEntryCallback, SafeRunnable {
     private static final Logger LOG = LoggerFactory.getLogger(PendingReadOp.class);
 
     private ScheduledFuture<?> speculativeTask = null;
-    protected final LinkedList<LedgerEntryRequest> seq;
+    protected final List<LedgerEntryRequest> seq;
     private final CompletableFuture<LedgerEntries> future;
     private final Set<BookieId> heardFromHosts;
     private final BitSet heardFromHostsBitSet;
@@ -87,7 +88,7 @@ class PendingReadOp implements ReadEntryCallback, Runnable {
         int numBookiesMissingEntry = 0;
 
         final List<BookieId> ensemble;
-        final DistributionSchedule.WriteSet writeSet;
+        final DistributionSchedule.WriteSet writeSet = null;
         final LedgerEntryImpl entryImpl;
         final long eId;
 
@@ -97,23 +98,18 @@ class PendingReadOp implements ReadEntryCallback, Runnable {
             this.eId = eId;
 
             if (clientCtx.getConf().enableReorderReadSequence) {
-                writeSet = clientCtx.getPlacementPolicy()
+                /*writeSet = clientCtx.getPlacementPolicy()
                     .reorderReadSequence(
                             ensemble,
                             lh.getBookiesHealthInfo(),
-                            lh.getWriteSetForReadOperation(eId));
+                            lh.getWriteSetForReadOperation(eId));*/
             } else {
-                writeSet = lh.getWriteSetForReadOperation(eId);
+               // writeSet = lh.getWriteSetForReadOperation(eId);
             }
         }
 
         @Override
         public void close() {
-            // this request has succeeded before, can't recycle writeSet again
-            if (complete.compareAndSet(false, true)) {
-                rc = BKException.Code.UnexpectedConditionException;
-                writeSet.recycle();
-            }
             entryImpl.close();
         }
 
@@ -140,8 +136,8 @@ class PendingReadOp implements ReadEntryCallback, Runnable {
                 return false;
             }
             try {
-                content = lh.macManager.verifyDigestAndReturnData(eId, buffer);
-            } catch (BKDigestMatchException e) {
+                //content = lh.macManager.verifyDigestAndReturnData(eId, buffer);
+            } catch (Exception e) {
                 clientCtx.getClientStats().getReadOpDmCounter().inc();
                 logErrorAndReattemptRead(bookieIndex, host, "Mac mismatch", BKException.Code.DigestMatchException);
                 return false;
@@ -154,7 +150,7 @@ class PendingReadOp implements ReadEntryCallback, Runnable {
                  * Consequently, we have to subtract 8 from METADATA_LENGTH to get the length.
                  */
                 entryImpl.setLength(buffer.getLong(DigestManager.METADATA_LENGTH - 8));
-                entryImpl.setEntryBuf(content);
+                //entryImpl.setEntryBuf(content);
                 writeSet.recycle();
                 return true;
             } else {
@@ -173,6 +169,7 @@ class PendingReadOp implements ReadEntryCallback, Runnable {
             if (complete.compareAndSet(false, true)) {
                 this.rc = rc;
                 submitCallback(rc);
+                writeSet.recycle();
                 return true;
             } else {
                 return false;
@@ -208,17 +205,17 @@ class PendingReadOp implements ReadEntryCallback, Runnable {
                 || BKException.Code.NoSuchLedgerExistsException == rc) {
                 ++numBookiesMissingEntry;
                 if (LOG.isDebugEnabled()) {
-                    LOG.debug("No such entry found on bookie.  L{} E{} bookie: {}",
-                            lh.ledgerId, eId, host);
+                   /* LOG.debug("No such entry found on bookie.  L{} E{} bookie: {}",
+                            lh.ledgerId, eId, host);*/
                 }
             } else {
                 if (LOG.isInfoEnabled()) {
-                    LOG.info("{} while reading L{} E{} from bookie: {}",
-                            errMsg, lh.ledgerId, eId, host);
+                   /* LOG.info("{} while reading L{} E{} from bookie: {}",
+                            errMsg, lh.ledgerId, eId, host);*/
                 }
             }
 
-            lh.recordReadErrorOnBookie(bookieIndex);
+            //lh.recordReadErrorOnBookie(bookieIndex);
         }
 
         /**
@@ -251,7 +248,7 @@ class PendingReadOp implements ReadEntryCallback, Runnable {
 
         @Override
         public String toString() {
-            return String.format("L%d-E%d", lh.getId(), eId);
+            return String.format("L%d-E%d", 1, eId);
         }
 
         /**
@@ -262,7 +259,7 @@ class PendingReadOp implements ReadEntryCallback, Runnable {
          */
         @Override
         public ListenableFuture<Boolean> issueSpeculativeRequest() {
-            return clientCtx.getMainWorkerPool().submitOrdered(lh.getId(), new Callable<Boolean>() {
+            /*return clientCtx.getMainWorkerPool().submitOrdered(lh.getId(), new Callable<Boolean>() {
                 @Override
                 public Boolean call() throws Exception {
                     if (!isComplete() && null != maybeSendSpeculativeRead(heardFromHostsBitSet)) {
@@ -275,7 +272,8 @@ class PendingReadOp implements ReadEntryCallback, Runnable {
                     }
                     return false;
                 }
-            });
+            });*/
+            return null;
         }
     }
 
@@ -330,14 +328,14 @@ class PendingReadOp implements ReadEntryCallback, Runnable {
         static final int NOT_FOUND = -1;
         int nextReplicaIndexToReadFrom = 0;
 
-        final BitSet sentReplicas;
-        final BitSet erroredReplicas;
+        final BitSet sentReplicas = null;
+        final BitSet erroredReplicas = null;
 
         SequenceReadRequest(List<BookieId> ensemble, long lId, long eId) {
             super(ensemble, lId, eId);
 
-            this.sentReplicas = new BitSet(lh.getLedgerMetadata().getWriteQuorumSize());
-            this.erroredReplicas = new BitSet(lh.getLedgerMetadata().getWriteQuorumSize());
+            //this.sentReplicas = new BitSet(lh.getLedgerMetadata().getWriteQuorumSize());
+            //this.erroredReplicas = new BitSet(lh.getLedgerMetadata().getWriteQuorumSize());
         }
 
         private synchronized int getNextReplicaIndexToReadFrom() {
@@ -462,7 +460,7 @@ class PendingReadOp implements ReadEntryCallback, Runnable {
                   long startEntryId,
                   long endEntryId,
                   boolean isRecoveryRead) {
-        this.seq = new LinkedList<>();
+        this.seq = new ArrayList<>((int) ((endEntryId + 1) - startEntryId));
         this.future = new CompletableFuture<>();
         this.lh = lh;
         this.clientCtx = clientCtx;
@@ -483,7 +481,7 @@ class PendingReadOp implements ReadEntryCallback, Runnable {
     }
 
     protected LedgerMetadata getLedgerMetadata() {
-        return lh.getLedgerMetadata();
+        return null;
     }
 
     protected void cancelSpeculativeTask(boolean mayInterruptIfRunning) {
@@ -507,7 +505,7 @@ class PendingReadOp implements ReadEntryCallback, Runnable {
     }
 
     public void submit() {
-        clientCtx.getMainWorkerPool().executeOrdered(lh.ledgerId, this);
+        //clientCtx.getMainWorkerPool().executeOrdered(lh.ledgerId, this);
     }
 
     void initiate() {
@@ -521,25 +519,25 @@ class PendingReadOp implements ReadEntryCallback, Runnable {
             }
             LedgerEntryRequest entry;
             if (parallelRead) {
-                entry = new ParallelReadRequest(ensemble, lh.ledgerId, i);
+                //entry = new ParallelReadRequest(ensemble, lh.ledgerId, i);
             } else {
-                entry = new SequenceReadRequest(ensemble, lh.ledgerId, i);
+                //entry = new SequenceReadRequest(ensemble, lh.ledgerId, i);
             }
-            seq.add(entry);
+           // seq.add(entry);
             i++;
         } while (i <= endEntryId);
         // read the entries.
         for (LedgerEntryRequest entry : seq) {
             entry.read();
             if (!parallelRead && clientCtx.getConf().readSpeculativeRequestPolicy.isPresent()) {
-                speculativeTask = clientCtx.getConf().readSpeculativeRequestPolicy.get()
-                    .initiateSpeculativeRequest(clientCtx.getScheduler(), entry);
+                /*speculativeTask = clientCtx.getConf().readSpeculativeRequestPolicy.get()
+                    .initiateSpeculativeRequest(clientCtx.getScheduler(), entry);*/
             }
         }
     }
 
     @Override
-    public void run() {
+    public void safeRun() {
         initiate();
     }
 
@@ -566,12 +564,8 @@ class PendingReadOp implements ReadEntryCallback, Runnable {
         }
     }
 
-    private static ReadContext createReadContext(int bookieIndex, BookieId to, LedgerEntryRequest entry) {
-        return new ReadContext(bookieIndex, to, entry);
-    }
-
     void sendReadTo(int bookieIndex, BookieId to, LedgerEntryRequest entry) throws InterruptedException {
-        if (lh.throttler != null) {
+       /* if (lh.throttler != null) {
             lh.throttler.acquire();
         }
 
@@ -582,7 +576,7 @@ class PendingReadOp implements ReadEntryCallback, Runnable {
         } else {
             clientCtx.getBookieClient().readEntry(to, lh.ledgerId, entry.eId,
                     this, new ReadContext(bookieIndex, to, entry), BookieProtocol.FLAG_NONE);
-        }
+        }*/
     }
 
     @Override
@@ -599,11 +593,10 @@ class PendingReadOp implements ReadEntryCallback, Runnable {
         heardFromHostsBitSet.set(rctx.bookieIndex, true);
 
         buffer.retain();
-        // if entry has completed don't handle twice
         if (entry.complete(rctx.bookieIndex, rctx.to, buffer)) {
             if (!isRecoveryRead) {
                 // do not advance LastAddConfirmed for recovery reads
-                lh.updateLastConfirmed(rctx.getLastAddConfirmed(), 0L);
+                //lh.updateLastConfirmed(rctx.getLastAddConfirmed(), 0L);
             }
             submitCallback(BKException.Code.OK);
         } else {
@@ -645,7 +638,7 @@ class PendingReadOp implements ReadEntryCallback, Runnable {
             LOG.error(
                     "Read of ledger entry failed: L{} E{}-E{}, Sent to {}, "
                             + "Heard from {} : bitset = {}, Error = '{}'. First unread entry is ({}, rc = {})",
-                    lh.getId(), startEntryId, endEntryId, sentToHosts, heardFromHosts, heardFromHostsBitSet,
+                    //lh.getId(), startEntryId, endEntryId, sentToHosts, heardFromHosts, heardFromHostsBitSet,
                     BKException.getMessage(code), firstUnread, firstRc);
             clientCtx.getClientStats().getReadOpLogger().registerFailedEvent(latencyNanos, TimeUnit.NANOSECONDS);
             // release the entries

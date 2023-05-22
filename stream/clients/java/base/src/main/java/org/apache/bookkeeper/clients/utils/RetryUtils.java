@@ -30,7 +30,7 @@ import java.util.concurrent.CompletableFuture;
 import java.util.function.Predicate;
 import java.util.function.Supplier;
 import org.apache.bookkeeper.common.util.Backoff;
-import org.apache.bookkeeper.common.util.OrderedScheduler;
+//import org.apache.bookkeeper.common.util.OrderedScheduler;
 import org.apache.bookkeeper.common.util.Retries;
 
 /**
@@ -68,23 +68,23 @@ public class RetryUtils {
     }
 
     public static RetryUtils create(Backoff.Policy backoffPolicy,
-                                    OrderedScheduler scheduler) {
-        return create(DEFAULT_CLIENT_RETRY_PREDICATE, backoffPolicy, scheduler);
+                                    Object scheduler) {
+        return create(DEFAULT_CLIENT_RETRY_PREDICATE, backoffPolicy, null);
     }
 
     public static RetryUtils create(Predicate<Throwable> retryPredicate,
                                     Backoff.Policy backoffPolicy,
-                                    OrderedScheduler scheduler) {
-        return new RetryUtils(retryPredicate, backoffPolicy, scheduler);
+                                    Object scheduler) {
+        return new RetryUtils(retryPredicate, backoffPolicy, null);
     }
 
     private final Predicate<Throwable> retryPredicate;
     private final Backoff.Policy backoffPolicy;
-    private final OrderedScheduler scheduler;
+    private final Object scheduler;
 
     private RetryUtils(Predicate<Throwable> retryPredicate,
                        Backoff.Policy backoffPolicy,
-                       OrderedScheduler scheduler) {
+                       Object scheduler) {
         this.retryPredicate = retryPredicate;
         this.backoffPolicy = backoffPolicy;
         this.scheduler = scheduler;
@@ -97,12 +97,13 @@ public class RetryUtils {
      * @return the result of the action
      */
     public <T> CompletableFuture<T> execute(Supplier<CompletableFuture<T>> action) {
-        return Retries.run(
+        /*return Retries.run(
             backoffPolicy.toBackoffs(),
             retryPredicate,
             action,
             scheduler
-        );
+        );*/
+        return null;
     }
 
     /**
@@ -112,12 +113,13 @@ public class RetryUtils {
      * @return the result of the action
      */
     public <T> CompletableFuture<T> executeListenable(Supplier<ListenableFuture<T>> action) {
-        return Retries.run(
+        /*return Retries.run(
             backoffPolicy.toBackoffs(),
             retryPredicate,
             () -> fromListenableFuture(action.get()),
             scheduler
-        );
+        );*/
+        return null;
     }
 
 }

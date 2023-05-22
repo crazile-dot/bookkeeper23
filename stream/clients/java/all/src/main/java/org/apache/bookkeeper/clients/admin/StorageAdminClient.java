@@ -22,10 +22,10 @@ import org.apache.bookkeeper.api.StorageClient;
 import org.apache.bookkeeper.common.annotation.InterfaceAudience.Public;
 import org.apache.bookkeeper.common.annotation.InterfaceStability.Evolving;
 import org.apache.bookkeeper.common.util.AutoAsyncCloseable;
-import org.apache.bookkeeper.stream.proto.NamespaceConfiguration;
+/*import org.apache.bookkeeper.stream.proto.NamespaceConfiguration;
 import org.apache.bookkeeper.stream.proto.NamespaceProperties;
 import org.apache.bookkeeper.stream.proto.StreamConfiguration;
-import org.apache.bookkeeper.stream.proto.StreamProperties;
+import org.apache.bookkeeper.stream.proto.StreamProperties;*/
 
 /**
  * A storage admin client.
@@ -58,8 +58,8 @@ public interface StorageAdminClient extends AutoAsyncCloseable {
      * @param conf namespace configuration
      * @return a future represent the creation result
      */
-    CompletableFuture<NamespaceProperties> createNamespace(String namespace,
-                                                           NamespaceConfiguration conf);
+    CompletableFuture<Object> createNamespace(String namespace,
+                                                           Object conf);
 
     /**
      * Delete a <code>namespace</code>.
@@ -75,7 +75,7 @@ public interface StorageAdminClient extends AutoAsyncCloseable {
      * @param namespace namespace
      * @return a future represents the get result
      */
-    CompletableFuture<NamespaceProperties> getNamespace(String namespace);
+    CompletableFuture<Object> getNamespace(String namespace);
 
     /**
      * Create a stream <code>streamName</code> under namespace <code>namespace</code>
@@ -86,9 +86,9 @@ public interface StorageAdminClient extends AutoAsyncCloseable {
      * @param streamConfiguration stream configuration
      * @return a future represents the creation result
      */
-    CompletableFuture<StreamProperties> createStream(String namespace,
+    CompletableFuture<Object> createStream(String namespace,
                                                      String streamName,
-                                                     StreamConfiguration streamConfiguration);
+                                                     Object streamConfiguration);
 
     /**
      * Delete a <code>stream</code> from the provided <tt>namespace</tt>.
@@ -107,6 +107,6 @@ public interface StorageAdminClient extends AutoAsyncCloseable {
      * @param streamName stream name
      * @return a future represents the get result
      */
-    CompletableFuture<StreamProperties> getStream(String namespace, String streamName);
+    CompletableFuture<Object> getStream(String namespace, String streamName);
 
 }

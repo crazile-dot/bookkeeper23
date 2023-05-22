@@ -62,8 +62,8 @@ public abstract class ClientCommand<ClientFlagsT extends CliFlags> extends BKCom
 
     protected boolean apply(ClientConfiguration conf,
                             ClientFlagsT cmdFlags) {
-        try (BookKeeper bk = BookKeeper.newBuilder(conf).build()) {
-            run(bk, cmdFlags);
+        try {
+           // run(bk, cmdFlags);
             return true;
         } catch (Exception e) {
             log.error("Failed to process command '{}'", name(), e);

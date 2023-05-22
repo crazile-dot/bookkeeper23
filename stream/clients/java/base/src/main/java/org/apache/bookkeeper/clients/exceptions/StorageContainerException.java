@@ -14,7 +14,7 @@
 
 package org.apache.bookkeeper.clients.exceptions;
 
-import org.apache.bookkeeper.stream.proto.storage.StatusCode;
+//import org.apache.bookkeeper.stream.proto.storage.StatusCode;
 
 /**
  * Exception is thrown when the client encounters storage container error.
@@ -23,11 +23,11 @@ public class StorageContainerException extends ClientException {
 
     private static final long serialVersionUID = 8941947758993722207L;
 
-    private final StatusCode code;
+    //private final StatusCode code;
 
-    public StorageContainerException(StatusCode code, String message) {
+    public StorageContainerException(Object code, String message) {
         super("StorageContainerError : StatusCode = " + code + ", Error = " + message);
-        this.code = code;
+        //this.code = code;
     }
 
     /**
@@ -35,8 +35,8 @@ public class StorageContainerException extends ClientException {
      *
      * @return status code
      */
-    public StatusCode getCode() {
-        return code;
+    public Object getCode() {
+        return null;
     }
 
 }

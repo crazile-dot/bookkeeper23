@@ -1,4 +1,4 @@
-/*
+/**
  *
  * Licensed to the Apache Software Foundation (ASF) under one
  * or more contributor license agreements.  See the NOTICE file
@@ -29,7 +29,7 @@ import java.util.Map;
 import java.util.Set;
 import java.util.TreeMap;
 import java.util.TreeSet;
-import org.apache.commons.lang3.StringUtils;
+
 
 /**
  * Discover the list of processors from /proc/cpuinfo.
@@ -56,7 +56,7 @@ class ProcessorsInfo {
 
     private final Map<Integer, Integer> cpus = new TreeMap<>();
 
-    static ProcessorsInfo parseCpuInfo(String cpuInfoString) {
+    /*static ProcessorsInfo parseCpuInfo(String cpuInfoString) {
         ProcessorsInfo pi = new ProcessorsInfo();
 
         for (String cpu : cpuInfoString.split("\n\n")) {
@@ -77,8 +77,8 @@ class ProcessorsInfo {
                 }
             }
 
-            com.google.common.base.Preconditions.checkArgument(cpuId >= 0);
-            com.google.common.base.Preconditions.checkArgument(coreId >= 0);
+            checkArgument(cpuId >= 0);
+            checkArgument(coreId >= 0);
             pi.cpus.put(cpuId, coreId);
         }
 
@@ -91,5 +91,5 @@ class ProcessorsInfo {
         } catch (IOException e) {
             throw new RuntimeException(e);
         }
-    }
+    }*/
 }

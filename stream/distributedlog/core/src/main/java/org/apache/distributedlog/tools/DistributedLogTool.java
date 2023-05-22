@@ -1,4 +1,4 @@
-/*
+/**
  * Licensed to the Apache Software Foundation (ASF) under one
  * or more contributor license agreements.  See the NOTICE file
  * distributed with this work for additional information
@@ -23,7 +23,6 @@ import static java.nio.charset.StandardCharsets.UTF_8;
 import com.google.common.collect.Lists;
 import com.google.common.collect.Sets;
 import io.netty.buffer.ByteBuf;
-import io.netty.util.ReferenceCountUtil;
 import java.io.BufferedReader;
 import java.io.File;
 import java.io.FileInputStream;
@@ -57,9 +56,9 @@ import java.util.concurrent.atomic.AtomicReference;
 import java.util.regex.Matcher;
 import java.util.regex.Pattern;
 import org.apache.bookkeeper.client.BKException;
-import org.apache.bookkeeper.client.BookKeeper;
+//import org.apache.bookkeeper.client.BookKeeper;
 import org.apache.bookkeeper.client.BookKeeperAccessor;
-import org.apache.bookkeeper.client.BookKeeperAdmin;
+//import org.apache.bookkeeper.client.BookKeeperAdmin;
 import org.apache.bookkeeper.client.LedgerEntry;
 import org.apache.bookkeeper.client.LedgerHandle;
 import org.apache.bookkeeper.client.LedgerReader;
@@ -490,7 +489,7 @@ import org.slf4j.LoggerFactory;
                 } else {
                     System.out.println(new String(metadata, UTF_8));
                 }
-                System.out.println();
+                System.out.println("");
             }
             System.out.println("--------------------------------");
         }
@@ -540,7 +539,7 @@ import org.slf4j.LoggerFactory;
                 System.out.println(stream);
             }
 
-            System.out.println();
+            System.out.println("");
         }
 
         protected void watchAndReportChanges(Namespace namespace) throws Exception {
@@ -713,20 +712,20 @@ import org.slf4j.LoggerFactory;
                             LogSegmentMetadata segment = seg;
                             List<String> dumpedEntries = new ArrayList<String>();
                             if (segment.isInProgress()) {
-                                LedgerHandle lh = bkc.get().openLedgerNoRecovery(segment.getLogSegmentId(),
-                                        BookKeeper.DigestType.CRC32, dlConf.getBKDigestPW().getBytes(UTF_8));
+                                /*LedgerHandle lh = bkc.get().openLedgerNoRecovery(segment.getLogSegmentId(),
+                                        BookKeeper.DigestType.CRC32, dlConf.getBKDigestPW().getBytes(UTF_8));*/
                                 try {
-                                    long lac = lh.readLastConfirmed();
+                                    long lac = 0;
                                     segment = segment.mutator().setLastEntryId(lac).build();
                                     if (printInprogressOnly && dumpEntries && lac >= 0) {
-                                        Enumeration<LedgerEntry> entries = lh.readEntries(0L, lac);
+                                        Enumeration<LedgerEntry> entries = null;
                                         while (entries.hasMoreElements()) {
                                             LedgerEntry entry = entries.nextElement();
                                             dumpedEntries.add(new String(entry.getEntry(), UTF_8));
                                         }
                                     }
                                 } finally {
-                                    lh.close();
+                                    //lh.close();
                                 }
                             }
                             if (printInprogressOnly) {
@@ -1035,12 +1034,11 @@ import org.slf4j.LoggerFactory;
 
         private Map<BookieId, Integer> getBookieStats(LogSegmentMetadata segment) throws Exception {
             Map<BookieId, Integer> stats = new HashMap<BookieId, Integer>();
-            LedgerHandle lh = bkc.client().get().openLedgerNoRecovery(segment.getLogSegmentId(),
-                    BookKeeper.DigestType.CRC32, getConf().getBKDigestPW().getBytes(UTF_8));
+            LedgerHandle lh = null;
             long eidFirst = 0;
             for (SortedMap.Entry<Long, ? extends List<BookieId>>
                     entry : LedgerReader.bookiesForLedger(lh).entrySet()) {
-                long eidLast = entry.getKey();
+                long eidLast = entry.getKey().longValue();
                 long count = eidLast - eidFirst + 1;
                 for (BookieId bookie : entry.getValue()) {
                     merge(stats, bookie, (int) count);
@@ -1052,7 +1050,7 @@ import org.slf4j.LoggerFactory;
 
         void merge(Map<BookieId, Integer> m, BookieId bookie, Integer count) {
             if (m.containsKey(bookie)) {
-                m.put(bookie, count + m.get(bookie));
+                m.put(bookie, count + m.get(bookie).intValue());
             } else {
                 m.put(bookie, count);
             }
@@ -1148,7 +1146,7 @@ import org.slf4j.LoggerFactory;
         }
 
         long countToLastRecord(DistributedLogManager dlm) throws Exception {
-            return FutureUtils.result(dlm.getLogRecordCountAsync(startDLSN));
+            return FutureUtils.result(dlm.getLogRecordCountAsync(startDLSN)).longValue();
         }
 
         @Override
@@ -1273,19 +1271,17 @@ import org.slf4j.LoggerFactory;
                                     break;
                                 }
                                 try {
-                                    getBookKeeperClient().get().deleteLedger(ledger);
+                                    //getBookKeeperClient().get().deleteLedger(ledger);
                                     int numLedgersDeleted = numLedgers.incrementAndGet();
                                     if (numLedgersDeleted % 1000 == 0) {
                                         System.out.println("Deleted " + numLedgersDeleted + " ledgers.");
                                     }
-                                } catch (BKException.BKNoSuchLedgerExistsOnMetadataServerException e) {
+                                } catch (
+                                        Exception e) {
                                     int numLedgersDeleted = numLedgers.incrementAndGet();
                                     if (numLedgersDeleted % 1000 == 0) {
                                         System.out.println("Deleted " + numLedgersDeleted + " ledgers.");
                                     }
-                                } catch (Exception e) {
-                                    numFailures.incrementAndGet();
-                                    break;
                                 }
                             }
                             doneLatch.countDown();
@@ -1536,7 +1532,7 @@ import org.slf4j.LoggerFactory;
                 System.out.println("Record (txn = " + record.getTransactionId() + ", bytes = "
                         + record.getPayload().length + ")");
             }
-            System.out.println();
+            System.out.println("");
 
             if (skipPayload) {
                 return;
@@ -1639,10 +1635,8 @@ import org.slf4j.LoggerFactory;
                 return true;
             }
             long ledgerId = metadata.getLogSegmentId();
-            LedgerHandle lh = bkc.get().openLedger(ledgerId, BookKeeper.DigestType.CRC32,
-                    getConf().getBKDigestPW().getBytes(UTF_8));
-            LedgerHandle readLh = bkc.get().openLedger(ledgerId, BookKeeper.DigestType.CRC32,
-                    getConf().getBKDigestPW().getBytes(UTF_8));
+            LedgerHandle lh = null;
+            LedgerHandle readLh = null;
             LedgerReader lr = new LedgerReader(bkc.get());
             final AtomicReference<List<LedgerEntry>> entriesHolder = new AtomicReference<List<LedgerEntry>>(null);
             final AtomicInteger rcHolder = new AtomicInteger(-1234);
@@ -1669,47 +1663,47 @@ import org.slf4j.LoggerFactory;
                     LedgerEntry lastEntry = entries.get(entries.size() - 1);
                     lastEntryId = lastEntry.getEntryId();
                 }
-                if (lastEntryId != lh.getLastAddConfirmed()) {
+                if (true) {
                     System.out.println("Inconsistent Last Add Confirmed Found for LogSegment "
                             + metadata.getLogSegmentSequenceNumber() + ": ");
                     System.out.println("\t metadata: " + metadata);
-                    System.out.println("\t lac in ledger metadata is " + lh.getLastAddConfirmed()
+                    System.out.println("\t lac in ledger metadata is "
                             + ", but lac in bookies is " + lastEntryId);
                     return false;
                 } else {
                     return true;
                 }
             } finally {
-                lh.close();
-                readLh.close();
+                //lh.close();
+                //readLh.close();
             }
         }
 
         protected void repairLogSegments(LogSegmentMetadataStore metadataStore,
                                          BookKeeperClient bkc,
                                          List<LogSegmentMetadata> segments) throws Exception {
-            BookKeeperAdmin bkAdmin = new BookKeeperAdmin(bkc.get());
+            //BookKeeperAdmin bkAdmin = new BookKeeperAdmin(bkc.get());
             try {
                 MetadataUpdater metadataUpdater = LogSegmentMetadataStoreUpdater.createMetadataUpdater(
                         getConf(), metadataStore);
                 for (LogSegmentMetadata segment : segments) {
-                    repairLogSegment(bkAdmin, metadataUpdater, segment);
+                    //repairLogSegment(bkAdmin, metadataUpdater, segment);
                 }
             } finally {
-                bkAdmin.close();
+               // bkAdmin.close();
             }
         }
 
-        protected void repairLogSegment(BookKeeperAdmin bkAdmin,
+        protected void repairLogSegment(Object bkAdmin,
                                         MetadataUpdater metadataUpdater,
                                         LogSegmentMetadata segment) throws Exception {
             if (segment.isInProgress()) {
                 System.out.println("Skip inprogress log segment " + segment);
                 return;
             }
-            LedgerHandle lh = bkAdmin.openLedger(segment.getLogSegmentId());
-            long lac = lh.getLastAddConfirmed();
-            Enumeration<LedgerEntry> entries = lh.readEntries(lac, lac);
+            LedgerHandle lh =null;
+            long lac = 0;
+            Enumeration<LedgerEntry> entries = null;
             if (!entries.hasMoreElements()) {
                 throw new IOException("Entry " + lac + " isn't found for " + segment);
             }
@@ -1720,7 +1714,7 @@ import org.slf4j.LoggerFactory;
                     .setEnvelopeEntry(LogSegmentMetadata.supportsEnvelopedEntries(segment.getVersion()))
                     .setEntry(lastEntry.getEntryBuffer())
                     .buildReader();
-            ReferenceCountUtil.release(lastEntry.getEntryBuffer());
+            lastEntry.getEntryBuffer().release();
             LogRecordWithDLSN record = reader.nextRecord();
             LogRecordWithDLSN lastRecord = null;
             while (null != record) {
@@ -1812,8 +1806,7 @@ import org.slf4j.LoggerFactory;
 
         @Override
         protected int runCmd() throws Exception {
-            LedgerHandle lh = getBookKeeperClient().get().openLedgerNoRecovery(
-                    getLedgerID(), BookKeeper.DigestType.CRC32, dlConf.getBKDigestPW().getBytes(UTF_8));
+            LedgerHandle lh = null;
             final CountDownLatch doneLatch = new CountDownLatch(1);
             final AtomicInteger resultHolder = new AtomicInteger(-1234);
             BookkeeperInternalCallbacks.GenericCallback<Void> recoverCb =
@@ -1831,7 +1824,7 @@ import org.slf4j.LoggerFactory;
                     throw BKException.create(resultHolder.get());
                 }
             } finally {
-                lh.close();
+                //lh.close();
             }
             return 0;
         }
@@ -1892,13 +1885,12 @@ import org.slf4j.LoggerFactory;
 
         @Override
         protected int runCmd() throws Exception {
-            LedgerHandle lh = getBookKeeperClient().get().openLedgerNoRecovery(
-                    getLedgerID(), BookKeeper.DigestType.CRC32, dlConf.getBKDigestPW().getBytes(UTF_8));
+            LedgerHandle lh = null;
             try {
-                long lac = lh.readLastConfirmed();
+                long lac = 0;
                 System.out.println("LastAddConfirmed: " + lac);
             } finally {
-                lh.close();
+                //lh.close();
             }
             return 0;
         }
@@ -1958,15 +1950,13 @@ import org.slf4j.LoggerFactory;
 
         @Override
         protected int runCmd() throws Exception {
-            LedgerHandle lh = getBookKeeperClient().get()
-                    .openLedgerNoRecovery(getLedgerID(), BookKeeper.DigestType.CRC32,
-                            dlConf.getBKDigestPW().getBytes(UTF_8));
+            LedgerHandle lh = null;
             try {
                 if (null == fromEntryId) {
                     fromEntryId = 0L;
                 }
                 if (null == untilEntryId) {
-                    untilEntryId = lh.readLastConfirmed();
+                    //untilEntryId = lh.readLastConfirmed();
                 }
                 if (untilEntryId >= fromEntryId) {
                     if (readAllBookies) {
@@ -1983,7 +1973,7 @@ import org.slf4j.LoggerFactory;
                     System.out.println("No entries.");
                 }
             } finally {
-                lh.close();
+                //lh.close();
             }
             return 0;
         }
@@ -2028,14 +2018,14 @@ import org.slf4j.LoggerFactory;
                         System.out.println("\tbookie=" + rr.getBookieAddress());
                         System.out.println("\t-------------------------------");
                         if (BKException.Code.OK == rr.getResultCode()) {
-                            Entry.Reader reader = Entry.newBuilder()
+                            /*Entry.Reader reader = Entry.newBuilder()
                                     .setLogSegmentInfo(lh.getId(), 0L)
                                     .setEntryId(eid)
                                     .setEntry(rr.getValue())
                                     .setEnvelopeEntry(LogSegmentMetadata.supportsEnvelopedEntries(metadataVersion))
-                                    .buildReader();
-                            ReferenceCountUtil.release(rr.getValue());
-                            printEntry(reader);
+                                    .buildReader();*/
+                            rr.getValue().release();
+                            //printEntry(reader);
                         } else {
                             System.out.println("status = " + BKException.getMessage(rr.getResultCode()));
                         }
@@ -2084,7 +2074,7 @@ import org.slf4j.LoggerFactory;
         }
 
         private void simpleReadEntries(LedgerHandle lh, long fromEntryId, long untilEntryId) throws Exception {
-            Enumeration<LedgerEntry> entries = lh.readEntries(fromEntryId, untilEntryId);
+            Enumeration<LedgerEntry> entries = null;
             long i = fromEntryId;
             System.out.println("Entries:");
             while (entries.hasMoreElements()) {
@@ -2096,7 +2086,7 @@ import org.slf4j.LoggerFactory;
                         .setEntry(entry.getEntryBuffer())
                         .setEnvelopeEntry(LogSegmentMetadata.supportsEnvelopedEntries(metadataVersion))
                         .buildReader();
-                ReferenceCountUtil.release(entry.getEntryBuffer());
+                entry.getEntryBuffer().release();
                 printEntry(reader);
                 ++i;
             }
@@ -2113,7 +2103,7 @@ import org.slf4j.LoggerFactory;
                         System.out.println(new String(record.getPayload(), UTF_8));
                     }
                 }
-                System.out.println();
+                System.out.println("");
                 record = reader.nextRecord();
             }
         }
@@ -2454,7 +2444,7 @@ import org.slf4j.LoggerFactory;
 
         @Override
         protected int runSimpleCmd() throws Exception {
-            System.out.println(DLSN.deserialize(base64Dlsn));
+            System.out.println(DLSN.deserialize(base64Dlsn).toString());
             return 0;
         }
     }

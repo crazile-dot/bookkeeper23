@@ -25,7 +25,7 @@ import java.util.Collection;
 import lombok.Setter;
 import lombok.experimental.Accessors;
 import org.apache.bookkeeper.client.BKException;
-import org.apache.bookkeeper.client.BookKeeperAdmin;
+//import org.apache.bookkeeper.client.BookKeeperAdmin;
 import org.apache.bookkeeper.conf.ClientConfiguration;
 import org.apache.bookkeeper.conf.ServerConfiguration;
 import org.apache.bookkeeper.discover.BookieServiceInfo;
@@ -39,7 +39,7 @@ import org.slf4j.LoggerFactory;
 /**
  * Get endpoint information about a Bookie.
  */
-public class EndpointInfoCommand extends BookieCommand<EndpointInfoCommand.EndpointInfoFlags> {
+/*public class EndpointInfoCommand extends BookieCommand<EndpointInfoCommand.EndpointInfoFlags> {
 
     static final Logger LOG = LoggerFactory.getLogger(EndpointInfoCommand.class);
 
@@ -57,7 +57,7 @@ public class EndpointInfoCommand extends BookieCommand<EndpointInfoCommand.Endpo
     /**
      * Flags for this command.
      */
-    @Accessors(fluent = true)
+   /* @Accessors(fluent = true)
     @Setter
     public static class EndpointInfoFlags extends CliFlags {
 
@@ -66,7 +66,7 @@ public class EndpointInfoCommand extends BookieCommand<EndpointInfoCommand.Endpo
 
     }
 
-    @Override
+   /* @Override
     public boolean apply(ServerConfiguration conf, EndpointInfoFlags cmdFlags) {
         try {
             return getEndpointInfo(conf, cmdFlags);
@@ -75,7 +75,7 @@ public class EndpointInfoCommand extends BookieCommand<EndpointInfoCommand.Endpo
         }
     }
 
-    private boolean getEndpointInfo(ServerConfiguration conf, EndpointInfoFlags flags)
+    /*private boolean getEndpointInfo(ServerConfiguration conf, EndpointInfoFlags flags)
             throws BKException, InterruptedException, IOException {
         ClientConfiguration adminConf = new ClientConfiguration(conf);
         BookKeeperAdmin admin = new BookKeeperAdmin(adminConf);
@@ -87,25 +87,25 @@ public class EndpointInfoCommand extends BookieCommand<EndpointInfoCommand.Endpo
             BookieId bookieId = BookieId.parse(bookieIdStr);
             Collection<BookieId> allBookies = admin.getAllBookies();
             if (!allBookies.contains(bookieId)) {
-                LOG.info("Bookie {} does not exist, only {}", bookieId, allBookies);
+                LOG.info("Bookie " + bookieId + " does not exist, only " + allBookies);
                 return false;
             }
             BookieServiceInfo bookieServiceInfo = admin.getBookieServiceInfo(bookieId);
 
-            LOG.info("BookiedId: {}", bookieId);
+            LOG.info("BookiedId: " + bookieId);
             if (!bookieServiceInfo.getProperties().isEmpty()) {
                 LOG.info("Properties");
                 bookieServiceInfo.getProperties().forEach((k, v) -> {
-                    LOG.info("{} : {}", k, v);
+                    LOG.info(k + ":" + v);
                 });
             }
             if (!bookieServiceInfo.getEndpoints().isEmpty()) {
                 bookieServiceInfo.getEndpoints().forEach(e -> {
-                    LOG.info("Endpoint: {}", e.getId());
-                    LOG.info("Protocol: {}", e.getProtocol());
-                    LOG.info("Address: {} : {}", e.getHost(), e.getPort());
-                    LOG.info("Auth: {}", e.getAuth());
-                    LOG.info("Extensions: {}", e.getExtensions());
+                    LOG.info("Endpoint: " + e.getId());
+                    LOG.info("Protocol: " + e.getProtocol());
+                    LOG.info("Address: " + e.getHost() + ":" + e.getPort());
+                    LOG.info("Auth: " + e.getAuth());
+                    LOG.info("Extensions: " + e.getExtensions());
                 });
             } else {
                 LOG.info("Bookie did not publish any endpoint info. Maybe it is down");
@@ -122,4 +122,4 @@ public class EndpointInfoCommand extends BookieCommand<EndpointInfoCommand.Endpo
             }
         }
     }
-}
+}*/

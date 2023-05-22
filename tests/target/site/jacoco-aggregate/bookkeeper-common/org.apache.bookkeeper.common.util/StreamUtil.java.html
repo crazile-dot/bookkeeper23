@@ -1,0 +1,71 @@
+<?xml version="1.0" encoding="UTF-8"?><!DOCTYPE html PUBLIC "-//W3C//DTD XHTML 1.0 Strict//EN" "http://www.w3.org/TR/xhtml1/DTD/xhtml1-strict.dtd"><html xmlns="http://www.w3.org/1999/xhtml" lang="it"><head><meta http-equiv="Content-Type" content="text/html;charset=UTF-8"/><link rel="stylesheet" href="../../jacoco-resources/report.css" type="text/css"/><link rel="shortcut icon" href="../../jacoco-resources/report.gif" type="image/gif"/><title>StreamUtil.java</title><link rel="stylesheet" href="../../jacoco-resources/prettify.css" type="text/css"/><script type="text/javascript" src="../../jacoco-resources/prettify.js"></script></head><body onload="window['PR_TAB_WIDTH']=4;prettyPrint()"><div class="breadcrumb" id="breadcrumb"><span class="info"><a href="../../jacoco-sessions.html" class="el_session">Sessions</a></span><a href="../../index.html" class="el_report">Tests</a> &gt; <a href="../index.html" class="el_bundle">bookkeeper-common</a> &gt; <a href="index.source.html" class="el_package">org.apache.bookkeeper.common.util</a> &gt; <span class="el_source">StreamUtil.java</span></div><h1>StreamUtil.java</h1><pre class="source lang-java linenums">/*
+ * Licensed to the Apache Software Foundation (ASF) under one
+ * or more contributor license agreements.  See the NOTICE file
+ * distributed with this work for additional information
+ * regarding copyright ownership.  The ASF licenses this file
+ * to you under the Apache License, Version 2.0 (the
+ * &quot;License&quot;); you may not use this file except in compliance
+ * with the License.  You may obtain a copy of the License at
+ *
+ *      http://www.apache.org/licenses/LICENSE-2.0
+ *
+ * Unless required by applicable law or agreed to in writing, software
+ * distributed under the License is distributed on an &quot;AS IS&quot; BASIS,
+ * WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+ * See the License for the specific language governing permissions and
+ * limitations under the License.
+ */
+
+package org.apache.bookkeeper.common.util;
+
+import java.util.Iterator;
+import java.util.Objects;
+import java.util.Spliterator;
+import java.util.Spliterators;
+import java.util.function.BiFunction;
+import java.util.stream.Stream;
+import java.util.stream.StreamSupport;
+
+/**
+ * Java {@link java.util.stream.Stream} related operations.
+ */
+<span class="nc" id="L32">public class StreamUtil {</span>
+
+    public static &lt;T1, T2, R&gt; Stream&lt;R&gt; zip(Stream&lt;? extends T1&gt; a,
+                                            Stream&lt;? extends T2&gt; b,
+                                            BiFunction&lt;? super T1, ? super T2, ? extends R&gt; zipper) {
+<span class="nc" id="L37">        Objects.requireNonNull(zipper);</span>
+<span class="nc" id="L38">        Spliterator&lt;? extends T1&gt; aSpliterator = Objects.requireNonNull(a).spliterator();</span>
+<span class="nc" id="L39">        Spliterator&lt;? extends T2&gt; bSpliterator = Objects.requireNonNull(b).spliterator();</span>
+
+        // Zipping looses DISTINCT and SORTED characteristics
+<span class="nc" id="L42">        int characteristics = aSpliterator.characteristics() &amp; bSpliterator.characteristics()</span>
+            &amp; ~(Spliterator.DISTINCT | Spliterator.SORTED);
+
+<span class="nc bnc" id="L45" title="All 2 branches missed.">        long zipSize = ((characteristics &amp; Spliterator.SIZED) != 0)</span>
+<span class="nc" id="L46">            ? Math.min(aSpliterator.getExactSizeIfKnown(), bSpliterator.getExactSizeIfKnown())</span>
+<span class="nc" id="L47">            : -1;</span>
+
+<span class="nc" id="L49">        Iterator&lt;T1&gt; aIterator = Spliterators.iterator(aSpliterator);</span>
+<span class="nc" id="L50">        Iterator&lt;T2&gt; bIterator = Spliterators.iterator(bSpliterator);</span>
+<span class="nc" id="L51">        Iterator&lt;R&gt; cIterator = new Iterator&lt;R&gt;() {</span>
+            @Override
+            public boolean hasNext() {
+<span class="nc bnc" id="L54" title="All 4 branches missed.">                return aIterator.hasNext() &amp;&amp; bIterator.hasNext();</span>
+            }
+
+            @Override
+            public R next() {
+<span class="nc" id="L59">                return zipper.apply(aIterator.next(), bIterator.next());</span>
+            }
+        };
+
+<span class="nc" id="L63">        Spliterator&lt;R&gt; split = Spliterators.spliterator(cIterator, zipSize, characteristics);</span>
+<span class="nc bnc" id="L64" title="All 4 branches missed.">        return (a.isParallel() || b.isParallel())</span>
+<span class="nc" id="L65">            ? StreamSupport.stream(split, true)</span>
+<span class="nc" id="L66">            : StreamSupport.stream(split, false);</span>
+    }
+
+
+}
+</pre><div class="footer"><span class="right">Created with <a href="http://www.jacoco.org/jacoco">JaCoCo</a> 0.8.2.201808211720</span></div></body></html>

@@ -1,4 +1,4 @@
-/*
+/**
  * Licensed to the Apache Software Foundation (ASF) under one
  * or more contributor license agreements.  See the NOTICE file
  * distributed with this work for additional information
@@ -18,7 +18,9 @@
 package org.apache.bookkeeper.tls;
 
 import com.google.common.base.Strings;
+
 import edu.umd.cs.findbugs.annotations.SuppressFBWarnings;
+
 import io.netty.buffer.ByteBufAllocator;
 import io.netty.handler.ssl.ClientAuth;
 import io.netty.handler.ssl.OpenSsl;
@@ -26,6 +28,7 @@ import io.netty.handler.ssl.SslContext;
 import io.netty.handler.ssl.SslContextBuilder;
 import io.netty.handler.ssl.SslHandler;
 import io.netty.handler.ssl.SslProvider;
+
 import java.io.File;
 import java.io.FileInputStream;
 import java.io.IOException;
@@ -41,9 +44,10 @@ import java.security.cert.CertificateException;
 import java.security.spec.InvalidKeySpecException;
 import java.util.Arrays;
 import java.util.concurrent.TimeUnit;
+
 import javax.net.ssl.KeyManagerFactory;
-import javax.net.ssl.SSLParameters;
 import javax.net.ssl.TrustManagerFactory;
+
 import lombok.extern.slf4j.Slf4j;
 import org.apache.bookkeeper.conf.AbstractConfiguration;
 import org.apache.bookkeeper.conf.ClientConfiguration;
@@ -139,7 +143,6 @@ public class TLSContextFactory implements SecurityHandlerFactory {
     }
 
     private static final String TLSCONTEXT_HANDLER_NAME = "tls";
-    private NodeType type;
     private String[] protocols;
     private String[] ciphers;
     private volatile SslContext sslContext;
@@ -472,7 +475,6 @@ public class TLSContextFactory implements SecurityHandlerFactory {
             throws SecurityException {
         this.allocator = allocator;
         this.config = conf;
-        this.type = type;
         final String enabledProtocols;
         final String enabledCiphers;
         certRefreshTime = TimeUnit.SECONDS.toMillis(conf.getTLSCertFilesRefreshDurationSeconds());
@@ -520,12 +522,7 @@ public class TLSContextFactory implements SecurityHandlerFactory {
 
     @Override
     public SslHandler newTLSHandler() {
-        return this.newTLSHandler(null, -1);
-    }
-
-    @Override
-    public SslHandler newTLSHandler(String peer, int port) {
-        SslHandler sslHandler = getSSLContext().newHandler(allocator, peer, port);
+        SslHandler sslHandler = getSSLContext().newHandler(allocator);
 
         if (protocols != null && protocols.length != 0) {
             sslHandler.engine().setEnabledProtocols(protocols);
@@ -539,15 +536,6 @@ public class TLSContextFactory implements SecurityHandlerFactory {
         }
         if (log.isDebugEnabled()) {
             log.debug("Enabled cipher suites: {} ", Arrays.toString(sslHandler.engine().getEnabledCipherSuites()));
-        }
-
-        if (type == NodeType.Client && ((ClientConfiguration) config).getHostnameVerificationEnabled()) {
-            SSLParameters sslParameters = sslHandler.engine().getSSLParameters();
-            sslParameters.setEndpointIdentificationAlgorithm("HTTPS");
-            sslHandler.engine().setSSLParameters(sslParameters);
-            if (log.isDebugEnabled()) {
-                log.debug("Enabled endpointIdentificationAlgorithm: HTTPS");
-            }
         }
 
         return sslHandler;

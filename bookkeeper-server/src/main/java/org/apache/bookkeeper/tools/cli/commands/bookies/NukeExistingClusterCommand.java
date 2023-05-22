@@ -17,12 +17,12 @@
  * under the License.
  */
 package org.apache.bookkeeper.tools.cli.commands.bookies;
-
+/*
 import com.beust.jcommander.Parameter;
 import com.google.common.util.concurrent.UncheckedExecutionException;
 import lombok.Setter;
 import lombok.experimental.Accessors;
-import org.apache.bookkeeper.client.BookKeeperAdmin;
+//import org.apache.bookkeeper.client.BookKeeperAdmin;
 import org.apache.bookkeeper.conf.ServerConfiguration;
 import org.apache.bookkeeper.tools.cli.helpers.BookieCommand;
 import org.apache.bookkeeper.tools.framework.CliFlags;
@@ -33,7 +33,7 @@ import org.slf4j.LoggerFactory;
 /**
  * Nuke bookkeeper metadata of existing cluster in zookeeper.
  */
-public class NukeExistingClusterCommand extends BookieCommand<NukeExistingClusterCommand.NukeExistingClusterFlags> {
+/*public class NukeExistingClusterCommand extends BookieCommand<NukeExistingClusterCommand.NukeExistingClusterFlags> {
 
     static final Logger LOG = LoggerFactory.getLogger(NukeExistingClusterCommand.class);
 
@@ -55,7 +55,7 @@ public class NukeExistingClusterCommand extends BookieCommand<NukeExistingCluste
     /**
      * Flags for nuke existing cluster command.
      */
-    @Accessors(fluent = true)
+   /* @Accessors(fluent = true)
     @Setter
     public static class NukeExistingClusterFlags extends CliFlags {
 
@@ -72,13 +72,13 @@ public class NukeExistingClusterCommand extends BookieCommand<NukeExistingCluste
 
     }
 
-    @Override
+   /* @Override
     public boolean apply(ServerConfiguration conf, NukeExistingClusterFlags cmdFlags) {
         /*
          * for NukeExistingCluster command 'zkledgersrootpath' should be provided and either force option or
          * instanceid should be provided.
          */
-        if (cmdFlags.force == (cmdFlags.instandId != null)) {
+       /* if (cmdFlags.force == (cmdFlags.instandId != null)) {
             LOG.error("Either force option or instanceid should be specified (but no both)");
             return false;
         }
@@ -89,4 +89,4 @@ public class NukeExistingClusterCommand extends BookieCommand<NukeExistingCluste
             throw new UncheckedExecutionException(e.getMessage(), e);
         }
     }
-}
+}*/

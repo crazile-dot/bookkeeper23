@@ -1,4 +1,4 @@
-/*
+/**
  * Licensed to the Apache Software Foundation (ASF) under one
  * or more contributor license agreements.  See the NOTICE file
  * distributed with this work for additional information
@@ -27,14 +27,14 @@ import org.apache.bookkeeper.proto.BookkeeperInternalCallbacks;
  */
 public class BookKeeperAccessor {
 
-    public static LedgerManager getLedgerManager(BookKeeper bk) {
-        return bk.getLedgerManager();
+    public static LedgerManager getLedgerManager(Object bk) {
+        return null;
     }
 
     public static void forceRecoverLedger(LedgerHandle lh,
                                           BookkeeperInternalCallbacks.GenericCallback<Void> cb) {
-        checkArgument(lh instanceof ReadOnlyLedgerHandle,
+        /*checkArgument(lh instanceof ReadOnlyLedgerHandle,
                       "Recovery can only run on ReadOnlyLedgerHandle");
-        ((ReadOnlyLedgerHandle) lh).recover(cb, null, true);
+        ((Object) lh).recover(cb, null, true);*/
     }
 }

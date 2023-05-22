@@ -1,0 +1,104 @@
+<?xml version="1.0" encoding="UTF-8"?><!DOCTYPE html PUBLIC "-//W3C//DTD XHTML 1.0 Strict//EN" "http://www.w3.org/TR/xhtml1/DTD/xhtml1-strict.dtd"><html xmlns="http://www.w3.org/1999/xhtml" lang="it"><head><meta http-equiv="Content-Type" content="text/html;charset=UTF-8"/><link rel="stylesheet" href="../../jacoco-resources/report.css" type="text/css"/><link rel="shortcut icon" href="../../jacoco-resources/report.gif" type="image/gif"/><title>GetBookieInfoProcessorV3.java</title><link rel="stylesheet" href="../../jacoco-resources/prettify.css" type="text/css"/><script type="text/javascript" src="../../jacoco-resources/prettify.js"></script></head><body onload="window['PR_TAB_WIDTH']=4;prettyPrint()"><div class="breadcrumb" id="breadcrumb"><span class="info"><a href="../../jacoco-sessions.html" class="el_session">Sessions</a></span><a href="../../index.html" class="el_report">Tests</a> &gt; <a href="../index.html" class="el_bundle">bookkeeper-server</a> &gt; <a href="index.source.html" class="el_package">org.apache.bookkeeper.proto</a> &gt; <span class="el_source">GetBookieInfoProcessorV3.java</span></div><h1>GetBookieInfoProcessorV3.java</h1><pre class="source lang-java linenums">/*
+ *
+ * Licensed to the Apache Software Foundation (ASF) under one
+ * or more contributor license agreements.  See the NOTICE file
+ * distributed with this work for additional information
+ * regarding copyright ownership.  The ASF licenses this file
+ * to you under the Apache License, Version 2.0 (the
+ * &quot;License&quot;); you may not use this file except in compliance
+ * with the License.  You may obtain a copy of the License at
+ *
+ *   http://www.apache.org/licenses/LICENSE-2.0
+ *
+ * Unless required by applicable law or agreed to in writing,
+ * software distributed under the License is distributed on an
+ * &quot;AS IS&quot; BASIS, WITHOUT WARRANTIES OR CONDITIONS OF ANY
+ * KIND, either express or implied.  See the License for the
+ * specific language governing permissions and limitations
+ * under the License.
+ *
+ */
+package org.apache.bookkeeper.proto;
+
+import io.netty.channel.Channel;
+
+import java.io.IOException;
+import java.util.concurrent.TimeUnit;
+
+/*import org.apache.bookkeeper.proto.BookkeeperProtocol.GetBookieInfoRequest;
+import org.apache.bookkeeper.proto.BookkeeperProtocol.GetBookieInfoResponse;
+import org.apache.bookkeeper.proto.BookkeeperProtocol.Request;
+import org.apache.bookkeeper.proto.BookkeeperProtocol.Response;
+import org.apache.bookkeeper.proto.BookkeeperProtocol.StatusCode;*/
+import org.apache.bookkeeper.util.MathUtils;
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
+
+/**
+ * A processor class for v3 bookie metadata packets.
+ */
+public class GetBookieInfoProcessorV3 extends PacketProcessorBaseV3 implements Runnable {
+<span class="nc" id="L41">    private static final Logger LOG = LoggerFactory.getLogger(GetBookieInfoProcessorV3.class);</span>
+
+    public GetBookieInfoProcessorV3(Object request, Channel channel,
+                                     Object requestProcessor) {
+<span class="nc" id="L45">        super(null, channel, null);</span>
+<span class="nc" id="L46">    }</span>
+
+    private Object getGetBookieInfoResponse() {
+        /*long startTimeNanos = MathUtils.nowInNano();
+        GetBookieInfoRequest getBookieInfoRequest = request.getGetBookieInfoRequest();
+        long requested = getBookieInfoRequest.getRequested();
+
+        GetBookieInfoResponse.Builder getBookieInfoResponse = GetBookieInfoResponse.newBuilder();
+
+        if (!isVersionCompatible()) {
+            getBookieInfoResponse.setStatus(StatusCode.EBADVERSION);
+            requestProcessor.getRequestStats().getGetBookieInfoStats()
+                .registerFailedEvent(MathUtils.elapsedNanos(startTimeNanos), TimeUnit.NANOSECONDS);
+            return getBookieInfoResponse.build();
+        }
+
+        if (LOG.isDebugEnabled()) {
+            LOG.debug(&quot;Received new getBookieInfo request: {}&quot;, request);
+        }
+        StatusCode status = StatusCode.EOK;
+        long freeDiskSpace = 0L, totalDiskSpace = 0L;
+        try {
+            if ((requested &amp; GetBookieInfoRequest.Flags.FREE_DISK_SPACE_VALUE) != 0) {
+                freeDiskSpace = requestProcessor.getBookie().getTotalFreeSpace();
+                getBookieInfoResponse.setFreeDiskSpace(freeDiskSpace);
+            }
+            if ((requested &amp; GetBookieInfoRequest.Flags.TOTAL_DISK_CAPACITY_VALUE) != 0) {
+                totalDiskSpace = requestProcessor.getBookie().getTotalDiskSpace();
+                getBookieInfoResponse.setTotalDiskCapacity(totalDiskSpace);
+            }
+            LOG.debug(&quot;FreeDiskSpace info is &quot; + freeDiskSpace + &quot; totalDiskSpace is: &quot; + totalDiskSpace);
+        } catch (IOException e) {
+            status = StatusCode.EIO;
+            LOG.error(&quot;IOException while getting  freespace/totalspace&quot;, e);
+        }
+
+        getBookieInfoResponse.setStatus(status);
+        requestProcessor.getRequestStats().getGetBookieInfoStats()
+            .registerSuccessfulEvent(MathUtils.elapsedNanos(startTimeNanos), TimeUnit.NANOSECONDS);*/
+<span class="nc" id="L85">        return 1;</span>
+    }
+
+    @Override
+    public void safeRun() {
+        //GetBookieInfoResponse getBookieInfoResponse = getGetBookieInfoResponse();
+        //sendResponse(getBookieInfoResponse);
+<span class="nc" id="L92">    }</span>
+
+    private void sendResponse(Object getBookieInfoResponse) {
+        /*Response.Builder response = Response.newBuilder()
+                .setHeader(getHeader())
+                .setStatus(getBookieInfoResponse.getStatus())
+                .setGetBookieInfoResponse(getBookieInfoResponse);
+        sendResponse(response.getStatus(),
+                     response.build(),
+                     requestProcessor.getRequestStats().getGetBookieInfoRequestStats());*/
+<span class="nc" id="L102">    }</span>
+}
+</pre><div class="footer"><span class="right">Created with <a href="http://www.jacoco.org/jacoco">JaCoCo</a> 0.8.2.201808211720</span></div></body></html>

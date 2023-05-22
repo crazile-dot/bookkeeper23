@@ -1,4 +1,4 @@
-/*
+/**
  * Licensed to the Apache Software Foundation (ASF) under one
  * or more contributor license agreements.  See the NOTICE file
  * distributed with this work for additional information
@@ -30,7 +30,7 @@ import java.util.concurrent.TimeUnit;
 import javax.annotation.Nullable;
 import org.apache.bookkeeper.common.concurrent.FutureEventListener;
 import org.apache.bookkeeper.common.concurrent.FutureUtils;
-import org.apache.bookkeeper.common.util.OrderedScheduler;
+//import org.apache.bookkeeper.common.util.OrderedScheduler;
 import org.apache.bookkeeper.stats.AlertStatsLogger;
 import org.apache.bookkeeper.stats.NullStatsLogger;
 import org.apache.bookkeeper.stats.StatsLogger;
@@ -127,7 +127,7 @@ class BKLogReadHandler extends BKLogHandler implements LogSegmentNamesListener {
                      LogStreamMetadataStore streamMetadataStore,
                      LogSegmentMetadataCache metadataCache,
                      LogSegmentEntryStore entryStore,
-                     OrderedScheduler scheduler,
+                     Object scheduler,
                      AlertStatsLogger alertStatsLogger,
                      StatsLogger statsLogger,
                      StatsLogger perLogStatsLogger,
@@ -234,7 +234,7 @@ class BKLogReadHandler extends BKLogHandler implements LogSegmentNamesListener {
             }
             lockToClose = readLock;
         }
-        return Utils.closeSequence(scheduler, lockToClose)
+        return Utils.closeSequence(null, lockToClose)
             .thenApply((value) -> {
                 // unregister the log segment listener
                 metadataStore.unregisterLogSegmentListener(logMetadata.getLogSegmentsPath(), BKLogReadHandler.this);
@@ -277,12 +277,12 @@ class BKLogReadHandler extends BKLogHandler implements LogSegmentNamesListener {
                     FutureUtils.completeExceptionally(promise, cause);
                     return;
                 }
-                scheduler.schedule(new Runnable() {
+                /*scheduler.schedule(new Runnable() {
                     @Override
                     public void run() {
                         asyncStartFetchLogSegments(promise);
                     }
-                }, conf.getZKRetryBackoffMaxMillis(), TimeUnit.MILLISECONDS);
+                }, conf.getZKRetryBackoffMaxMillis(), TimeUnit.MILLISECONDS);*/
             }
 
             @Override
@@ -322,12 +322,12 @@ class BKLogReadHandler extends BKLogHandler implements LogSegmentNamesListener {
                     notifyReaderOnError(cause);
                     return;
                 }
-                scheduler.schedule(new Runnable() {
+                /*scheduler.schedule(new Runnable() {
                     @Override
                     public void run() {
                         onSegmentsUpdated(segments);
                     }
-                }, conf.getZKRetryBackoffMaxMillis(), TimeUnit.MILLISECONDS);
+                }, conf.getZKRetryBackoffMaxMillis(), TimeUnit.MILLISECONDS);*/
             }
 
             @Override

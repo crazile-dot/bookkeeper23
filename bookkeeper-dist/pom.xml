@@ -19,20 +19,20 @@
   <parent>
     <artifactId>bookkeeper</artifactId>
     <groupId>org.apache.bookkeeper</groupId>
-    <version>4.16.0-SNAPSHOT</version>
+    <version>4.14.0-SNAPSHOT</version>
   </parent>
   <modelVersion>4.0.0</modelVersion>
   <artifactId>bookkeeper-dist</artifactId>
   <packaging>pom</packaging>
   <name>Apache BookKeeper :: Dist (Parent)</name>
   <modules>
-    <module>all</module>
     <module>server</module>
     <module>bkctl</module>
   </modules>
   <properties>
     <project.build.sourceEncoding>UTF-8</project.build.sourceEncoding>
     <project.reporting.outputEncoding>UTF-8</project.reporting.outputEncoding>
+	<sonar.coverage.jacoco.xmlReportPaths>${basedir}/../${aggregate.report.dir}</sonar.coverage.jacoco.xmlReportPaths>
   </properties>
   <build>
     <plugins>

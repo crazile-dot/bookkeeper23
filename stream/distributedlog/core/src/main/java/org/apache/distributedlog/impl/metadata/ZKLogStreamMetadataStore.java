@@ -1,4 +1,4 @@
-/*
+/**
  * Licensed to the Apache Software Foundation (ASF) under one
  * or more contributor license agreements.  See the NOTICE file
  * distributed with this work for additional information
@@ -32,10 +32,10 @@ import static org.apache.distributedlog.metadata.LogMetadata.VERSION_PATH;
 
 import com.google.common.annotations.VisibleForTesting;
 import com.google.common.collect.Lists;
-import edu.umd.cs.findbugs.annotations.SuppressFBWarnings;
 import java.io.IOException;
 import java.net.URI;
 import java.util.Collections;
+
 import java.util.LinkedList;
 import java.util.List;
 import java.util.Optional;
@@ -44,7 +44,7 @@ import java.util.concurrent.CompletableFuture;
 import java.util.concurrent.TimeUnit;
 import org.apache.bookkeeper.common.concurrent.FutureEventListener;
 import org.apache.bookkeeper.common.concurrent.FutureUtils;
-import org.apache.bookkeeper.common.util.OrderedScheduler;
+//import org.apache.bookkeeper.common.util.OrderedScheduler;
 import org.apache.bookkeeper.stats.StatsLogger;
 import org.apache.bookkeeper.versioning.LongVersion;
 import org.apache.bookkeeper.versioning.Versioned;
@@ -104,18 +104,18 @@ public class ZKLogStreamMetadataStore implements LogStreamMetadataStore {
     private final String clientId;
     private final DistributedLogConfiguration conf;
     private final ZooKeeperClient zooKeeperClient;
-    private final OrderedScheduler scheduler;
+    private final Object scheduler;
     private final StatsLogger statsLogger;
     private final LogSegmentMetadataStore logSegmentStore;
     private final LimitedPermitManager permitManager;
     // lock
     private SessionLockFactory lockFactory;
-    private OrderedScheduler lockStateExecutor;
+    private Object lockStateExecutor;
 
     public ZKLogStreamMetadataStore(String clientId,
                                     DistributedLogConfiguration conf,
                                     ZooKeeperClient zkc,
-                                    OrderedScheduler scheduler,
+                                    Object scheduler,
                                     StatsLogger statsLogger) {
         this.clientId = clientId;
         this.conf = conf;
@@ -128,16 +128,16 @@ public class ZKLogStreamMetadataStore implements LogStreamMetadataStore {
                 conf.getLogSegmentRollingConcurrency(),
                 1,
                 TimeUnit.MINUTES,
-                scheduler);
+                null);
         this.zooKeeperClient.register(permitManager);
     }
 
-    private synchronized OrderedScheduler getLockStateExecutor(boolean createIfNull) {
+    private synchronized Object getLockStateExecutor(boolean createIfNull) {
         if (createIfNull && null == lockStateExecutor) {
-            lockStateExecutor = OrderedScheduler.newSchedulerBuilder()
+            /*lockStateExecutor = OrderedScheduler.newSchedulerBuilder()
                     .name("DLM-LockState")
                     .numThreads(conf.getNumLockStateThreads())
-                    .build();
+                    .build();*/
         }
         return lockStateExecutor;
     }
@@ -162,7 +162,7 @@ public class ZKLogStreamMetadataStore implements LogStreamMetadataStore {
         this.permitManager.close();
         this.logSegmentStore.close();
         SchedulerUtils.shutdownScheduler(
-                getLockStateExecutor(false),
+                null,
                 conf.getSchedulerShutdownTimeoutMs(),
                 TimeUnit.MILLISECONDS);
     }
@@ -291,7 +291,7 @@ public class ZKLogStreamMetadataStore implements LogStreamMetadataStore {
     public CompletableFuture<DistributedLock> createReadLock(final LogMetadataForReader metadata,
                                                   Optional<String> readerId) {
         final String readLockPath = metadata.getReadLockPath(readerId);
-        return ensureReadLockPathExist(metadata, readLockPath)
+        /*return ensureReadLockPathExist(metadata, readLockPath)
             .thenApplyAsync((value) -> {
                 DistributedLock lock = new ZKDistributedLock(
                     getLockStateExecutor(true),
@@ -300,7 +300,8 @@ public class ZKLogStreamMetadataStore implements LogStreamMetadataStore {
                     conf.getLockTimeoutMilliSeconds(),
                     statsLogger.scope("read_lock"));
                 return lock;
-            }, scheduler.chooseThread(readLockPath));
+            }, scheduler.chooseThread(readLockPath));*/
+        return null;
     }
 
     //
@@ -533,7 +534,6 @@ public class ZKLogStreamMetadataStore implements LogStreamMetadataStore {
         }, null);
     }
 
-    @SuppressFBWarnings("DCN_NULLPOINTER_EXCEPTION")
     static LogMetadataForWriter processLogMetadatas(URI uri,
                                                     String logName,
                                                     String logIdentifier,

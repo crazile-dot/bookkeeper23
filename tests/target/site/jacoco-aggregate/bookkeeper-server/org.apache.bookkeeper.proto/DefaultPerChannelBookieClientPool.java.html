@@ -1,0 +1,171 @@
+<?xml version="1.0" encoding="UTF-8"?><!DOCTYPE html PUBLIC "-//W3C//DTD XHTML 1.0 Strict//EN" "http://www.w3.org/TR/xhtml1/DTD/xhtml1-strict.dtd"><html xmlns="http://www.w3.org/1999/xhtml" lang="it"><head><meta http-equiv="Content-Type" content="text/html;charset=UTF-8"/><link rel="stylesheet" href="../../jacoco-resources/report.css" type="text/css"/><link rel="shortcut icon" href="../../jacoco-resources/report.gif" type="image/gif"/><title>DefaultPerChannelBookieClientPool.java</title><link rel="stylesheet" href="../../jacoco-resources/prettify.css" type="text/css"/><script type="text/javascript" src="../../jacoco-resources/prettify.js"></script></head><body onload="window['PR_TAB_WIDTH']=4;prettyPrint()"><div class="breadcrumb" id="breadcrumb"><span class="info"><a href="../../jacoco-sessions.html" class="el_session">Sessions</a></span><a href="../../index.html" class="el_report">Tests</a> &gt; <a href="../index.html" class="el_bundle">bookkeeper-server</a> &gt; <a href="index.source.html" class="el_package">org.apache.bookkeeper.proto</a> &gt; <span class="el_source">DefaultPerChannelBookieClientPool.java</span></div><h1>DefaultPerChannelBookieClientPool.java</h1><pre class="source lang-java linenums">/*
+ *
+ * Licensed to the Apache Software Foundation (ASF) under one
+ * or more contributor license agreements.  See the NOTICE file
+ * distributed with this work for additional information
+ * regarding copyright ownership.  The ASF licenses this file
+ * to you under the Apache License, Version 2.0 (the
+ * &quot;License&quot;); you may not use this file except in compliance
+ * with the License.  You may obtain a copy of the License at
+ *
+ *   http://www.apache.org/licenses/LICENSE-2.0
+ *
+ * Unless required by applicable law or agreed to in writing,
+ * software distributed under the License is distributed on an
+ * &quot;AS IS&quot; BASIS, WITHOUT WARRANTIES OR CONDITIONS OF ANY
+ * KIND, either express or implied.  See the License for the
+ * specific language governing permissions and limitations
+ * under the License.
+ *
+ */
+package org.apache.bookkeeper.proto;
+
+import static com.google.common.base.Preconditions.checkArgument;
+
+import java.util.concurrent.atomic.AtomicInteger;
+import java.util.concurrent.atomic.AtomicLong;
+
+import org.apache.bookkeeper.conf.ClientConfiguration;
+import org.apache.bookkeeper.net.BookieId;
+import org.apache.bookkeeper.proto.BookkeeperInternalCallbacks.GenericCallback;
+import org.apache.bookkeeper.tls.SecurityException;
+import org.apache.bookkeeper.tls.SecurityHandlerFactory;
+import org.apache.bookkeeper.tls.SecurityProviderFactoryFactory;
+import org.apache.bookkeeper.util.MathUtils;
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
+
+/**
+ *  Provide a simple round-robin style channel pool. We could improve it later to do more
+ *  fantastic things.
+ */
+class DefaultPerChannelBookieClientPool {
+
+<span class="nc" id="L44">    static final Logger LOG = LoggerFactory.getLogger(DefaultPerChannelBookieClientPool.class);</span>
+
+    //final PerChannelBookieClientFactory factory;
+    final BookieId address;
+
+    //final PerChannelBookieClient[] clients;
+    //final PerChannelBookieClient[] clientsV3Enforced;
+
+    final ClientConfiguration conf;
+    SecurityHandlerFactory shFactory;
+
+<span class="nc" id="L55">    final AtomicInteger counter = new AtomicInteger(0);</span>
+<span class="nc" id="L56">    final AtomicLong errorCounter = new AtomicLong(0);</span>
+
+    DefaultPerChannelBookieClientPool(ClientConfiguration conf, Object factory,
+                                      BookieId address,
+<span class="nc" id="L60">                                      int coreSize) throws SecurityException {</span>
+<span class="nc bnc" id="L61" title="All 2 branches missed.">        checkArgument(coreSize &gt; 0);</span>
+       // this.factory = factory;
+<span class="nc" id="L63">        this.address = address;</span>
+<span class="nc" id="L64">        this.conf = conf;</span>
+
+<span class="nc" id="L66">        this.shFactory = SecurityProviderFactoryFactory.getSecurityProviderFactory(conf.getTLSProviderFactoryClass());</span>
+
+       // this.clients = new PerChannelBookieClient[coreSize];
+       /* for (int i = 0; i &lt; coreSize; i++) {
+            this.clients[i] = factory.create(address, this, shFactory, false);
+        }
+
+        if (conf.getUseV2WireProtocol()) {
+            this.clientsV3Enforced = new PerChannelBookieClient[coreSize];
+            for (int i = 0; i &lt; coreSize; i++) {
+                this.clientsV3Enforced[i] = factory.create(address, this, shFactory, true);
+            }
+        } else {
+            this.clientsV3Enforced = this.clients;
+        }*/
+<span class="nc" id="L81">    }</span>
+
+
+    public void operationComplete(int rc, Object pcbc) {
+        // nop
+<span class="nc" id="L86">    }</span>
+
+
+    public void initialize() {
+
+<span class="nc" id="L91">    }</span>
+
+    private Object getClient(long key) {
+<span class="nc" id="L94">        return 1;</span>
+    }
+
+    private Object getClient(long key, Object[] pcbc) {
+<span class="nc bnc" id="L98" title="All 2 branches missed.">        if (1 == pcbc.length) {</span>
+<span class="nc" id="L99">            return pcbc[0];</span>
+        }
+<span class="nc" id="L101">        int idx = MathUtils.signSafeMod(key, pcbc.length);</span>
+<span class="nc" id="L102">        return pcbc[idx];</span>
+    }
+    private Object getClient(long key, boolean forceUseV3) {
+<span class="nc bnc" id="L105" title="All 2 branches missed.">        if (forceUseV3) {</span>
+<span class="nc" id="L106">            return key;</span>
+        }
+<span class="nc" id="L108">        return key;</span>
+    }
+
+    public void obtain(GenericCallback&lt;Object&gt; callback, long key) {
+       // obtain(callback, key, false);
+<span class="nc" id="L113">    }</span>
+
+    public void obtain(GenericCallback&lt;Object&gt; callback, long key, boolean forceUseV3) {
+        //getClient(key, forceUseV3).connectIfNeededAndDoOp(callback);
+<span class="nc" id="L117">    }</span>
+
+    public boolean isWritable(long key) {
+<span class="nc" id="L120">        return true;</span>
+    }
+
+    public void checkTimeoutOnPendingOperations() {
+       /* for (int i = 0; i &lt; clients.length; i++) {
+            clients[i].checkTimeoutOnPendingOperations();
+            if (clients != clientsV3Enforced) {
+                clientsV3Enforced[i].checkTimeoutOnPendingOperations();
+            }
+        }*/
+<span class="nc" id="L130">    }</span>
+
+    //@Override
+    public void recordError() {
+<span class="nc" id="L134">        errorCounter.incrementAndGet();</span>
+<span class="nc" id="L135">    }</span>
+
+   // @Override
+    public void disconnect(boolean wait) {
+       /* for (int i = 0; i &lt; clients.length; i++) {
+            clients[i].disconnect();
+            if (clients != clientsV3Enforced) {
+                clientsV3Enforced[i].disconnect();
+            }
+        }*/
+<span class="nc" id="L145">    }</span>
+
+    //@Override
+    public void close(boolean wait) {
+        /*for (int i = 0; i &lt; clients.length; i++) {
+            clients[i].close(wait);
+            if (clients != clientsV3Enforced) {
+                clientsV3Enforced[i].close(wait);
+            }
+        }*/
+<span class="nc" id="L155">    }</span>
+
+    //@Override
+    public long getNumPendingCompletionRequests() {
+<span class="nc" id="L159">        long numPending = 0;</span>
+        /*for (PerChannelBookieClient pcbc : clients) {
+            numPending += pcbc.getNumPendingCompletionRequests();
+        }
+        if (clients != clientsV3Enforced) {
+            for (PerChannelBookieClient pcbc : clientsV3Enforced) {
+                numPending += pcbc.getNumPendingCompletionRequests();
+            }
+        }*/
+<span class="nc" id="L168">        return numPending;</span>
+    }
+}
+</pre><div class="footer"><span class="right">Created with <a href="http://www.jacoco.org/jacoco">JaCoCo</a> 0.8.2.201808211720</span></div></body></html>

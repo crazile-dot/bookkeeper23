@@ -27,7 +27,7 @@ import java.io.IOException;
 import org.apache.bookkeeper.clients.impl.internal.api.StorageServerClientManager;
 import org.apache.bookkeeper.common.component.AbstractLifecycleComponent;
 import org.apache.bookkeeper.stats.StatsLogger;
-import org.apache.bookkeeper.stream.proto.RangeProperties;
+//import org.apache.bookkeeper.stream.proto.RangeProperties;
 import org.apache.bookkeeper.stream.storage.api.StorageContainerStore;
 import org.apache.bookkeeper.stream.storage.api.sc.StorageContainer;
 import org.apache.bookkeeper.stream.storage.api.sc.StorageContainerManager;
@@ -156,7 +156,7 @@ public class StorageContainerStoreImpl
             byte[] routingKey = headers.get(RK_METADATA_KEY);
             Long streamId = headers.get(SID_METADATA_KEY);
             if (null != routingKey && null != streamId && null != routingTable && null != proxyChannelManager) {
-                RangeProperties rangeProps = routingTable.getRange(streamId, routingKey);
+                /*RangeProperties rangeProps = routingTable.getRange(streamId, routingKey);
                 if (null != rangeProps) {
                     long containerId = rangeProps.getStorageContainerId();
                     long rangeId = rangeProps.getRangeId();
@@ -176,7 +176,7 @@ public class StorageContainerStoreImpl
                         // we found the container exists in the registry to serve the request
                         return container.getChannel();
                     }
-                }
+                }*/
             }
             // there is no storage container id or routing key, then fail the request and ask client to retry.
             return getStorageContainer(INVALID_STORAGE_CONTAINER_ID).getChannel();

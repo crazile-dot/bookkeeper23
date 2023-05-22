@@ -21,7 +21,6 @@ package org.apache.bookkeeper.clients.utils;
 import io.grpc.ManagedChannelBuilder;
 import io.grpc.inprocess.InProcessChannelBuilder;
 import lombok.extern.slf4j.Slf4j;
-import org.apache.bookkeeper.clients.config.StorageClientSettings;
 import org.apache.bookkeeper.common.net.ServiceURI;
 import org.apache.bookkeeper.common.resolver.NameResolverFactoryProvider;
 import org.apache.bookkeeper.common.resolver.ServiceNameResolverProvider;
@@ -54,7 +53,7 @@ public final class GrpcChannels {
     // Skipping the migration for now, will have to deal with this later when GRPC team
     // finalizes their API.
     public static ManagedChannelBuilder createChannelBuilder(String serviceUri,
-                                                             StorageClientSettings settings) {
+                                                             Object settings) {
         ServiceURI uri = ServiceURI.create(serviceUri);
 
         ManagedChannelBuilder builder;
@@ -79,7 +78,7 @@ public final class GrpcChannels {
             builder = ManagedChannelBuilder.forTarget(serviceUri)
                 .nameResolverFactory(provider.toFactory());
         }
-        if (settings.usePlaintext()) {
+        if (true) {
             builder = builder.usePlaintext();
         }
         return builder;

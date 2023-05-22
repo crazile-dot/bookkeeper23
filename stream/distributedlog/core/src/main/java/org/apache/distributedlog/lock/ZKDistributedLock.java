@@ -1,4 +1,4 @@
-/*
+/**
  * Licensed to the Apache Software Foundation (ASF) under one
  * or more contributor license agreements.  See the NOTICE file
  * distributed with this work for additional information
@@ -28,7 +28,7 @@ import java.util.concurrent.atomic.AtomicInteger;
 import java.util.concurrent.atomic.AtomicIntegerFieldUpdater;
 import org.apache.bookkeeper.common.concurrent.FutureEventListener;
 import org.apache.bookkeeper.common.concurrent.FutureUtils;
-import org.apache.bookkeeper.common.util.OrderedScheduler;
+//import org.apache.bookkeeper.common.util.OrderedScheduler;
 import org.apache.bookkeeper.stats.Counter;
 import org.apache.bookkeeper.stats.OpStatsLogger;
 import org.apache.bookkeeper.stats.StatsLogger;
@@ -70,7 +70,7 @@ public class ZKDistributedLock implements LockListener, DistributedLock {
     static final Logger LOG = LoggerFactory.getLogger(ZKDistributedLock.class);
 
     private final SessionLockFactory lockFactory;
-    private final OrderedScheduler lockStateExecutor;
+    private final Object lockStateExecutor;
     private final String lockPath;
     private final long lockTimeout;
     private final DistributedLockContext lockContext = new DistributedLockContext();
@@ -102,7 +102,7 @@ public class ZKDistributedLock implements LockListener, DistributedLock {
     private final Counter internalTryRetries;
 
     public ZKDistributedLock(
-            OrderedScheduler lockStateExecutor,
+            Object lockStateExecutor,
             SessionLockFactory lockFactory,
             String lockPath,
             long lockTimeout,
@@ -146,7 +146,7 @@ public class ZKDistributedLock implements LockListener, DistributedLock {
             if (null == throwable || !(throwable instanceof CancellationException)) {
                 return;
             }
-            lockStateExecutor.executeOrdered(lockPath, () -> asyncClose());
+            //lockStateExecutor.executeOrdered(lockPath, () -> asyncClose());
         });
         final Stopwatch stopwatch = Stopwatch.createStarted();
         promise.whenComplete(new FutureEventListener<ZKDistributedLock>() {
@@ -166,8 +166,8 @@ public class ZKDistributedLock implements LockListener, DistributedLock {
             }
         });
         this.lockAcquireFuture = promise;
-        lockStateExecutor.executeOrdered(
-            lockPath, () -> doAsyncAcquireWithSemaphore(promise, lockTimeout));
+        /*lockStateExecutor.executeOrdered(
+            lockPath, () -> doAsyncAcquireWithSemaphore(promise, lockTimeout));*/
         return promise;
     }
 
@@ -218,7 +218,7 @@ public class ZKDistributedLock implements LockListener, DistributedLock {
             public void onFailure(Throwable cause) {
                 FutureUtils.completeExceptionally(acquirePromise, cause);
             }
-        }, lockStateExecutor.chooseThread(lockPath));
+        }, null);
     }
 
     void asyncTryLock(SessionLock lock,
@@ -251,7 +251,7 @@ public class ZKDistributedLock implements LockListener, DistributedLock {
                 public void onFailure(Throwable cause) {
                     FutureUtils.completeExceptionally(acquirePromise, cause);
                 }
-            }, lockStateExecutor.chooseThread(lockPath));
+            }, null);
     }
 
     void waitForAcquire(final LockWaiter waiter,
@@ -273,7 +273,7 @@ public class ZKDistributedLock implements LockListener, DistributedLock {
                 public void onFailure(Throwable cause) {
                     FutureUtils.completeExceptionally(acquirePromise, cause);
                 }
-            }, lockStateExecutor.chooseThread(lockPath));
+            }, null);
     }
 
     /**
@@ -371,7 +371,7 @@ public class ZKDistributedLock implements LockListener, DistributedLock {
                     public void onFailure(Throwable cause) {
                         unlockInternalLock(closePromise);
                     }
-                }, lockStateExecutor.chooseThread(lockPath));
+                }, null);
             waiter.getAcquireFuture().cancel(true);
         }
     }
@@ -391,7 +391,7 @@ public class ZKDistributedLock implements LockListener, DistributedLock {
                     public void onFailure(Throwable cause) {
                         unlockInternalLock(closePromise);
                     }
-                }, lockStateExecutor.chooseThread(lockPath));
+                }, null);
             tryLockFuture.cancel(true);
         }
     }
@@ -428,17 +428,17 @@ public class ZKDistributedLock implements LockListener, DistributedLock {
             private void complete() {
                 FutureUtils.complete(closePromise, null);
             }
-        }, lockStateExecutor.chooseThread(lockPath));
-        lockStateExecutor.executeOrdered(
-            lockPath, () -> closeWaiter(lockWaiter, closeWaiterFuture));
+        }, null);
+        /*lockStateExecutor.executeOrdered(
+            lockPath, () -> closeWaiter(lockWaiter, closeWaiterFuture));*/
         return closePromise;
     }
 
     void internalReacquireLock(final AtomicInteger numRetries,
                                final long lockTimeout,
                                final CompletableFuture<ZKDistributedLock> reacquirePromise) {
-        lockStateExecutor.executeOrdered(
-            lockPath, () -> doInternalReacquireLock(numRetries, lockTimeout, reacquirePromise));
+        /*lockStateExecutor.executeOrdered(
+            lockPath, () -> doInternalReacquireLock(numRetries, lockTimeout, reacquirePromise));*/
     }
 
     void doInternalReacquireLock(final AtomicInteger numRetries,

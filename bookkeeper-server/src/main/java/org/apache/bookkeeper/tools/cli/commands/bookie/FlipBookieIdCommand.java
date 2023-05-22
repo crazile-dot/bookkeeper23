@@ -25,10 +25,10 @@ import java.util.concurrent.TimeUnit;
 import lombok.Setter;
 import lombok.experimental.Accessors;
 import org.apache.bookkeeper.bookie.BookieImpl;
-import org.apache.bookkeeper.bookie.BookieShell;
+//import org.apache.bookkeeper.bookie.BookieShell;
 import org.apache.bookkeeper.client.BKException;
-import org.apache.bookkeeper.client.BookKeeper;
-import org.apache.bookkeeper.client.BookKeeperAdmin;
+//import org.apache.bookkeeper.client.BookKeeper;
+//import org.apache.bookkeeper.client.BookKeeperAdmin;
 import org.apache.bookkeeper.client.UpdateLedgerOp;
 import org.apache.bookkeeper.conf.ClientConfiguration;
 import org.apache.bookkeeper.conf.ServerConfiguration;
@@ -43,7 +43,7 @@ import org.slf4j.LoggerFactory;
 /**
  * Command to update ledger command.
  */
-public class FlipBookieIdCommand extends BookieCommand<FlipBookieIdCommand.FlipBookieIdFlags> {
+/*public class FlipBookieIdCommand extends BookieCommand<FlipBookieIdCommand.FlipBookieIdFlags> {
 
     static final Logger LOG = LoggerFactory.getLogger(FlipBookieIdCommand.class);
 
@@ -56,44 +56,45 @@ public class FlipBookieIdCommand extends BookieCommand<FlipBookieIdCommand.FlipB
 
     private FlipBookieIdCommand(FlipBookieIdFlags flags) {
         super(CliSpec.<FlipBookieIdFlags>newBuilder()
-                  .withName(NAME)
-                  .withDescription(DESC)
-                  .withFlags(flags)
-                  .build());
+                .withName(NAME)
+                .withDescription(DESC)
+                .withFlags(flags)
+                .build());
     }
 
     /**
      * Flags for update ledger command.
      */
-    @Accessors(fluent = true)
+   /* @Accessors(fluent = true)
     @Setter
     public static class FlipBookieIdFlags extends CliFlags {
 
-        @Parameter(names = { "-host", "--hostname" },
-            description = "Expects configuration useHostNameAsBookieID=true as the option value (default: ip address)")
+        @Parameter(names = {"-host", "--hostname"},
+                description = "Expects configuration useHostNameAsBookieID=true as the option value (default: ip address)")
         private boolean hostname;
 
-        @Parameter(names = { "-s", "--updatepersec" },
-            description = "Number of ledgers updating per second (default: 5 per sec)")
+        @Parameter(names = {"-s", "--updatepersec"},
+                description = "Number of ledgers updating per second (default: 5 per sec)")
         private int updatePerSec = 5;
 
-        @Parameter(names = { "-r",
-                "--maxOutstandingReads" }, description = "Max outstanding reads (default: 5 * updatespersec)")
+        @Parameter(names = {"-r",
+                "--maxOutstandingReads"}, description = "Max outstanding reads (default: 5 * updatespersec)")
         private int maxOutstandingReads = updatePerSec * 5;
 
         @Parameter(names = {"-l", "--limit"},
-            description = "Maximum number of ledgers of ledgers to update (default: no limit)")
+                description = "Maximum number of ledgers of ledgers to update (default: no limit)")
         private int limit = Integer.MIN_VALUE;
 
-        @Parameter(names = { "-v", "--verbose" }, description = "Print status of the ledger updation (default: false)")
+        @Parameter(names = {"-v", "--verbose"}, description = "Print status of the ledger updation (default: false)")
         private boolean verbose;
 
-        @Parameter(names = { "-p", "--printprogress" },
-            description = "Print messages on every configured seconds if verbose turned on (default: 10 secs)")
+        @Parameter(names = {"-p", "--printprogress"},
+                description = "Print messages on every configured seconds if verbose turned on (default: 10 secs)")
         private long printProgress = 10;
     }
+}
 
-    @Override
+   /* @Override
     public boolean apply(ServerConfiguration conf, FlipBookieIdFlags cmdFlags) {
         try {
             return updateLedger(conf, cmdFlags);
@@ -102,7 +103,7 @@ public class FlipBookieIdCommand extends BookieCommand<FlipBookieIdCommand.FlipB
         }
     }
 
-    private boolean updateLedger(ServerConfiguration conf, FlipBookieIdFlags flags)
+    /*private boolean updateLedger(ServerConfiguration conf, FlipBookieIdFlags flags)
         throws InterruptedException, BKException, IOException {
 
         if (!conf.getUseHostNameAsBookieID() && flags.hostname) {
@@ -173,4 +174,4 @@ public class FlipBookieIdCommand extends BookieCommand<FlipBookieIdCommand.FlipB
 
         return true;
     }
-}
+}*/

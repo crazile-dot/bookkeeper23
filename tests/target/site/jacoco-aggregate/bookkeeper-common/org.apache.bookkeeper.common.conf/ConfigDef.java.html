@@ -1,0 +1,328 @@
+<?xml version="1.0" encoding="UTF-8"?><!DOCTYPE html PUBLIC "-//W3C//DTD XHTML 1.0 Strict//EN" "http://www.w3.org/TR/xhtml1/DTD/xhtml1-strict.dtd"><html xmlns="http://www.w3.org/1999/xhtml" lang="it"><head><meta http-equiv="Content-Type" content="text/html;charset=UTF-8"/><link rel="stylesheet" href="../../jacoco-resources/report.css" type="text/css"/><link rel="shortcut icon" href="../../jacoco-resources/report.gif" type="image/gif"/><title>ConfigDef.java</title><link rel="stylesheet" href="../../jacoco-resources/prettify.css" type="text/css"/><script type="text/javascript" src="../../jacoco-resources/prettify.js"></script></head><body onload="window['PR_TAB_WIDTH']=4;prettyPrint()"><div class="breadcrumb" id="breadcrumb"><span class="info"><a href="../../jacoco-sessions.html" class="el_session">Sessions</a></span><a href="../../index.html" class="el_report">Tests</a> &gt; <a href="../index.html" class="el_bundle">bookkeeper-common</a> &gt; <a href="index.source.html" class="el_package">org.apache.bookkeeper.common.conf</a> &gt; <span class="el_source">ConfigDef.java</span></div><h1>ConfigDef.java</h1><pre class="source lang-java linenums">/*
+ * Licensed to the Apache Software Foundation (ASF) under one
+ * or more contributor license agreements.  See the NOTICE file
+ * distributed with this work for additional information
+ * regarding copyright ownership.  The ASF licenses this file
+ * to you under the Apache License, Version 2.0 (the
+ * &quot;License&quot;); you may not use this file except in compliance
+ * with the License.  You may obtain a copy of the License at
+ *
+ *   http://www.apache.org/licenses/LICENSE-2.0
+ *
+ * Unless required by applicable law or agreed to in writing,
+ * software distributed under the License is distributed on an
+ * &quot;AS IS&quot; BASIS, WITHOUT WARRANTIES OR CONDITIONS OF ANY
+ * KIND, either express or implied.  See the License for the
+ * specific language governing permissions and limitations
+ * under the License.
+ */
+
+package org.apache.bookkeeper.common.conf;
+
+import static com.google.common.base.Preconditions.checkArgument;
+import static java.nio.charset.StandardCharsets.UTF_8;
+
+import com.google.common.collect.Sets;
+import java.io.IOException;
+import java.io.OutputStream;
+import java.io.PrintStream;
+import java.lang.reflect.Field;
+import java.lang.reflect.Modifier;
+import java.nio.file.Files;
+import java.nio.file.Path;
+import java.nio.file.StandardOpenOption;
+import java.util.Collections;
+import java.util.HashMap;
+import java.util.Map;
+import java.util.Set;
+import java.util.TreeSet;
+import java.util.stream.Collectors;
+import java.util.stream.IntStream;
+import lombok.Getter;
+import lombok.extern.slf4j.Slf4j;
+import org.apache.commons.configuration.Configuration;
+import org.apache.commons.lang.StringUtils;
+
+/**
+ * A definition of a configuration instance.
+ */
+<span class="nc" id="L49">@Slf4j</span>
+@Getter
+public class ConfigDef {
+
+    /**
+     * Builder to build a configuration definition.
+     */
+    public static class Builder {
+
+<span class="nc" id="L58">        private final Set&lt;ConfigKeyGroup&gt; groups = new TreeSet&lt;&gt;(ConfigKeyGroup.ORDERING);</span>
+<span class="nc" id="L59">        private final Map&lt;String, Set&lt;ConfigKey&gt;&gt; settings = new HashMap&lt;&gt;();</span>
+
+<span class="nc" id="L61">        private Builder() {}</span>
+
+        /**
+         * Add the config key group to the builder.
+         *
+         * @param group config key group
+         * @return builder to build this configuration def
+         */
+        public Builder withConfigKeyGroup(ConfigKeyGroup group) {
+<span class="nc" id="L70">            groups.add(group);</span>
+<span class="nc" id="L71">            return this;</span>
+        }
+
+        /**
+         * Add the config key to the builder.
+         *
+         * @param key the key to add to the builder.
+         * @return builder to build this configuration def
+         */
+        public Builder withConfigKey(ConfigKey key) {
+<span class="nc" id="L81">            ConfigKeyGroup group = key.group();</span>
+            Set&lt;ConfigKey&gt; keys;
+            String groupName;
+<span class="nc bnc" id="L84" title="All 2 branches missed.">            if (null == group) {</span>
+<span class="nc" id="L85">                groupName = &quot;&quot;;</span>
+            } else {
+<span class="nc" id="L87">                groupName = group.name();</span>
+<span class="nc" id="L88">                groups.add(group);</span>
+            }
+<span class="nc" id="L90">            keys = settings.computeIfAbsent(groupName, name -&gt; new TreeSet&lt;&gt;(ConfigKey.ORDERING));</span>
+<span class="nc" id="L91">            keys.add(key);</span>
+<span class="nc" id="L92">            return this;</span>
+        }
+
+        public ConfigDef build() {
+<span class="nc" id="L96">            checkArgument(</span>
+<span class="nc" id="L97">                Sets.difference(</span>
+<span class="nc" id="L98">                    groups.stream().map(group -&gt; group.name()).collect(Collectors.toSet()),</span>
+<span class="nc" id="L99">                    settings.keySet()</span>
+<span class="nc" id="L100">                ).isEmpty(),</span>
+                &quot;Configuration Key Groups doesn't match with keys&quot;);
+<span class="nc" id="L102">            return new ConfigDef(groups, settings);</span>
+        }
+
+    }
+
+    /**
+     * Create a builder to build a config def.
+     *
+     * @return builder to build a config def.
+     */
+    public static Builder builder() {
+<span class="nc" id="L113">        return new Builder();</span>
+    }
+
+<span class="nc" id="L116">    private final Set&lt;ConfigKeyGroup&gt; groups;</span>
+<span class="nc" id="L117">    private final Map&lt;String, Set&lt;ConfigKey&gt;&gt; settings;</span>
+<span class="nc" id="L118">    private final Map&lt;String, ConfigKey&gt; keys;</span>
+
+    private ConfigDef(Set&lt;ConfigKeyGroup&gt; groups,
+<span class="nc" id="L121">                      Map&lt;String, Set&lt;ConfigKey&gt;&gt; settings) {</span>
+<span class="nc" id="L122">        this.groups = groups;</span>
+<span class="nc" id="L123">        this.settings = settings;</span>
+<span class="nc" id="L124">        this.keys = settings.values()</span>
+<span class="nc" id="L125">            .stream()</span>
+<span class="nc" id="L126">            .flatMap(keys -&gt; keys.stream())</span>
+<span class="nc" id="L127">            .collect(Collectors.toSet())</span>
+<span class="nc" id="L128">            .stream()</span>
+<span class="nc" id="L129">            .collect(Collectors.toMap(</span>
+<span class="nc" id="L130">                key -&gt; key.name(),</span>
+<span class="nc" id="L131">                key -&gt; key</span>
+            ));
+<span class="nc" id="L133">    }</span>
+
+    /**
+     * Validate if the provided &lt;tt&gt;conf&lt;/tt&gt; is a valid configuration of this configuration definition.
+     *
+     * @param conf the configuration to validate
+     */
+    public void validate(Configuration conf) throws ConfigException {
+<span class="nc bnc" id="L141" title="All 2 branches missed.">        for (ConfigKey key : keys.values()) {</span>
+<span class="nc" id="L142">            key.validate(conf);</span>
+<span class="nc" id="L143">        }</span>
+<span class="nc" id="L144">    }</span>
+
+    /**
+     * Build the config definitation of a config class.
+     *
+     * @param configClass config class
+     * @return config definition.
+     */
+    @SuppressWarnings(&quot;unchecked&quot;)
+    public static ConfigDef of(Class configClass) {
+<span class="nc" id="L154">        ConfigDef.Builder builder = ConfigDef.builder();</span>
+
+<span class="nc" id="L156">        Field[] fields = configClass.getDeclaredFields();</span>
+<span class="nc bnc" id="L157" title="All 2 branches missed.">        for (Field field : fields) {</span>
+<span class="nc bnc" id="L158" title="All 4 branches missed.">            if (Modifier.isStatic(field.getModifiers()) &amp;&amp; field.getType().equals(ConfigKey.class)) {</span>
+<span class="nc" id="L159">                field.setAccessible(true);</span>
+                try {
+<span class="nc" id="L161">                    builder.withConfigKey((ConfigKey) field.get(null));</span>
+<span class="nc" id="L162">                } catch (IllegalAccessException e) {</span>
+<span class="nc" id="L163">                    log.error(&quot;Illegal to access {}#{}&quot;, configClass.getSimpleName(), field.getName(), e);</span>
+<span class="nc" id="L164">                }</span>
+            }
+        }
+
+<span class="nc" id="L168">        return builder.build();</span>
+    }
+
+    //
+    // Methods to save the configuration to an {@link OutputStream}
+    //
+
+    private static final int MAX_COLUMN_SIZE = 80;
+    private static final String COMMENT_PREFIX = &quot;# &quot;;
+
+    public void save(Path path) throws IOException  {
+<span class="nc" id="L179">        try (OutputStream stream = Files.newOutputStream(</span>
+            path, StandardOpenOption.WRITE, StandardOpenOption.TRUNCATE_EXISTING)) {
+<span class="nc" id="L181">            save(stream);</span>
+        }
+<span class="nc" id="L183">    }</span>
+
+    public void save(OutputStream os) throws IOException {
+<span class="nc" id="L186">        try (PrintStream ps = new PrintStream(os, false, UTF_8.name())) {</span>
+<span class="nc" id="L187">            save(ps);</span>
+<span class="nc" id="L188">            ps.flush();</span>
+        }
+<span class="nc" id="L190">    }</span>
+
+    private void writeNSharps(PrintStream stream, int num) {
+<span class="nc" id="L193">        IntStream.range(0, num).forEach(ignored -&gt; stream.print(&quot;#&quot;));</span>
+<span class="nc" id="L194">    }</span>
+
+    private void writeConfigKeyGroup(PrintStream stream, ConfigKeyGroup group) {
+<span class="nc" id="L197">        int maxLength = Math.min(</span>
+<span class="nc" id="L198">            group.description().length() + COMMENT_PREFIX.length(),</span>
+            MAX_COLUMN_SIZE
+        );
+        // &quot;###########&quot;
+<span class="nc" id="L202">        writeNSharps(stream, maxLength);</span>
+<span class="nc" id="L203">        stream.println();</span>
+        // &quot;# Settings of `&lt;group&gt;`
+<span class="nc" id="L205">        writeSentence(stream, COMMENT_PREFIX, &quot;Settings of `&quot; + group.name() + &quot;`&quot;);</span>
+<span class="nc" id="L206">        stream.println(&quot;#&quot;);</span>
+        // &quot;# &lt;group description&gt;&quot;
+<span class="nc" id="L208">        writeSentence(stream, COMMENT_PREFIX, group.description());</span>
+        // &quot;###########&quot;
+<span class="nc" id="L210">        writeNSharps(stream, maxLength);</span>
+<span class="nc" id="L211">        stream.println();</span>
+<span class="nc" id="L212">    }</span>
+
+    private void writeConfigKey(PrintStream stream,
+                                ConfigKey key) {
+        // &quot;# &lt;description&gt;&quot;
+        // &quot;#&quot;
+<span class="nc bnc" id="L218" title="All 2 branches missed.">        if (StringUtils.isNotBlank(key.description())) {</span>
+<span class="nc" id="L219">            writeSentence(stream, COMMENT_PREFIX, key.description());</span>
+<span class="nc" id="L220">            stream.println(&quot;#&quot;);</span>
+        }
+        // &quot;# &lt;documentation&gt;&quot;
+        // &quot;#&quot;
+<span class="nc bnc" id="L224" title="All 2 branches missed.">        if (StringUtils.isNotBlank(key.documentation())) {</span>
+<span class="nc" id="L225">            writeSentence(stream, COMMENT_PREFIX, key.documentation());</span>
+<span class="nc" id="L226">            stream.println(&quot;#&quot;);</span>
+        }
+        // &quot;# type: &lt;type&gt;, required&quot;
+<span class="nc" id="L229">        writeSentence(</span>
+            stream,
+            COMMENT_PREFIX,
+<span class="nc bnc" id="L232" title="All 2 branches missed.">            &quot;TYPE: &quot; + key.type() + &quot;, &quot; + (key.required() ? &quot;required&quot; : &quot;optional&quot;));</span>
+<span class="nc bnc" id="L233" title="All 4 branches missed.">        if (null != key.validator() &amp;&amp; StringUtils.isNotBlank(key.validator().documentation())) {</span>
+<span class="nc" id="L234">            writeSentence(</span>
+                stream, COMMENT_PREFIX,
+<span class="nc" id="L236">                &quot;@constraints : &quot; + key.validator().documentation()</span>
+            );
+        }
+<span class="nc bnc" id="L239" title="All 2 branches missed.">        if (!key.optionValues().isEmpty()) {</span>
+<span class="nc" id="L240">            writeSentence(</span>
+                stream, COMMENT_PREFIX, &quot;@options :&quot;
+            );
+<span class="nc" id="L243">            key.optionValues().forEach(value -&gt; {</span>
+<span class="nc" id="L244">                writeSentence(</span>
+                    stream, COMMENT_PREFIX, &quot;  &quot; + value
+                );
+<span class="nc" id="L247">            });</span>
+        }
+        // &quot;#&quot;
+        // &quot;# @Since&quot;
+<span class="nc bnc" id="L251" title="All 2 branches missed.">        if (StringUtils.isNotBlank(key.since())) {</span>
+<span class="nc" id="L252">            stream.println(&quot;#&quot;);</span>
+<span class="nc" id="L253">            writeSentence(stream, COMMENT_PREFIX,</span>
+<span class="nc" id="L254">                &quot;@since &quot; + key.since() + &quot;&quot;);</span>
+        }
+        // &quot;#&quot;
+        // &quot;# @Deprecated&quot;
+<span class="nc bnc" id="L258" title="All 2 branches missed.">        if (key.deprecated()) {</span>
+<span class="nc" id="L259">            stream.println(&quot;#&quot;);</span>
+<span class="nc" id="L260">            writeSentence(stream, COMMENT_PREFIX, getDeprecationDescription(key));</span>
+        }
+        // &lt;key&gt;=&lt;defaultValue&gt;
+<span class="nc" id="L263">        stream.print(key.name());</span>
+<span class="nc" id="L264">        stream.print(&quot;=&quot;);</span>
+<span class="nc bnc" id="L265" title="All 2 branches missed.">        if (null != key.defaultValue()) {</span>
+<span class="nc" id="L266">            stream.print(key.defaultValue());</span>
+        }
+<span class="nc" id="L268">        stream.println();</span>
+<span class="nc" id="L269">    }</span>
+
+    private String getDeprecationDescription(ConfigKey key) {
+<span class="nc" id="L272">        StringBuilder sb = new StringBuilder();</span>
+<span class="nc" id="L273">        sb.append(&quot;@deprecated&quot;);</span>
+<span class="nc bnc" id="L274" title="All 2 branches missed.">        if (StringUtils.isNotBlank(key.deprecatedSince())) {</span>
+<span class="nc" id="L275">            sb.append(&quot; since `&quot;)</span>
+<span class="nc" id="L276">              .append(key.deprecatedSince())</span>
+<span class="nc" id="L277">              .append(&quot;`&quot;);</span>
+        }
+<span class="nc bnc" id="L279" title="All 2 branches missed.">        if (StringUtils.isNotBlank(key.deprecatedByConfigKey())) {</span>
+<span class="nc" id="L280">            sb.append(&quot; in favor of using `&quot;)</span>
+<span class="nc" id="L281">              .append(key.deprecatedByConfigKey())</span>
+<span class="nc" id="L282">              .append(&quot;`&quot;);</span>
+        }
+<span class="nc" id="L284">        return sb.toString();</span>
+    }
+
+    private void writeSentence(PrintStream stream,
+                               String prefix,
+                               String sentence) {
+<span class="nc" id="L290">        int max = MAX_COLUMN_SIZE;</span>
+<span class="nc" id="L291">        String[] words = sentence.split(&quot; &quot;);</span>
+<span class="nc" id="L292">        int i = 0;</span>
+<span class="nc" id="L293">        stream.print(prefix);</span>
+<span class="nc" id="L294">        int current = prefix.length();</span>
+<span class="nc bnc" id="L295" title="All 2 branches missed.">        while (i &lt; words.length) {</span>
+<span class="nc" id="L296">            String word = words[i];</span>
+<span class="nc bnc" id="L297" title="All 4 branches missed.">            if (word.length() &gt; max || current + word.length() &lt;= max) {</span>
+<span class="nc bnc" id="L298" title="All 2 branches missed.">                if (i != 0) {</span>
+<span class="nc" id="L299">                    stream.print(&quot; &quot;);</span>
+                }
+<span class="nc" id="L301">                stream.print(word);</span>
+<span class="nc" id="L302">                current += (word.length() + 1);</span>
+            } else {
+<span class="nc" id="L304">                stream.println();</span>
+<span class="nc" id="L305">                stream.print(prefix);</span>
+<span class="nc" id="L306">                stream.print(word);</span>
+<span class="nc" id="L307">                current = prefix.length() + word.length();</span>
+            }
+<span class="nc" id="L309">            ++i;</span>
+<span class="nc" id="L310">        }</span>
+<span class="nc" id="L311">        stream.println();</span>
+<span class="nc" id="L312">    }</span>
+
+    private void save(PrintStream stream) {
+<span class="nc bnc" id="L315" title="All 2 branches missed.">        for (ConfigKeyGroup group : groups) {</span>
+<span class="nc" id="L316">            writeConfigKeyGroup(stream, group);</span>
+<span class="nc" id="L317">            stream.println();</span>
+<span class="nc" id="L318">            Set&lt;ConfigKey&gt; groupKeys = settings.getOrDefault(group.name(), Collections.emptySet());</span>
+<span class="nc" id="L319">            groupKeys.forEach(key -&gt; {</span>
+<span class="nc" id="L320">                writeConfigKey(stream, key);</span>
+<span class="nc" id="L321">                stream.println();</span>
+<span class="nc" id="L322">            });</span>
+<span class="nc" id="L323">        }</span>
+<span class="nc" id="L324">    }</span>
+
+
+}
+</pre><div class="footer"><span class="right">Created with <a href="http://www.jacoco.org/jacoco">JaCoCo</a> 0.8.2.201808211720</span></div></body></html>

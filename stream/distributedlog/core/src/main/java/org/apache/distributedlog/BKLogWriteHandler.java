@@ -1,4 +1,4 @@
-/*
+/**
  * Licensed to the Apache Software Foundation (ASF) under one
  * or more contributor license agreements.  See the NOTICE file
  * distributed with this work for additional information
@@ -33,7 +33,7 @@ import java.util.concurrent.TimeUnit;
 import java.util.function.Function;
 import org.apache.bookkeeper.common.concurrent.FutureEventListener;
 import org.apache.bookkeeper.common.concurrent.FutureUtils;
-import org.apache.bookkeeper.common.util.OrderedScheduler;
+//import org.apache.bookkeeper.common.util.OrderedScheduler;
 import org.apache.bookkeeper.feature.FeatureProvider;
 import org.apache.bookkeeper.stats.AlertStatsLogger;
 import org.apache.bookkeeper.stats.OpStatsLogger;
@@ -142,12 +142,7 @@ class BKLogWriteHandler extends BKLogHandler {
                         }
                     }
 
-                    return FutureUtils.processList(
-                        segmentList,
-                        recoverLogSegmentFunction,
-                        scheduler
-                    ).thenApply(removeEmptySegments)
-                     .thenApply(GetLastTxIdFunction.INSTANCE);
+                    return null;
                 }
             };
     private final Function<List<LogSegmentMetadata>, List<LogSegmentMetadata>> removeEmptySegments =
@@ -180,7 +175,7 @@ class BKLogWriteHandler extends BKLogHandler {
                       LogStreamMetadataStore streamMetadataStore,
                       LogSegmentMetadataCache metadataCache,
                       LogSegmentEntryStore entryStore,
-                      OrderedScheduler scheduler,
+                      Object scheduler,
                       Allocator<LogSegmentEntryWriter, Object> segmentAllocator,
                       StatsLogger statsLogger,
                       StatsLogger perLogStatsLogger,
@@ -196,7 +191,7 @@ class BKLogWriteHandler extends BKLogHandler {
                 streamMetadataStore,
                 metadataCache,
                 entryStore,
-                scheduler,
+                null,
                 statsLogger,
                 alertStatsLogger,
                 clientId);
@@ -652,10 +647,7 @@ class BKLogWriteHandler extends BKLogHandler {
         writeLogSegment(txn, l);
 
         // Try storing max sequence number.
-        if (LOG.isDebugEnabled()) {
-            LOG.debug("Try storing max sequence number in startLogSegment {} : {}",
-                    inprogressZnodePath, logSegmentSeqNo);
-        }
+        LOG.debug("Try storing max sequence number in startLogSegment {} : {}", inprogressZnodePath, logSegmentSeqNo);
         storeMaxSequenceNumber(txn, maxLogSegmentSequenceNo, logSegmentSeqNo, true);
 
         txn.execute().whenCompleteAsync(new FutureEventListener<Void>() {
@@ -672,7 +664,7 @@ class BKLogWriteHandler extends BKLogHandler {
                             lock,
                             txId,
                             logSegmentSeqNo,
-                            scheduler,
+                            null,
                             statsLogger,
                             perLogStatsLogger,
                             alertStatsLogger,
@@ -688,7 +680,7 @@ class BKLogWriteHandler extends BKLogHandler {
             public void onFailure(Throwable cause) {
                 failStartLogSegment(promise, false, cause);
             }
-        }, scheduler);
+        }, null);
     }
 
     boolean shouldStartNewSegment(BKLogSegmentWriter writer) {
@@ -892,9 +884,7 @@ class BKLogWriteHandler extends BKLogHandler {
             return;
         }
 
-        if (LOG.isDebugEnabled()) {
-            LOG.debug("Completing and Closing Log Segment {} {}", firstTxId, lastTxId);
-        }
+        LOG.debug("Completing and Closing Log Segment {} {}", firstTxId, lastTxId);
         LogSegmentMetadata inprogressLogSegment = readLogSegmentFromCache(inprogressZnodeName);
 
         // validate log segment
@@ -987,10 +977,7 @@ class BKLogWriteHandler extends BKLogHandler {
         // store max sequence number
         storeMaxSequenceNumber(txn, maxLogSegmentSequenceNo, maxSeqNo, false);
         // update max txn id.
-        if (LOG.isDebugEnabled()) {
-            LOG.debug("Trying storing LastTxId in Finalize Path {} LastTxId {}",
-                    pathForCompletedLedger, lastTxId);
-        }
+        LOG.debug("Trying storing LastTxId in Finalize Path {} LastTxId {}", pathForCompletedLedger, lastTxId);
         storeMaxTxId(txn, maxTxId, lastTxId);
 
         txn.execute().whenCompleteAsync(new FutureEventListener<Void>() {
@@ -1006,7 +993,7 @@ class BKLogWriteHandler extends BKLogHandler {
             public void onFailure(Throwable cause) {
                 FutureUtils.completeExceptionally(promise, cause);
             }
-        }, scheduler);
+        }, null);
     }
 
     public CompletableFuture<Long> recoverIncompleteLogSegments() {
@@ -1104,9 +1091,7 @@ class BKLogWriteHandler extends BKLogHandler {
             LogSegmentMetadata l = logSegments.get(i);
             if (!l.isInProgress()) {
                 if (l.getLastDLSN().compareTo(dlsn) < 0) {
-                    if (LOG.isDebugEnabled()) {
-                        LOG.debug("{}: Truncating log segment {} ", getFullyQualifiedName(), l);
-                    }
+                    LOG.debug("{}: Truncating log segment {} ", getFullyQualifiedName(), l);
                     truncateList.add(l);
                 } else if (l.getFirstDLSN().compareTo(dlsn) < 0) {
                     // Can be satisfied by at most one segment
@@ -1247,8 +1232,7 @@ class BKLogWriteHandler extends BKLogHandler {
         if (LOG.isTraceEnabled()) {
             LOG.trace("Purging logs for {} : {}", getFullyQualifiedName(), logs);
         }
-        return FutureUtils.processList(logs,
-            segment -> deleteLogSegment(segment), scheduler);
+        return null;
     }
 
     private CompletableFuture<LogSegmentMetadata> deleteLogSegment(
@@ -1316,9 +1300,7 @@ class BKLogWriteHandler extends BKLogHandler {
 
     @Override
     public CompletableFuture<Void> asyncClose() {
-        return Utils.closeSequence(scheduler,
-                lock,
-                logSegmentAllocator);
+        return null;
     }
 
     @Override

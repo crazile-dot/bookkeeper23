@@ -40,55 +40,56 @@ import org.apache.bookkeeper.clients.impl.channel.StorageServerChannel;
 import org.apache.bookkeeper.clients.impl.container.StorageContainerChannel;
 import org.apache.bookkeeper.clients.utils.ListenableFutureRpcProcessor;
 import org.apache.bookkeeper.common.util.Backoff.Policy;
-import org.apache.bookkeeper.stream.proto.kv.rpc.DeleteRangeRequest;
+/*import org.apache.bookkeeper.stream.proto.kv.rpc.DeleteRangeRequest;
 import org.apache.bookkeeper.stream.proto.kv.rpc.DeleteRangeResponse;
-import org.apache.bookkeeper.stream.proto.storage.StatusCode;
+import org.apache.bookkeeper.stream.proto.storage.StatusCode;*/
 
 /**
  * Request Processor processing table request.
  */
-class DeleteRequestProcessor<RespT>
-    extends ListenableFutureRpcProcessor<DeleteRangeRequest, DeleteRangeResponse, RespT> {
+class DeleteRequestProcessor<RespT> {
+    //extends ListenableFutureRpcProcessor<DeleteRangeRequest, DeleteRangeResponse, RespT> {
 
     public static <T> DeleteRequestProcessor<T> of(
-        DeleteRangeRequest request,
-        Function<DeleteRangeResponse, T> responseFunc,
+        Object request,
+        Function<Object, T> responseFunc,
         StorageContainerChannel channel,
         ScheduledExecutorService executor,
         Policy backoffPolicy) {
-        return new DeleteRequestProcessor<>(request, responseFunc, channel, executor, backoffPolicy);
+        return null;
     }
 
-    private final DeleteRangeRequest request;
-    private final Function<DeleteRangeResponse, RespT> responseFunc;
+    private final Object request;
+    private final Function<Object, RespT> responseFunc;
 
-    private DeleteRequestProcessor(DeleteRangeRequest request,
-                                   Function<DeleteRangeResponse, RespT> respFunc,
+    private DeleteRequestProcessor(Object request,
+                                   Function<Object, RespT> respFunc,
                                    StorageContainerChannel channel,
                                    ScheduledExecutorService executor,
                                    Policy backoffPolicy) {
-        super(channel, executor, backoffPolicy);
+        //super(channel, executor, backoffPolicy);
         this.request = request;
         this.responseFunc = respFunc;
     }
 
-    @Override
-    protected DeleteRangeRequest createRequest() {
+    //@Override
+    protected Object createRequest() {
         return request;
     }
 
-    @Override
-    protected ListenableFuture<DeleteRangeResponse> sendRPC(StorageServerChannel rsChannel,
-                                                            DeleteRangeRequest request) {
-        return rsChannel.getTableService().delete(request);
+    //@Override
+    protected ListenableFuture<Object> sendRPC(StorageServerChannel rsChannel,
+                                                            Object request) {
+        return null;
     }
 
-    @Override
-    protected RespT processResponse(DeleteRangeResponse response) throws Exception {
-        if (StatusCode.SUCCESS == response.getHeader().getCode()) {
+    //@Override
+    protected RespT processResponse(Object response) throws Exception {
+        /*if (StatusCode.SUCCESS == response.getHeader().getCode()) {
             return responseFunc.apply(response);
         }
         throw new InternalServerException("Encountered internal server exception : code = "
-            + response.getHeader().getCode());
+            + response.getHeader().getCode());*/
+        return null;
     }
 }

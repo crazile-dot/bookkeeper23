@@ -23,9 +23,10 @@ import java.math.RoundingMode;
 import java.text.DecimalFormat;
 import java.util.Map;
 import java.util.stream.Collectors;
+
 import org.apache.bookkeeper.client.BKException;
-import org.apache.bookkeeper.client.BookKeeper;
-import org.apache.bookkeeper.client.BookieInfoReader.BookieInfo;
+//import org.apache.bookkeeper.client.BookKeeper;
+//import org.apache.bookkeeper.client.BookieInfoReader.BookieInfo;
 import org.apache.bookkeeper.conf.ClientConfiguration;
 import org.apache.bookkeeper.conf.ServerConfiguration;
 import org.apache.bookkeeper.net.BookieId;
@@ -40,7 +41,7 @@ import org.slf4j.LoggerFactory;
 /**
  * A bookie command to retrieve bookie info.
  */
-public class InfoCommand extends BookieCommand<CliFlags> {
+/*public class InfoCommand extends BookieCommand<CliFlags> {
 
     private static final String NAME = "info";
     private static final String DESC = "Retrieve bookie info such as free and total disk space.";
@@ -67,7 +68,7 @@ public class InfoCommand extends BookieCommand<CliFlags> {
         return cnt > 0 ? "(" + df.format(d) + unit[cnt] + ")" : unit[cnt];
     }
 
-
+/*
     @Override
     public boolean apply(ServerConfiguration conf, CliFlags cmdFlags) {
 
@@ -86,10 +87,10 @@ public class InfoCommand extends BookieCommand<CliFlags> {
             for (Map.Entry<BookieId, BookieInfo> e : map.entrySet()) {
                 BookieInfo bInfo = e.getValue();
                 BookieId bookieId = e.getKey();
-                LOG.info("{}: \tFree: {}\tTotal: {}",
-                    CommandHelpers.getBookieSocketAddrStringRepresentation(bookieId, bk.getBookieAddressResolver()),
-                    bInfo.getFreeDiskSpace() + getReadable(bInfo.getFreeDiskSpace()),
-                    bInfo.getTotalDiskSpace() + getReadable(bInfo.getTotalDiskSpace()));
+                LOG.info(CommandHelpers.getBookieSocketAddrStringRepresentation(bookieId,
+                        bk.getBookieAddressResolver())
+                    + ":\tFree: " + bInfo.getFreeDiskSpace() + getReadable(bInfo.getFreeDiskSpace())
+                    + "\tTotal: " + bInfo.getTotalDiskSpace() + getReadable(bInfo.getTotalDiskSpace()));
             }
 
             // group by hostname
@@ -105,8 +106,8 @@ public class InfoCommand extends BookieCommand<CliFlags> {
                 total += bookieInfo.getTotalDiskSpace();
             }
 
-            LOG.info("Total free disk space in the cluster:\t{}", totalFree + getReadable(totalFree));
-            LOG.info("Total disk capacity in the cluster:\t{}", total + getReadable(total));
+            LOG.info("Total free disk space in the cluster:\t" + totalFree + getReadable(totalFree));
+            LOG.info("Total disk capacity in the cluster:\t" + total + getReadable(total));
             bk.close();
 
             return true;
@@ -115,4 +116,4 @@ public class InfoCommand extends BookieCommand<CliFlags> {
         }
         return true;
     }
-}
+}*/
